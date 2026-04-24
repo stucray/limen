@@ -1,0 +1,2 @@
+-- bff-client registered at runtime by BffClientBootstrap; requires OVERROUND_BFF_CLIENT_SECRET env var.
+-- oauth2_registered_client table already created in V1.
