@@ -2,7 +2,7 @@ spring:
   application:
     name: auth-server
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth
+    url: jdbc:postgresql://localhost:5433/auth
     username: auth
     password: secret
   flyway:

@@ -1,3 +1,4 @@
 target/
 *.jwk
 .DS_Store
+.env
