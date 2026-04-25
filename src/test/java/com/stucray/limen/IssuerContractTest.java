@@ -15,6 +15,12 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -25,6 +31,7 @@ import java.security.SecureRandom;
 import java.security.interfaces.RSAPublicKey;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -36,17 +43,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = {
-    "OVERROUND_BFF_CLIENT_SECRET=test-secret",
     "OVERROUND_SIGNING_KEY_PATH=./target/test-signing-key.jwk"
 })
 @AutoConfigureMockMvc
 class IssuerContractTest {
 
+    private static final String CLIENT_ID = "bff-client";
+    private static final String CLIENT_SECRET = "test-secret";
     private static final String REDIRECT_URI = "http://localhost:8091/login/oauth2/code/bff-client";
 
     @Autowired MockMvc mockMvc;
     @Autowired UserRepository userRepository;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired RegisteredClientRepository registeredClientRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -54,6 +63,24 @@ class IssuerContractTest {
     void setUp() {
         userRepository.deleteAll();
         userRepository.save(new User(null, "testuser", passwordEncoder.encode("password"), true, LocalDateTime.now()));
+
+        RegisteredClient existing = registeredClientRepository.findByClientId(CLIENT_ID);
+        if (existing == null) {
+            registeredClientRepository.save(RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId(CLIENT_ID)
+                .clientSecret(passwordEncoder.encode(CLIENT_SECRET))
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri(REDIRECT_URI)
+                .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
+                .clientSettings(ClientSettings.builder()
+                    .requireProofKey(true)
+                    .requireAuthorizationConsent(false)
+                    .build())
+                .build());
+        }
     }
 
     @Test
@@ -98,7 +125,7 @@ class IssuerContractTest {
         // which SAS 7's OAuth2EndpointUtils.getQueryParameters() requires to filter query vs form params.
         String authzUri = UriComponentsBuilder.fromPath("/oauth2/authorize")
             .queryParam("response_type", "code")
-            .queryParam("client_id", "bff-client")
+            .queryParam("client_id", CLIENT_ID)
             .queryParam("redirect_uri", REDIRECT_URI)
             .queryParam("scope", "openid profile")
             .queryParam("state", "test-state")
@@ -120,7 +147,7 @@ class IssuerContractTest {
                 .param("code", code)
                 .param("redirect_uri", REDIRECT_URI)
                 .param("code_verifier", codeVerifier)
-                .with(httpBasic("bff-client", "test-secret")))
+                .with(httpBasic(CLIENT_ID, CLIENT_SECRET)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.access_token").exists())
             .andReturn();

@@ -25,7 +25,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = {
-    "OVERROUND_BFF_CLIENT_SECRET=test-secret",
     "OVERROUND_SIGNING_KEY_PATH=./target/test-signing-key.jwk"
 })
 @AutoConfigureMockMvc
