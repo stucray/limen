@@ -1,88 +1,122 @@
 # Ubiquitous Language
 
+## System Level
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **System Tenant** | The reserved built-in Tenant that houses System Admins; cannot be deleted | Master realm, platform |
+| **System Admin** | A User in the System Tenant whose Role grants authority to operate across all Tenants | Super admin, root user, admin |
+
+## Tenants
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Tenant** | A named isolation boundary with its own scoped User pool, Applications, and Clients | Realm, organisation, workspace, account |
+| **Tenant Owner** | A Role held by one or more Users within a Tenant, granting full management authority over it | Tenant admin, tenant manager |
+
 ## Identity
 
-| Term             | Definition                                                                 | Aliases to avoid              |
-| ---------------- | -------------------------------------------------------------------------- | ----------------------------- |
-| **User**         | A human identity stored in the system with a username and hashed password  | Account, login, principal     |
-| **Username**     | The unique string a User uses to identify themselves at login              | Login name, email, identifier |
-| **Password Hash** | The BCrypt-encoded form of a User's password stored in the database       | Encrypted password            |
-| **Enabled**      | A flag indicating whether a User may authenticate                          | Active, unlocked              |
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **User** | A single entity type representing any authenticated identity, always scoped to exactly one Tenant | Principal, account, member |
+| **Username** | The unique string a User uses to identify themselves at login within their Tenant | Login name, email, identifier |
+| **Password Hash** | The BCrypt-encoded form of a User's password stored in the database | Encrypted password |
+| **Enabled** | A flag indicating whether a User may authenticate | Active, unlocked |
 
-## OAuth2 Clients
+## Applications and Clients
 
-| Term                      | Definition                                                                              | Aliases to avoid         |
-| ------------------------- | --------------------------------------------------------------------------------------- | ------------------------ |
-| **Registered Client**     | An OAuth2 application registered with the Authorization Server that may request tokens | App, consumer, service   |
-| **Client ID**             | The public identifier for a Registered Client                                           | App ID                   |
-| **Client Secret**         | The credential a Registered Client presents when authenticating with the server        | App secret, API key      |
-| **BFF Client**            | A Registered Client representing a Backend-for-Frontend web application                | Frontend client          |
-| **Redirect URI**          | The URL to which the server returns an Authorization Code after a User authorizes       | Callback URL, return URL |
-| **Authorization Grant Type** | The OAuth2 flow a Registered Client is permitted to use                            | Grant, flow type         |
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Application** | A named grouping of Clients within a Tenant that defines the Roles available across those Clients | Project, service, suite |
+| **Client** | An OAuth2 client registration belonging to an Application | Registered client, app |
+| **Client ID** | The public identifier for a Client | App ID |
+| **Client Secret** | The credential a Client presents when authenticating with the server | App secret, API key |
+| **Redirect URI** | The URL to which the server returns an Authorization Code after a User authorises | Callback URL, return URL |
+| **Authorization Grant Type** | The OAuth2 flow a Client is permitted to use | Grant, flow type |
+
+## Access Control
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Membership** | An explicit assignment of a User to an Application or Client, carrying one or more Roles | Assignment, enrollment, participation |
+| **Role** | A named permission defined at Application level, assigned to a User via a Membership, and emitted as the `roles` claim in JWTs | Authority, permission, grant |
+| **Scope** | An OAuth2 permission defined per Client, requested during token flows, and emitted as the `scope` claim in JWTs | Role, permission |
 
 ## Authorization & Consent
 
-| Term                       | Definition                                                                                     | Aliases to avoid         |
-| -------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------ |
-| **Authorization**          | A record that a User has granted a Registered Client permission to act on their behalf         | Grant, approval          |
-| **Authorization Code**     | A short-lived, single-use code exchanged for Tokens in the Authorization Code Flow             | Code, auth code          |
-| **Authorization Consent**  | The persisted record of scopes a User has approved for a specific Registered Client            | Approved scopes          |
-| **Scope**                  | A named permission (e.g. `openid`, `profile`) that a Registered Client requests from a User   | Permission, role         |
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Authorization** | A record that a User has granted a Client permission to act on their behalf | Grant, approval |
+| **Authorization Code** | A short-lived, single-use code exchanged for Tokens in the Authorization Code Flow | Code, auth code |
+| **Authorization Consent** | The persisted record of Scopes a User has approved for a specific Client | Approved scopes |
 
 ## Tokens
 
-| Term              | Definition                                                                            | Aliases to avoid              |
-| ----------------- | ------------------------------------------------------------------------------------- | ----------------------------- |
-| **Access Token**  | A signed JWT granting the bearer access to a protected resource for a limited time   | Bearer token, API token       |
-| **Refresh Token** | A long-lived token used to obtain a new Access Token without re-authenticating       | Session token                 |
-| **ID Token**      | A signed JWT containing identity claims about the authenticated User (OIDC)          | Identity token                |
-| **Signing Key**   | The RSA private key the Authorization Server uses to sign all JWTs                   | Private key, secret key       |
-| **JWK**           | A JSON Web Key — the public-key representation of the Signing Key exposed to clients | Public key                    |
-| **JWK Set**       | The collection of JWKs published at `/oauth2/jwks` for token verification            | Key set, JWKS                 |
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Access Token** | A signed JWT granting the bearer access to a protected resource for a limited time | Bearer token, API token |
+| **Refresh Token** | A long-lived token used to obtain a new Access Token without re-authenticating | Session token |
+| **ID Token** | A signed JWT containing identity claims about the authenticated User (OIDC) | Identity token |
+| **Signing Key** | The RSA private key the Authorization Server uses to sign all JWTs | Private key, secret key |
+| **JWK** | A JSON Web Key — the public-key representation of the Signing Key exposed to clients | Public key |
+| **JWK Set** | The collection of JWKs published at `/oauth2/jwks` for token verification | Key set, JWKS |
 
 ## Sessions & Persistent Authentication
 
-| Term                  | Definition                                                                                      | Aliases to avoid          |
-| --------------------- | ----------------------------------------------------------------------------------------------- | ------------------------- |
-| **Session**           | A server-side record of an authenticated User's HTTP context, identified by `JSESSIONID`       | Login session             |
-| **Persistent Login**  | A database-backed remember-me token enabling re-authentication across browser restarts         | Remember-me, stay logged in |
-| **Series**            | The stable identifier for a Persistent Login chain; rotated on compromise detection            | Token ID                  |
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Session** | A server-side record of an authenticated User's HTTP context, identified by `JSESSIONID` | Login session |
+| **Persistent Login** | A database-backed remember-me token enabling re-authentication across browser restarts | Remember-me, stay logged in |
+| **Series** | The stable identifier for a Persistent Login chain; rotated on compromise detection | Token ID |
 
 ## Authorization Server
 
-| Term                          | Definition                                                                                  | Aliases to avoid             |
-| ----------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------- |
-| **Authorization Server**      | The Limen service itself — issues Tokens and manages the OAuth2/OIDC lifecycle             | Auth server, identity server |
-| **Issuer**                    | The canonical URI of the Authorization Server embedded in every issued Token                | Server URL                   |
-| **PKCE**                      | Proof Key for Code Exchange — a security extension requiring a Code Verifier and Code Challenge in the Authorization Code Flow | —          |
-| **Code Verifier**             | A random secret generated by the client and later sent to prove it initiated the flow      | —                            |
-| **Code Challenge**            | The hashed Code Verifier sent in the authorization request before the secret is revealed   | —                            |
-| **Bootstrap**                 | The startup process that seeds the Admin User and BFF Client if they do not yet exist      | Seed, init, setup            |
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Authorization Server** | The Limen service itself — issues Tokens and manages the OAuth2/OIDC lifecycle | Auth server, identity server |
+| **Issuer** | The canonical URI of the Authorization Server embedded in every issued Token | Server URL |
+| **PKCE** | Proof Key for Code Exchange — a security extension requiring a Code Verifier and Code Challenge in the Authorization Code Flow | — |
+| **Code Verifier** | A random secret generated by the client and later sent to prove it initiated the flow | — |
+| **Code Challenge** | The hashed Code Verifier sent in the authorization request before the secret is revealed | — |
 
 ## Relationships
 
-- A **User** may have zero or more **Persistent Logins** (one per device/browser).
-- A **Registered Client** may hold zero or more **Authorizations** from different Users.
-- Each **Authorization** contains at most one **Authorization Code**, one **Access Token**, one **Refresh Token**, and one **ID Token**.
-- An **Authorization Consent** belongs to exactly one **User** and one **Registered Client**.
-- The **Authorization Server** signs all Tokens with the **Signing Key** and publishes the corresponding **JWK Set** for verification.
+- A **User** belongs to exactly one **Tenant** (including the **System Tenant**)
+- A **Tenant** contains zero or more **Applications**
+- An **Application** contains zero or more **Clients** and defines the **Roles** available to all of them
+- A **User** may have a **Membership** in an **Application** and/or in individual **Clients** within it
+- **Application Membership** makes a **User** eligible for **Client Membership** but does not automatically grant it — **Client Membership** is always explicit
+- A **Membership** carries one or more **Roles**; a **User** may hold multiple **Roles** within a single **Membership**
+- **Roles** travel in JWTs as the `roles` claim; **Scopes** travel as the `scope` claim — they are distinct concepts serving different consumers
+- A **User** may have zero or more **Persistent Logins** (one per device/browser)
+- Each **Authorization** contains at most one **Authorization Code**, one **Access Token**, one **Refresh Token**, and one **ID Token**
+- An **Authorization Consent** belongs to exactly one **User** and one **Client**
+- The **Authorization Server** signs all Tokens with the **Signing Key** and publishes the corresponding **JWK Set** for verification
 
 ## Example dialogue
 
-> **Dev:** "When a **User** first logs in through a **BFF Client**, does the **Authorization Server** create an **Authorization** immediately?"
+> **Dev:** "A new customer wants to use Limen. What do we create for them?"
 
-> **Domain expert:** "Not until the **User** approves the **Authorization Consent**. If the **BFF Client** is configured to skip consent, the **Authorization** is created automatically — otherwise the User must confirm the requested **Scopes**."
+> **Domain expert:** "First create a **Tenant**. Then create a **User** in that **Tenant** and assign them the **Tenant Owner** Role — that gives them management authority over the Tenant."
 
-> **Dev:** "And the **Authorization Code** — when does that expire?"
+> **Dev:** "They have two products, each with a web frontend and a mobile app. How does that map?"
 
-> **Domain expert:** "It's single-use and very short-lived. The **BFF Client** must exchange it plus the **Code Verifier** at `/oauth2/token` before it expires, and the server hands back an **Access Token**, **Refresh Token**, and **ID Token**."
+> **Domain expert:** "Each product is an **Application**. Define the **Roles** on the **Application** — say `viewer` and `editor`. Then register a **Client** per OAuth2 integration: web and mobile each get their own **Client** under their **Application**."
 
-> **Dev:** "So the **Access Token** is what the client sends to downstream APIs?"
+> **Dev:** "When an end-user logs in via a **Client**, how does the resource server know what they can do?"
 
-> **Domain expert:** "Exactly. Downstream services verify it by fetching the **JWK Set** and checking the signature against the **Signing Key**'s public half. The **Issuer** claim in the token tells them which **Authorization Server** signed it."
+> **Domain expert:** "The resource server reads the `roles` claim in the JWT. That's populated from the **User**'s **Membership** in that **Client** — specifically their **Roles** on the **Membership**. The `scope` claim is separate; it reflects what the **Client** is permitted to request, not who the **User** is."
+
+> **Dev:** "Can I assign someone to the whole **Application** so they automatically get access to all its **Clients**?"
+
+> **Domain expert:** "**Application Membership** makes them eligible, but each **Client Membership** must still be created explicitly. Nothing is inherited automatically."
 
 ## Flagged ambiguities
 
-- **"Authorization"** is overloaded in Spring Security (the process of checking permissions) and in the OAuth2 domain (a persisted grant record). In this codebase, prefer **Authorization** to mean the OAuth2 grant record (`oauth2_authorization` table). The process of checking permissions should be called **access control**, not "authorization."
-- **"Token"** alone is ambiguous — it could mean an **Access Token**, **Refresh Token**, **ID Token**, **Authorization Code**, or **Persistent Login** token. Always qualify with the type.
-- **"Admin"** appears in bootstrap env vars (`OVERROUND_ADMIN_USERNAME`) but there is no distinct Admin role in the domain model — the bootstrapped User holds only `ROLE_USER`. Avoid calling this user the "Admin User" unless a privileged role is later introduced.
+- **"User"** was previously used only for management-level identities. It now covers all authenticated identities — management users and OAuth2 end-users are the **same entity type**, differentiated by **Role** and **Membership**, not by entity type. Do not introduce separate entity types for these personas.
+- **"Principal"** must be avoided — it has a specific meaning in Spring Security (`java.security.Principal`) and will cause confusion in a Spring Boot codebase.
+- **"Registered Client"** is a Spring implementation term (`RegisteredClient`). Use **Client** in all domain conversations and documentation.
+- **"Role" vs "Scope"** are frequently conflated. **Role** is a management concept (assigned to Users via Memberships, defined per Application, `roles` JWT claim, consumed by Spring Resource Servers). **Scope** is an OAuth2 wire concept (defined per Client, requested during token flows, `scope` JWT claim). Both appear in JWTs but as separate claims.
+- **"Authorization"** is overloaded in Spring Security (the process of checking permissions) and in the OAuth2 domain (a persisted grant record). In this codebase, **Authorization** means the OAuth2 grant record. The process of checking permissions should be called **access control**.
+- **"Token"** alone is ambiguous. Always qualify with the type: **Access Token**, **Refresh Token**, **ID Token**.
+- **"Admin"** unqualified is ambiguous now that both **System Admin** and **Tenant Owner** exist. Always qualify.
