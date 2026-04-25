@@ -1,7 +1,7 @@
-package com.stucray.auth.identity;
+package com.stucray.limen.identity;
 
-import com.stucray.auth.user.User;
-import com.stucray.auth.user.UserRepository;
+import com.stucray.limen.user.User;
+import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

@@ -1,4 +1,4 @@
-package com.stucray.auth.security;
+package com.stucray.limen.security;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

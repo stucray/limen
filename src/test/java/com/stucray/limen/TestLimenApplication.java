@@ -1,11 +1,11 @@
-package com.stucray.auth;
+package com.stucray.limen;
 
 import org.springframework.boot.SpringApplication;
 
-public class TestAuthServerApplication {
+public class TestLimenApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.from(AuthServerApplication::main)
+		SpringApplication.from(LimenApplication::main)
 				.with(TestcontainersConfiguration.class)
 				.run(args);
 	}

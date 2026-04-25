@@ -1,4 +1,4 @@
-package com.stucray.auth.user;
+package com.stucray.limen.user;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;

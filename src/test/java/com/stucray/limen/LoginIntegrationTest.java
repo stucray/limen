@@ -1,7 +1,7 @@
-package com.stucray.auth;
+package com.stucray.limen;
 
-import com.stucray.auth.user.User;
-import com.stucray.auth.user.UserRepository;
+import com.stucray.limen.user.User;
+import com.stucray.limen.user.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

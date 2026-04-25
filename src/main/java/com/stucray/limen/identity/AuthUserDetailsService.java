@@ -1,6 +1,6 @@
-package com.stucray.auth.identity;
+package com.stucray.limen.identity;
 
-import com.stucray.auth.user.UserRepository;
+import com.stucray.limen.user.UserRepository;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;

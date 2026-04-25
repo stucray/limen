@@ -1,6 +1,6 @@
 spring:
   application:
-    name: auth-server
+    name: limen
   datasource:
     url: jdbc:postgresql://localhost:5433/auth
     username: auth

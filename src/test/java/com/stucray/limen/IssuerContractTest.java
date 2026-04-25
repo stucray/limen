@@ -1,12 +1,12 @@
-package com.stucray.auth;
+package com.stucray.limen;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jwt.SignedJWT;
-import com.stucray.auth.user.User;
-import com.stucray.auth.user.UserRepository;
+import com.stucray.limen.user.User;
+import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,4 +1,4 @@
-package com.stucray.auth.security;
+package com.stucray.limen.security;
 
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;

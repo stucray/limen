@@ -1,4 +1,4 @@
-package com.stucray.auth.identity;
+package com.stucray.limen.identity;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

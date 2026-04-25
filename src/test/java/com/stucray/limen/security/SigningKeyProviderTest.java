@@ -1,4 +1,4 @@
-package com.stucray.auth.security;
+package com.stucray.limen.security;
 
 import com.nimbusds.jose.jwk.JWKMatcher;
 import com.nimbusds.jose.jwk.JWKSelector;

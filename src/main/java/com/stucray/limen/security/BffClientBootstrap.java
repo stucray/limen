@@ -1,4 +1,4 @@
-package com.stucray.auth.security;
+package com.stucray.limen.security;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
