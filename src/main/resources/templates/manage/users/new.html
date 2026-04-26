@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Add User</title></head>
+<body>
+<h1>Add User</h1>
+<a th:href="@{'/manage/t/' + ${slug} + '/users'}">← Users</a>
+
+<div th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+<form method="post" th:action="@{'/manage/t/' + ${slug} + '/users'}">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <div>
+        <label>Username <input type="text" name="username" th:value="${username}" autofocus required/></label>
+    </div>
+    <div>
+        <label>Temporary password <input type="password" name="temporaryPassword" minlength="8" required/></label>
+    </div>
+    <button type="submit">Create user</button>
+</form>
+</body>
+</html>

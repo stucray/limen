@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Sign up — Limen</title>
+</head>
+<body>
+
+<h1>Create your Limen account</h1>
+
+<form method="post" th:action="@{/signup}">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+    <div>
+        <label>
+            Organization name
+            <input type="text" name="organizationName" th:value="${form.organizationName()}" autofocus required/>
+        </label>
+        <span th:if="${errorField == 'organizationName'}" th:text="${errorMessage}"></span>
+    </div>
+
+    <div>
+        <label>
+            Slug (e.g. <code>acme-corp</code>)
+            <input type="text" name="slug" th:value="${form.slug()}"
+                   pattern="[a-z0-9][a-z0-9\-]{1,46}[a-z0-9]" required/>
+        </label>
+        <span th:if="${errorField == 'slug'}" th:text="${errorMessage}"></span>
+        <small>Your management URL will be <code>/manage/t/{slug}/</code></small>
+    </div>
+
+    <div>
+        <label>
+            Username
+            <input type="text" name="username" th:value="${form.username()}" required/>
+        </label>
+        <span th:if="${errorField == 'username'}" th:text="${errorMessage}"></span>
+    </div>
+
+    <div>
+        <label>
+            Password
+            <input type="password" name="password" minlength="8" required/>
+        </label>
+        <span th:if="${errorField == 'password'}" th:text="${errorMessage}"></span>
+    </div>
+
+    <button type="submit">Create account</button>
+</form>
+
+</body>
+</html>

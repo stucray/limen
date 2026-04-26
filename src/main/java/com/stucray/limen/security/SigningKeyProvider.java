@@ -20,7 +20,7 @@ public class SigningKeyProvider {
 
     private final Path keyPath;
 
-    public SigningKeyProvider(@Value("${OVERROUND_SIGNING_KEY_PATH:./dev-signing-key.jwk}") String keyPath) {
+    public SigningKeyProvider(@Value("${LIMEN_SIGNING_KEY_PATH:./dev-signing-key.jwk}") String keyPath) {
         this.keyPath = Path.of(keyPath);
     }
 

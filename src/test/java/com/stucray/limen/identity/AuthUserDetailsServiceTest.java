@@ -1,10 +1,13 @@
 package com.stucray.limen.identity;
 
+import com.stucray.limen.tenant.Tenant;
+import com.stucray.limen.tenant.TenantRepository;
+import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,13 +23,23 @@ import static org.mockito.BDDMockito.given;
 @ExtendWith(MockitoExtension.class)
 class AuthUserDetailsServiceTest {
 
+    @Mock TenantRepository tenantRepository;
     @Mock UserRepository userRepository;
-    @InjectMocks AuthUserDetailsService service;
+
+    AuthUserDetailsService service;
+
+    private static final Tenant SYSTEM_TENANT = new Tenant(1L, "system", "System", TenantStatus.ACTIVE, LocalDateTime.now());
+
+    @BeforeEach
+    void setUp() {
+        service = new AuthUserDetailsService(tenantRepository, userRepository);
+        given(tenantRepository.findBySlug("system")).willReturn(Optional.of(SYSTEM_TENANT));
+    }
 
     @Test
-    void loadsUserByUsername() {
-        given(userRepository.findByUsername("alice")).willReturn(
-            Optional.of(new User(1L, "alice", "hash", true, LocalDateTime.now()))
+    void loadsUserByUsernameFromSystemTenant() {
+        given(userRepository.findByUsernameAndTenantId("alice", 1L)).willReturn(
+            Optional.of(new User(1L, 1L, "alice", "hash", true, false, false, LocalDateTime.now()))
         );
 
         UserDetails details = service.loadUserByUsername("alice");
@@ -38,16 +51,24 @@ class AuthUserDetailsServiceTest {
 
     @Test
     void throwsUsernameNotFoundForUnknownUser() {
-        given(userRepository.findByUsername("unknown")).willReturn(Optional.empty());
+        given(userRepository.findByUsernameAndTenantId("unknown", 1L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.loadUserByUsername("unknown"))
             .isInstanceOf(UsernameNotFoundException.class);
     }
 
     @Test
+    void throwsUsernameNotFoundWhenSystemTenantMissing() {
+        given(tenantRepository.findBySlug("system")).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.loadUserByUsername("alice"))
+            .isInstanceOf(UsernameNotFoundException.class);
+    }
+
+    @Test
     void assignsRoleUserAuthority() {
-        given(userRepository.findByUsername("alice")).willReturn(
-            Optional.of(new User(1L, "alice", "hash", true, LocalDateTime.now()))
+        given(userRepository.findByUsernameAndTenantId("alice", 1L)).willReturn(
+            Optional.of(new User(1L, 1L, "alice", "hash", true, false, false, LocalDateTime.now()))
         );
 
         UserDetails details = service.loadUserByUsername("alice");
@@ -59,8 +80,8 @@ class AuthUserDetailsServiceTest {
 
     @Test
     void disabledUserIsNotEnabled() {
-        given(userRepository.findByUsername("bob")).willReturn(
-            Optional.of(new User(2L, "bob", "hash", false, LocalDateTime.now()))
+        given(userRepository.findByUsernameAndTenantId("bob", 1L)).willReturn(
+            Optional.of(new User(2L, 1L, "bob", "hash", false, false, false, LocalDateTime.now()))
         );
 
         UserDetails details = service.loadUserByUsername("bob");

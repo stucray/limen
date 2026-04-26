@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Tenants — System Admin</title></head>
+<body>
+<h1>Tenants</h1>
+<a th:href="@{/manage/t/system/}">← Home</a>
+
+<div th:if="${errorMessage}" th:text="${errorMessage}"></div>
+<div th:if="${successMessage}" th:text="${successMessage}"></div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Slug</th>
+            <th>Display Name</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="tenant : ${tenants}">
+            <td th:text="${tenant.slug()}"></td>
+            <td th:text="${tenant.displayName()}"></td>
+            <td th:text="${tenant.status()}"></td>
+            <td th:text="${#temporals.format(tenant.createdAt(), 'yyyy-MM-dd')}"></td>
+            <td th:unless="${tenant.isSystem()}">
+                <form method="post" th:action="@{'/manage/system/tenants/' + ${tenant.id()} + '/suspend'}" style="display:inline" th:if="${tenant.status().name() == 'ACTIVE'}">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit">Suspend</button>
+                </form>
+                <form method="post" th:action="@{'/manage/system/tenants/' + ${tenant.id()} + '/unsuspend'}" style="display:inline" th:if="${tenant.status().name() == 'SUSPENDED'}">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit">Unsuspend</button>
+                </form>
+                <form method="post" th:action="@{'/manage/system/tenants/' + ${tenant.id()} + '/delete'}" style="display:inline">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit" onclick="return confirm('Delete this tenant and all its data?')">Delete</button>
+                </form>
+            </td>
+            <td th:if="${tenant.isSystem()}">—</td>
+        </tr>
+    </tbody>
+</table>
+</body>
+</html>
