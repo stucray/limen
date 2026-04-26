@@ -1,5 +1,8 @@
 package com.stucray.limen.security;
 
+import com.stucray.limen.management.clients.TenantClientRepository;
+import com.stucray.limen.oauth2.TenantAwareRegisteredClientRepository;
+import com.stucray.limen.oauth2.TenantIssuerContextFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -8,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
@@ -40,13 +44,21 @@ public class SasConfig {
                     htmlRequestMatcher(),
                     PathPatternRequestMatcher.withDefaults().matcher("/oauth2/authorize")
                 )
-            ));
+            ))
+            .addFilterBefore(
+                new TenantIssuerContextFilter(authorizationServerSettings()),
+                CsrfFilter.class
+            );
         return http.build();
     }
 
     @Bean
-    public JdbcRegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
-        return new JdbcRegisteredClientRepository(jdbcTemplate);
+    public RegisteredClientRepository registeredClientRepository(
+        JdbcTemplate jdbcTemplate,
+        TenantClientRepository tenantClientRepository
+    ) {
+        JdbcRegisteredClientRepository jdbcRepo = new JdbcRegisteredClientRepository(jdbcTemplate);
+        return new TenantAwareRegisteredClientRepository(jdbcRepo, tenantClientRepository);
     }
 
     @Bean

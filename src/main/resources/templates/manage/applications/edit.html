@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Edit Application</title></head>
+<body>
+<h1>Edit Application</h1>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications'}">← Applications</a>
+
+<form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${application.id()} + '/edit'}">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <div><label>Name <input type="text" name="name" th:value="${application.name()}" required/></label></div>
+    <div><label>Description <textarea name="description" th:text="${application.description()}"></textarea></label></div>
+    <button type="submit">Save</button>
+</form>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="|Sign in — ${tenantName}|">Sign in — Limen</title>
+</head>
+<body>
+
+<h1 th:text="|Sign in to ${tenantName}|">Sign in</h1>
+
+<div th:if="${param.error}">Invalid username or password.</div>
+<div th:if="${param.registered}">Account created — please sign in.</div>
+
+<form method="post" th:action="@{'/manage/t/' + ${slug} + '/login'}">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+    <div>
+        <label>
+            Username
+            <input type="text" name="username" autofocus required/>
+        </label>
+    </div>
+
+    <div>
+        <label>
+            Password
+            <input type="password" name="password" required/>
+        </label>
+    </div>
+
+    <button type="submit">Sign in</button>
+</form>
+
+</body>
+</html>

@@ -1,5 +1,6 @@
 package com.stucray.limen;
 
+import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import jakarta.servlet.http.Cookie;
@@ -25,21 +26,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = {
-    "OVERROUND_SIGNING_KEY_PATH=./target/test-signing-key.jwk"
+    "LIMEN_SIGNING_KEY_PATH=./target/test-signing-key.jwk"
 })
 @AutoConfigureMockMvc
 class LoginIntegrationTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired UserRepository userRepository;
+    @Autowired TenantRepository tenantRepository;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired JdbcTemplate jdbcTemplate;
+
+    Long systemTenantId;
 
     @BeforeEach
     void setUp() {
         jdbcTemplate.execute("DELETE FROM persistent_logins");
-        userRepository.deleteAll();
-        userRepository.save(new User(null, "testuser", passwordEncoder.encode("password"), true, LocalDateTime.now()));
+        // Delete non-system users to avoid cross-test pollution while preserving the system tenant
+        jdbcTemplate.execute("DELETE FROM users WHERE tenant_id = (SELECT id FROM tenants WHERE slug = 'system')");
+
+        systemTenantId = tenantRepository.findBySlug("system").orElseThrow().id();
+        userRepository.save(new User(null, systemTenantId, "testuser", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
     }
 
     @Test
@@ -108,12 +115,9 @@ class LoginIntegrationTest {
         String tokenBefore = jdbcTemplate.queryForObject(
             "SELECT token FROM persistent_logins WHERE username = 'testuser'", String.class);
 
-        // Access a protected resource using only the remember-me cookie (no session).
-        // A redirect to /login would indicate re-authentication failed.
         MvcResult reAuthResult = mockMvc.perform(get("/login").cookie(rememberMeCookie))
             .andReturn();
 
-        // Remember-me authenticated; not redirected to /login
         assertThat(reAuthResult.getResponse().getStatus()).isNotEqualTo(302);
 
         String tokenAfter = jdbcTemplate.queryForObject(

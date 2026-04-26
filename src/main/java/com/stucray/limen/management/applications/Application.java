@@ -1,0 +1,23 @@
+package com.stucray.limen.management.applications;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
+
+import java.time.LocalDateTime;
+
+@Table("applications")
+public record Application(
+    @Id Long id,
+    Long tenantId,
+    String name,
+    String description,
+    LocalDateTime createdAt
+) {
+    public Application withName(String newName) {
+        return new Application(id, tenantId, newName, description, createdAt);
+    }
+
+    public Application withDescription(String newDescription) {
+        return new Application(id, tenantId, name, newDescription, createdAt);
+    }
+}

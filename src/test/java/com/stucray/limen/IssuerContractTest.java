@@ -5,6 +5,7 @@ import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = {
-    "OVERROUND_SIGNING_KEY_PATH=./target/test-signing-key.jwk"
+    "LIMEN_SIGNING_KEY_PATH=./target/test-signing-key.jwk"
 })
 @AutoConfigureMockMvc
 class IssuerContractTest {
@@ -53,6 +54,7 @@ class IssuerContractTest {
     private static final String REDIRECT_URI = "http://localhost:8091/login/oauth2/code/bff-client";
 
     @Autowired MockMvc mockMvc;
+    @Autowired TenantRepository tenantRepository;
     @Autowired UserRepository userRepository;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired RegisteredClientRepository registeredClientRepository;
@@ -61,8 +63,11 @@ class IssuerContractTest {
 
     @BeforeEach
     void setUp() {
-        userRepository.deleteAll();
-        userRepository.save(new User(null, "testuser", passwordEncoder.encode("password"), true, LocalDateTime.now()));
+        Long systemTenantId = tenantRepository.findBySlug("system").orElseThrow().id();
+        userRepository.findByUsernameAndTenantId("testuser", systemTenantId).ifPresent(u -> {});
+        if (!userRepository.existsByUsernameAndTenantId("testuser", systemTenantId)) {
+            userRepository.save(new User(null, systemTenantId, "testuser", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
+        }
 
         RegisteredClient existing = registeredClientRepository.findByClientId(CLIENT_ID);
         if (existing == null) {
