@@ -1,6 +1,7 @@
 package com.stucray.limen.identity;
 
 import com.stucray.limen.tenant.Tenant;
+import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
@@ -15,7 +16,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
@@ -24,6 +24,7 @@ import static org.mockito.Mockito.*;
 class UserBootstrapTest {
 
     @Mock TenantRepository tenantRepository;
+    @Mock TenantProvisioningService tenantProvisioningService;
     @Mock UserRepository userRepository;
     @Mock PasswordEncoder passwordEncoder;
 
@@ -36,27 +37,27 @@ class UserBootstrapTest {
 
     @Test
     void alwaysBootstrapsSystemTenant() throws Exception {
-        new UserBootstrap(null, null, tenantRepository, userRepository, passwordEncoder).run();
+        new UserBootstrap(null, null, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
         verify(tenantRepository).findBySlug("system");
-        verifyNoInteractions(userRepository, passwordEncoder);
+        verifyNoInteractions(tenantProvisioningService, userRepository, passwordEncoder);
     }
 
     @Test
     void createsSystemTenantWhenAbsent() throws Exception {
         given(tenantRepository.findBySlug("system")).willReturn(Optional.empty());
-        given(tenantRepository.save(any())).willReturn(SYSTEM_TENANT);
+        given(tenantProvisioningService.createTenant("system", "System")).willReturn(SYSTEM_TENANT);
 
-        new UserBootstrap(null, null, tenantRepository, userRepository, passwordEncoder).run();
+        new UserBootstrap(null, null, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
 
-        verify(tenantRepository).save(argThat(t -> t.slug().equals("system")));
+        verify(tenantProvisioningService).createTenant("system", "System");
     }
 
     @Test
     void doesNothingWithUsersWhenCredentialsUnset() throws Exception {
-        new UserBootstrap(null, "pass", tenantRepository, userRepository, passwordEncoder).run();
+        new UserBootstrap(null, "pass", tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
         verifyNoInteractions(userRepository, passwordEncoder);
 
-        new UserBootstrap("admin", null, tenantRepository, userRepository, passwordEncoder).run();
+        new UserBootstrap("admin", null, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
         verifyNoInteractions(userRepository, passwordEncoder);
     }
 
@@ -65,7 +66,7 @@ class UserBootstrapTest {
         given(userRepository.findByUsernameAndTenantId("admin", 1L)).willReturn(Optional.empty());
         given(passwordEncoder.encode("pass")).willReturn("hashed");
 
-        new UserBootstrap("admin", "pass", tenantRepository, userRepository, passwordEncoder).run();
+        new UserBootstrap("admin", "pass", tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
 
         verify(userRepository).save(argThat(u ->
             u.username().equals("admin") && u.passwordHash().equals("hashed")
@@ -79,7 +80,7 @@ class UserBootstrapTest {
         given(userRepository.findByUsernameAndTenantId("admin", 1L)).willReturn(Optional.of(existing));
         given(passwordEncoder.encode("newpass")).willReturn("newhash");
 
-        new UserBootstrap("admin", "newpass", tenantRepository, userRepository, passwordEncoder).run();
+        new UserBootstrap("admin", "newpass", tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
 
         verify(userRepository).save(argThat(u -> u.id().equals(10L) && u.passwordHash().equals("newhash")));
     }

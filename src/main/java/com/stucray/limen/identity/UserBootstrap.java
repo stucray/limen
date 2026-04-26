@@ -1,8 +1,8 @@
 package com.stucray.limen.identity;
 
 import com.stucray.limen.tenant.Tenant;
+import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
-import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +22,7 @@ public class UserBootstrap implements CommandLineRunner {
     private final String adminUsername;
     private final String adminPassword;
     private final TenantRepository tenantRepository;
+    private final TenantProvisioningService tenantProvisioningService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -29,12 +30,14 @@ public class UserBootstrap implements CommandLineRunner {
         @Value("${LIMEN_ADMIN_USERNAME:#{null}}") String adminUsername,
         @Value("${LIMEN_ADMIN_PASSWORD:#{null}}") String adminPassword,
         TenantRepository tenantRepository,
+        TenantProvisioningService tenantProvisioningService,
         UserRepository userRepository,
         PasswordEncoder passwordEncoder
     ) {
         this.adminUsername = adminUsername;
         this.adminPassword = adminPassword;
         this.tenantRepository = tenantRepository;
+        this.tenantProvisioningService = tenantProvisioningService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -43,9 +46,7 @@ public class UserBootstrap implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         Tenant systemTenant = tenantRepository.findBySlug(SYSTEM_SLUG)
-            .orElseGet(() -> tenantRepository.save(
-                new Tenant(null, SYSTEM_SLUG, SYSTEM_DISPLAY_NAME, TenantStatus.ACTIVE, LocalDateTime.now())
-            ));
+            .orElseGet(() -> tenantProvisioningService.createTenant(SYSTEM_SLUG, SYSTEM_DISPLAY_NAME));
 
         if (adminUsername == null || adminPassword == null) return;
 
