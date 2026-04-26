@@ -1,6 +1,8 @@
 package com.stucray.limen.security;
 
 import com.stucray.limen.oauth2.TenantLoginSuccessHandler;
+import com.stucray.limen.tenant.TenantRepository;
+import com.stucray.limen.user.UserRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -26,7 +28,9 @@ public class SecurityConfig {
     public SecurityFilterChain defaultSecurityFilterChain(
         HttpSecurity http,
         PersistentTokenRepository tokenRepository,
-        UserDetailsService userDetailsService
+        UserDetailsService userDetailsService,
+        UserRepository userRepository,
+        TenantRepository tenantRepository
     ) throws Exception {
         return http
             .authorizeHttpRequests(auth -> auth
@@ -35,7 +39,7 @@ public class SecurityConfig {
             )
             .formLogin(form -> form
                 .loginPage("/login").permitAll()
-                .successHandler(new TenantLoginSuccessHandler())
+                .successHandler(new TenantLoginSuccessHandler(userRepository, tenantRepository))
             )
             .logout(logout -> logout
                 .deleteCookies("JSESSIONID", "remember-me")
