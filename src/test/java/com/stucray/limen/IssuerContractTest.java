@@ -1,10 +1,5 @@
 package com.stucray.limen;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jose.crypto.RSASSAVerifier;
-import com.nimbusds.jose.jwk.JWK;
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jwt.SignedJWT;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
@@ -14,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
@@ -23,22 +17,11 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.SecureRandom;
-import java.security.interfaces.RSAPublicKey;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -59,12 +42,9 @@ class IssuerContractTest {
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired RegisteredClientRepository registeredClientRepository;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     @BeforeEach
     void setUp() {
         Long systemTenantId = tenantRepository.findBySlug("system").orElseThrow().id();
-        userRepository.findByUsernameAndTenantId("testuser", systemTenantId).ifPresent(u -> {});
         if (!userRepository.existsByUsernameAndTenantId("testuser", systemTenantId)) {
             userRepository.save(new User(null, systemTenantId, "testuser", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
         }
