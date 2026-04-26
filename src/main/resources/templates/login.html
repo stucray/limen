@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head><title>Sign in — Overround</title></head>
+<head><title>Sign in</title></head>
 <body>
-<form method="post" th:action="@{/login}">
+<form method="post" th:action="${tenantSlug != null} ? @{/t/{slug}/login(slug=${tenantSlug})} : @{/login}">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
     <div><label>Username <input type="text" name="username" autofocus required/></label></div>
     <div><label>Password <input type="password" name="password" required/></label></div>

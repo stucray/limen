@@ -2,7 +2,9 @@ package com.stucray.limen.security;
 
 import com.stucray.limen.management.clients.TenantClientRepository;
 import com.stucray.limen.oauth2.TenantAwareRegisteredClientRepository;
+import com.stucray.limen.oauth2.TenantContext;
 import com.stucray.limen.oauth2.TenantIssuerContextFilter;
+import com.stucray.limen.oauth2.TenantLoginUrlAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -11,17 +13,21 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
+
+import java.util.ArrayList;
 
 import java.util.Set;
 
@@ -39,7 +45,7 @@ public class SasConfig {
             .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
             .oauth2ResourceServer(rs -> rs.jwt(Customizer.withDefaults()))
             .exceptionHandling(ex -> ex.defaultAuthenticationEntryPointFor(
-                new LoginUrlAuthenticationEntryPoint("/login"),
+                new TenantLoginUrlAuthenticationEntryPoint(),
                 new OrRequestMatcher(
                     htmlRequestMatcher(),
                     PathPatternRequestMatcher.withDefaults().matcher("/oauth2/authorize")
@@ -82,6 +88,18 @@ public class SasConfig {
         return AuthorizationServerSettings.builder()
             .issuer("http://localhost:8090")
             .build();
+    }
+
+    @Bean
+    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
+        return context -> {
+            if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) return;
+            String slug = TenantContext.getSlug();
+            if (slug != null) {
+                context.getClaims().claim("tenant", slug);
+            }
+            context.getClaims().claim("roles", new ArrayList<>());
+        };
     }
 
     private static MediaTypeRequestMatcher htmlRequestMatcher() {

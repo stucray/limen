@@ -1,5 +1,6 @@
 package com.stucray.limen.security;
 
+import com.stucray.limen.oauth2.TenantLoginSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -32,7 +33,10 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/health").permitAll()
                 .anyRequest().authenticated()
             )
-            .formLogin(form -> form.loginPage("/login").permitAll())
+            .formLogin(form -> form
+                .loginPage("/login").permitAll()
+                .successHandler(new TenantLoginSuccessHandler())
+            )
             .logout(logout -> logout
                 .deleteCookies("JSESSIONID", "remember-me")
                 .invalidateHttpSession(true)

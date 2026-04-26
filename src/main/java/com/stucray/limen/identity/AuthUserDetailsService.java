@@ -1,5 +1,6 @@
 package com.stucray.limen.identity;
 
+import com.stucray.limen.oauth2.TenantContext;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.user.UserRepository;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -11,10 +12,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/**
- * UserDetailsService for the OAuth2 authorization code flow login page.
- * Scoped to the system tenant until per-tenant OAuth2 routing is wired up in a later slice.
- */
 @Service
 public class AuthUserDetailsService implements UserDetailsService {
 
@@ -28,11 +25,14 @@ public class AuthUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) {
-        Long systemTenantId = tenantRepository.findBySlug(UserBootstrap.SYSTEM_SLUG)
-            .orElseThrow(() -> new UsernameNotFoundException(username))
-            .id();
-
-        return userRepository.findByUsernameAndTenantId(username, systemTenantId)
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            tenantId = tenantRepository.findBySlug(UserBootstrap.SYSTEM_SLUG)
+                .orElseThrow(() -> new UsernameNotFoundException(username))
+                .id();
+        }
+        final Long resolvedTenantId = tenantId;
+        return userRepository.findByUsernameAndTenantId(username, resolvedTenantId)
             .map(user -> new User(
                 user.username(),
                 user.passwordHash(),
