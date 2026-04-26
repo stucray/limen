@@ -21,8 +21,14 @@
     <div><label>Post-logout redirect URIs (one per line)<br/><textarea name="postLogoutRedirectUris" rows="2"></textarea></label></div>
     <div><label>Scopes (space or comma separated)<br/><input type="text" name="scopes" placeholder="openid profile email"/></label></div>
 
-    <div><label><input type="checkbox" name="requirePkce"/> Require PKCE</label></div>
-    <div><label><input type="checkbox" name="confidential" value="true" checked/> Confidential (has client secret)</label></div>
+    <fieldset>
+        <legend>Token settings</legend>
+        <div><label>Access token TTL (minutes) <input type="number" name="accessTokenTtlMinutes" value="5" min="1" required/></label></div>
+        <div><label>Refresh token TTL (days) <input type="number" name="refreshTokenTtlDays" value="30" min="1" required/></label></div>
+        <div><label><input type="checkbox" name="reuseRefreshTokens"/> Reuse refresh tokens (uncheck to rotate)</label></div>
+        <div><label><input type="checkbox" name="requirePkce"/> Require PKCE</label></div>
+        <div><label><input type="checkbox" name="confidential" value="true" checked/> Confidential (has client secret)</label></div>
+    </fieldset>
 
     <button type="submit">Create client</button>
 </form>

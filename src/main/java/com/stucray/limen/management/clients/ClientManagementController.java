@@ -65,6 +65,9 @@ public class ClientManagementController {
         @RequestParam(required = false) String scopes,
         @RequestParam(defaultValue = "false") boolean requirePkce,
         @RequestParam(defaultValue = "true") boolean confidential,
+        @RequestParam(defaultValue = "5") long accessTokenTtlMinutes,
+        @RequestParam(defaultValue = "30") long refreshTokenTtlDays,
+        @RequestParam(defaultValue = "false") boolean reuseRefreshTokens,
         RedirectAttributes redirectAttributes
     ) {
         Set<AuthorizationGrantType> grants = grantTypes == null ? Set.of() :
@@ -77,7 +80,8 @@ public class ClientManagementController {
         Set<String> scopeSet = parseLines(scopes);
 
         ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
-            appId, principal.tenantId(), displayName, grants, redirectUriSet, postLogoutSet, scopeSet, requirePkce, confidential
+            appId, principal.tenantId(), displayName, grants, redirectUriSet, postLogoutSet, scopeSet,
+            requirePkce, confidential, accessTokenTtlMinutes, refreshTokenTtlDays, reuseRefreshTokens
         );
 
         if (result.rawSecret() != null) {
@@ -85,6 +89,38 @@ public class ClientManagementController {
             redirectAttributes.addFlashAttribute("clientId", result.client().registeredClientId());
         }
 
+        return "redirect:/manage/t/" + slug + "/applications/" + appId + "/clients";
+    }
+
+    @GetMapping("/{registeredClientId}/edit")
+    public String editClientForm(
+        @PathVariable String slug,
+        @PathVariable Long appId,
+        @PathVariable String registeredClientId,
+        @AuthenticationPrincipal TenantUserDetails principal,
+        Model model
+    ) {
+        model.addAttribute("slug", slug);
+        model.addAttribute("application", applicationService.getApplication(appId, principal.tenantId()));
+        model.addAttribute("clientSettings", clientManagementService.getClientWithSettings(registeredClientId, principal.tenantId()));
+        return "manage/clients/edit";
+    }
+
+    @PostMapping("/{registeredClientId}/edit")
+    public String updateClient(
+        @PathVariable String slug,
+        @PathVariable Long appId,
+        @PathVariable String registeredClientId,
+        @AuthenticationPrincipal TenantUserDetails principal,
+        @RequestParam(defaultValue = "5") long accessTokenTtlMinutes,
+        @RequestParam(defaultValue = "30") long refreshTokenTtlDays,
+        @RequestParam(defaultValue = "false") boolean reuseRefreshTokens,
+        @RequestParam(defaultValue = "false") boolean requirePkce
+    ) {
+        clientManagementService.updateClientSettings(
+            registeredClientId, principal.tenantId(),
+            accessTokenTtlMinutes, refreshTokenTtlDays, reuseRefreshTokens, requirePkce
+        );
         return "redirect:/manage/t/" + slug + "/applications/" + appId + "/clients";
     }
 

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Edit Client</title></head>
+<body>
+<h1>Edit Client — <span th:text="${clientSettings.tenantClient().displayName()}"></span></h1>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${application.id()} + '/clients'}">← Clients</a>
+
+<form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${application.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/edit'}">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+    <fieldset>
+        <legend>Token settings</legend>
+        <div><label>Access token TTL (minutes) <input type="number" name="accessTokenTtlMinutes" th:value="${clientSettings.accessTokenTtlMinutes()}" min="1" required/></label></div>
+        <div><label>Refresh token TTL (days) <input type="number" name="refreshTokenTtlDays" th:value="${clientSettings.refreshTokenTtlDays()}" min="1" required/></label></div>
+        <div><label><input type="checkbox" name="reuseRefreshTokens" th:checked="${clientSettings.reuseRefreshTokens()}"/> Reuse refresh tokens (uncheck to rotate)</label></div>
+        <div><label><input type="checkbox" name="requirePkce" th:checked="${clientSettings.requirePkce()}"/> Require PKCE</label></div>
+    </fieldset>
+
+    <button type="submit">Save</button>
+</form>
+</body>
+</html>

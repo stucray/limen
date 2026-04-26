@@ -6,9 +6,11 @@ import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Set;
@@ -35,7 +37,19 @@ public class ClientManagementService {
         return tenantClientRepository.findAllByApplicationIdAndTenantId(applicationId, tenantId);
     }
 
+    public static final long DEFAULT_ACCESS_TOKEN_TTL_MINUTES = 5;
+    public static final long DEFAULT_REFRESH_TOKEN_TTL_DAYS = 30;
+    public static final boolean DEFAULT_REUSE_REFRESH_TOKENS = false;
+
     public record ClientCreationResult(TenantClient client, String rawSecret) {}
+
+    public record ClientWithSettings(
+        TenantClient tenantClient,
+        long accessTokenTtlMinutes,
+        long refreshTokenTtlDays,
+        boolean reuseRefreshTokens,
+        boolean requirePkce
+    ) {}
 
     public ClientCreationResult createClient(
         Long applicationId, Long tenantId,
@@ -45,7 +59,10 @@ public class ClientManagementService {
         Set<String> postLogoutRedirectUris,
         Set<String> scopes,
         boolean requirePkce,
-        boolean confidential
+        boolean confidential,
+        long accessTokenTtlMinutes,
+        long refreshTokenTtlDays,
+        boolean reuseRefreshTokens
     ) {
         String rawSecret = null;
         String hashedSecret = null;
@@ -60,6 +77,11 @@ public class ClientManagementService {
             .clientSettings(ClientSettings.builder()
                 .requireProofKey(requirePkce || !confidential)
                 .requireAuthorizationConsent(true)
+                .build())
+            .tokenSettings(TokenSettings.builder()
+                .accessTokenTimeToLive(Duration.ofMinutes(accessTokenTtlMinutes))
+                .refreshTokenTimeToLive(Duration.ofDays(refreshTokenTtlDays))
+                .reuseRefreshTokens(reuseRefreshTokens)
                 .build());
 
         if (hashedSecret != null) {
@@ -88,6 +110,45 @@ public class ClientManagementService {
     public TenantClient getClient(String registeredClientId, Long tenantId) {
         return tenantClientRepository.findByRegisteredClientIdAndTenantId(registeredClientId, tenantId)
             .orElseThrow(() -> new IllegalArgumentException("Client not found"));
+    }
+
+    public ClientWithSettings getClientWithSettings(String registeredClientId, Long tenantId) {
+        TenantClient tc = getClient(registeredClientId, tenantId);
+        RegisteredClient rc = registeredClientRepository.findById(registeredClientId);
+        if (rc == null) throw new IllegalArgumentException("Client not found");
+        TokenSettings ts = rc.getTokenSettings();
+        return new ClientWithSettings(
+            tc,
+            ts.getAccessTokenTimeToLive().toMinutes(),
+            ts.getRefreshTokenTimeToLive().toDays(),
+            ts.isReuseRefreshTokens(),
+            rc.getClientSettings().isRequireProofKey()
+        );
+    }
+
+    public void updateClientSettings(
+        String registeredClientId, Long tenantId,
+        long accessTokenTtlMinutes,
+        long refreshTokenTtlDays,
+        boolean reuseRefreshTokens,
+        boolean requirePkce
+    ) {
+        TenantClient tc = getClient(registeredClientId, tenantId);
+        RegisteredClient existing = registeredClientRepository.findById(registeredClientId);
+        if (existing == null) throw new IllegalArgumentException("Client not found");
+
+        RegisteredClient updated = RegisteredClient.from(existing)
+            .tokenSettings(TokenSettings.builder()
+                .accessTokenTimeToLive(Duration.ofMinutes(accessTokenTtlMinutes))
+                .refreshTokenTimeToLive(Duration.ofDays(refreshTokenTtlDays))
+                .reuseRefreshTokens(reuseRefreshTokens)
+                .build())
+            .clientSettings(ClientSettings.builder()
+                .requireProofKey(requirePkce || !tc.confidential())
+                .requireAuthorizationConsent(existing.getClientSettings().isRequireAuthorizationConsent())
+                .build())
+            .build();
+        registeredClientRepository.save(updated);
     }
 
     public void deleteClient(String registeredClientId, Long tenantId) {

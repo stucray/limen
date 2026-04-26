@@ -124,7 +124,7 @@ class TenantOAuth2RoutingIntegrationTest {
             "m2m-client",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
-            false, true
+            false, true, 5, 30, false
         );
 
         String clientId = result.client().registeredClientId();
@@ -156,7 +156,7 @@ class TenantOAuth2RoutingIntegrationTest {
             "alpha-m2m",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
-            false, true
+            false, true, 5, 30, false
         );
 
         String clientId = result.client().registeredClientId();
@@ -182,7 +182,7 @@ class TenantOAuth2RoutingIntegrationTest {
             "claims-m2m",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
-            false, true
+            false, true, 5, 30, false
         );
 
         String oauthClientId = jdbcTemplate.queryForObject(
