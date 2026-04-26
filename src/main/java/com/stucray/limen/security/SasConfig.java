@@ -1,12 +1,16 @@
 package com.stucray.limen.security;
 
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.SecurityContext;
 import com.stucray.limen.management.clients.TenantClientRepository;
 import com.stucray.limen.oauth2.TenantAwareOAuth2AuthorizationConsentService;
 import com.stucray.limen.oauth2.TenantAwareOAuth2AuthorizationService;
 import com.stucray.limen.oauth2.TenantAwareRegisteredClientRepository;
 import com.stucray.limen.oauth2.TenantContext;
 import com.stucray.limen.oauth2.TenantIssuerContextFilter;
+import com.stucray.limen.oauth2.TenantJwkSource;
 import com.stucray.limen.oauth2.TenantLoginUrlAuthenticationEntryPoint;
+import com.stucray.limen.tenant.TenantRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -86,6 +90,14 @@ public class SasConfig {
         RegisteredClientRepository registeredClientRepository
     ) {
         return new TenantAwareOAuth2AuthorizationConsentService(jdbcTemplate, registeredClientRepository);
+    }
+
+    @Bean
+    public JWKSource<SecurityContext> jwkSource(
+        TenantRepository tenantRepository,
+        SigningKeyStore signingKeyStore
+    ) {
+        return new TenantJwkSource(tenantRepository, signingKeyStore);
     }
 
     @Bean

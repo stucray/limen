@@ -6,8 +6,8 @@ import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.management.applications.Application;
 import com.stucray.limen.management.applications.ApplicationRepository;
 import com.stucray.limen.tenant.Tenant;
+import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
-import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +48,7 @@ class ClientTokenSettingsIntegrationTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired TenantRepository tenantRepository;
+    @Autowired TenantProvisioningService tenantProvisioningService;
     @Autowired ApplicationRepository applicationRepository;
     @Autowired ClientManagementService clientManagementService;
     @Autowired TenantClientRepository tenantClientRepository;
@@ -67,7 +68,7 @@ class ClientTokenSettingsIntegrationTest {
         jdbcTemplate.execute("DELETE FROM users WHERE tenant_id != (SELECT id FROM tenants WHERE slug = 'system')");
         jdbcTemplate.execute("DELETE FROM tenants WHERE slug != 'system'");
 
-        tenant = tenantRepository.save(new Tenant(null, "token-test", "Token Test", TenantStatus.ACTIVE, LocalDateTime.now()));
+        tenant = tenantProvisioningService.createTenant("token-test", "Token Test");
         app = applicationRepository.save(new Application(null, tenant.id(), "Test App", null, LocalDateTime.now()));
         userRepository.save(new User(null, tenant.id(), "alice", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
     }
