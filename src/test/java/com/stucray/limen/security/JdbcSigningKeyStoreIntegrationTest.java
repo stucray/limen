@@ -20,7 +20,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = {"LIMEN_SIGNING_KEY_PATH=./target/test-signing-key.jwk"})
+@SpringBootTest
 class JdbcSigningKeyStoreIntegrationTest {
 
     @Autowired SigningKeyStore signingKeyStore;

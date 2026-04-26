@@ -15,7 +15,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
 
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = {"LIMEN_SIGNING_KEY_PATH=./target/test-signing-key.jwk"})
+@SpringBootTest
 class TenantProvisioningServiceIntegrationTest {
 
     @Autowired TenantProvisioningService service;

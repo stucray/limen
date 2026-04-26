@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = {"LIMEN_SIGNING_KEY_PATH=./target/test-signing-key.jwk"})
+@SpringBootTest
 class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
 
     @Autowired OAuth2AuthorizationConsentService consentService;
