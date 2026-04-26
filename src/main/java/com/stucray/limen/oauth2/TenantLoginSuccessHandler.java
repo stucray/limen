@@ -1,5 +1,7 @@
 package com.stucray.limen.oauth2;
 
+import com.stucray.limen.tenant.TenantRepository;
+import com.stucray.limen.user.UserRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,6 +16,13 @@ import java.net.URI;
 public class TenantLoginSuccessHandler extends SavedRequestAwareAuthenticationSuccessHandler {
 
     private final HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
+    private final UserRepository userRepository;
+    private final TenantRepository tenantRepository;
+
+    public TenantLoginSuccessHandler(UserRepository userRepository, TenantRepository tenantRepository) {
+        this.userRepository = userRepository;
+        this.tenantRepository = tenantRepository;
+    }
 
     @Override
     public void onAuthenticationSuccess(
@@ -23,6 +32,12 @@ public class TenantLoginSuccessHandler extends SavedRequestAwareAuthenticationSu
         if (slug != null) {
             SavedRequest savedRequest = requestCache.getRequest(request, response);
             if (savedRequest != null && savedRequest.getRedirectUrl().contains("/oauth2/authorize")) {
+                if (mustChangePassword(auth.getName(), slug)) {
+                    // Leave SavedRequest in cache so the change-password POST can resume the OAuth2 flow
+                    getRedirectStrategy().sendRedirect(request, response,
+                        "/t/" + slug + "/change-password");
+                    return;
+                }
                 requestCache.removeRequest(request, response);
                 clearAuthenticationAttributes(request);
                 getRedirectStrategy().sendRedirect(request, response,
@@ -31,6 +46,13 @@ public class TenantLoginSuccessHandler extends SavedRequestAwareAuthenticationSu
             }
         }
         super.onAuthenticationSuccess(request, response, auth);
+    }
+
+    private boolean mustChangePassword(String username, String slug) {
+        return tenantRepository.findBySlug(slug)
+            .flatMap(tenant -> userRepository.findByUsernameAndTenantId(username, tenant.id()))
+            .map(user -> user.mustChangePassword())
+            .orElse(false);
     }
 
     private String prependTenantPrefix(String redirectUrl, String slug) {
