@@ -12,6 +12,9 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -28,7 +31,6 @@ public class JdbcSigningKeyStore implements SigningKeyStore {
 
     private final JdbcTemplate jdbcTemplate;
     private final String kekPassword;
-    private final SecureRandom secureRandom = new SecureRandom();
 
     public JdbcSigningKeyStore(
         JdbcTemplate jdbcTemplate,
@@ -62,6 +64,13 @@ public class JdbcSigningKeyStore implements SigningKeyStore {
 
     @Override
     public void createForTenant(long tenantId) {
+        jdbcTemplate.execute((Connection conn) -> {
+            insertActiveSigningKey(conn, tenantId, kekPassword);
+            return null;
+        });
+    }
+
+    public static void insertActiveSigningKey(Connection conn, long tenantId, String kekPassword) throws SQLException {
         RSAKey rsaKey;
         try {
             rsaKey = new RSAKeyGenerator(RSA_KEY_SIZE)
@@ -70,25 +79,25 @@ public class JdbcSigningKeyStore implements SigningKeyStore {
         } catch (Exception e) {
             throw new IllegalStateException("Failed to generate RSA key for tenant " + tenantId, e);
         }
-
         byte[] salt = new byte[SALT_BYTES];
-        secureRandom.nextBytes(salt);
-        byte[] ciphertext = encryptor(salt).encrypt(
-            rsaKey.toJSONString().getBytes(StandardCharsets.UTF_8)
-        );
+        new SecureRandom().nextBytes(salt);
+        byte[] ciphertext = Encryptors.stronger(kekPassword, HexFormat.of().formatHex(salt))
+            .encrypt(rsaKey.toJSONString().getBytes(StandardCharsets.UTF_8));
         String publicJwk = rsaKey.toPublicJWK().toJSONString();
 
-        jdbcTemplate.update(
+        try (PreparedStatement ps = conn.prepareStatement(
             "INSERT INTO tenant_signing_key " +
                 "(tenant_id, kid, algorithm, private_key_ciphertext, iv, public_key_jwk, status) " +
-                "VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE')",
-            tenantId,
-            rsaKey.getKeyID(),
-            ALGORITHM,
-            ciphertext,
-            salt,
-            publicJwk
-        );
+                "VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE')"
+        )) {
+            ps.setLong(1, tenantId);
+            ps.setString(2, rsaKey.getKeyID());
+            ps.setString(3, ALGORITHM);
+            ps.setBytes(4, ciphertext);
+            ps.setBytes(5, salt);
+            ps.setString(6, publicJwk);
+            ps.executeUpdate();
+        }
     }
 
     @Override

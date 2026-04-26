@@ -6,25 +6,23 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.UUID;
 
-@Configuration
+// Dead code post slice 5a (#18): per-tenant signing keys are served by TenantJwkSource.
+// Kept temporarily so slice 5b (#19) can excise this class, dev-signing-key.jwk, and
+// LIMEN_SIGNING_KEY_PATH together. Do not re-wire as a @Configuration.
 public class SigningKeyProvider {
 
     private final Path keyPath;
 
-    public SigningKeyProvider(@Value("${LIMEN_SIGNING_KEY_PATH:./dev-signing-key.jwk}") String keyPath) {
+    public SigningKeyProvider(String keyPath) {
         this.keyPath = Path.of(keyPath);
     }
 
-    @Bean
     public JWKSource<SecurityContext> jwkSource() throws Exception {
         if (Files.exists(keyPath)) {
             return load();
