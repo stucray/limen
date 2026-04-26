@@ -2,14 +2,19 @@ package com.stucray.limen.oauth2;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jwt.SignedJWT;
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.management.applications.Application;
 import com.stucray.limen.management.applications.ApplicationRepository;
 import com.stucray.limen.management.clients.ClientManagementService;
 import com.stucray.limen.management.clients.ClientManagementService.ClientCreationResult;
+import com.stucray.limen.management.clients.TenantClient;
+import com.stucray.limen.management.clients.TenantClientRepository;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
+import com.stucray.limen.user.User;
+import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,13 +22,30 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -39,6 +61,10 @@ class TenantOAuth2RoutingIntegrationTest {
     @Autowired TenantRepository tenantRepository;
     @Autowired ApplicationRepository applicationRepository;
     @Autowired ClientManagementService clientManagementService;
+    @Autowired RegisteredClientRepository registeredClientRepository;
+    @Autowired TenantClientRepository tenantClientRepository;
+    @Autowired UserRepository userRepository;
+    @Autowired PasswordEncoder passwordEncoder;
     @Autowired JdbcTemplate jdbcTemplate;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -147,5 +173,215 @@ class TenantOAuth2RoutingIntegrationTest {
                 .param("scope", "read")
                 .with(httpBasic(oauthClientId, rawSecret)))
             .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void clientCredentialsTokenIncludesTenantAndRolesClaims() throws Exception {
+        ClientCreationResult result = clientManagementService.createClient(
+            alphaApp.id(), alphaCorpTenant.id(),
+            "claims-m2m",
+            Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
+            Set.of(), Set.of(), Set.of("read"),
+            false, true
+        );
+
+        String oauthClientId = jdbcTemplate.queryForObject(
+            "SELECT client_id FROM oauth2_registered_client WHERE id = ?",
+            String.class, result.client().registeredClientId()
+        );
+
+        String tokenJson = mockMvc.perform(post("/t/alpha-corp/oauth2/token")
+                .param("grant_type", "client_credentials")
+                .param("scope", "read")
+                .with(httpBasic(oauthClientId, result.rawSecret())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.access_token").exists())
+            .andReturn().getResponse().getContentAsString();
+
+        String accessToken = objectMapper.readTree(tokenJson).get("access_token").asText();
+        Map<String, Object> claims = SignedJWT.parse(accessToken).getJWTClaimsSet().getClaims();
+
+        assertThat(claims.get("tenant")).isEqualTo("alpha-corp");
+        assertThat(claims.get("roles")).isInstanceOf(List.class);
+        assertThat((List<?>) claims.get("roles")).isEmpty();
+        assertThat(claims.get("iss")).asString().isEqualTo("http://localhost/t/alpha-corp");
+    }
+
+    @Test
+    void authorizationCodePkceFlowProducesTokenWithTenantClaims() throws Exception {
+        userRepository.save(new User(
+            null, alphaCorpTenant.id(), "alice",
+            passwordEncoder.encode("password"),
+            true, false, false, LocalDateTime.now()
+        ));
+
+        // Create public PKCE client with consent disabled (bypasses consent step in test)
+        String internalId = UUID.randomUUID().toString();
+        String clientId = UUID.randomUUID().toString();
+        RegisteredClient rc = RegisteredClient.withId(internalId)
+            .clientId(clientId)
+            .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+            .redirectUri("http://localhost/callback")
+            .scope(OidcScopes.OPENID)
+            .clientSettings(ClientSettings.builder()
+                .requireProofKey(true)
+                .requireAuthorizationConsent(false)
+                .build())
+            .build();
+        registeredClientRepository.save(rc);
+        tenantClientRepository.save(new TenantClient(
+            null, internalId, alphaApp.id(), alphaCorpTenant.id(), "PKCE Test Client", false
+        ));
+
+        // PKCE code verifier + challenge
+        byte[] verifierBytes = new byte[32];
+        new SecureRandom().nextBytes(verifierBytes);
+        String codeVerifier = Base64.getUrlEncoder().withoutPadding().encodeToString(verifierBytes);
+        byte[] hash = MessageDigest.getInstance("SHA-256").digest(codeVerifier.getBytes(StandardCharsets.US_ASCII));
+        String codeChallenge = Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+
+        // 1. GET /t/alpha-corp/oauth2/authorize → redirect to /t/alpha-corp/login
+        String authzUri = UriComponentsBuilder.fromPath("/t/alpha-corp/oauth2/authorize")
+            .queryParam("response_type", "code")
+            .queryParam("client_id", clientId)
+            .queryParam("redirect_uri", "http://localhost/callback")
+            .queryParam("scope", OidcScopes.OPENID)
+            .queryParam("state", "test-state")
+            .queryParam("code_challenge", codeChallenge)
+            .queryParam("code_challenge_method", "S256")
+            .build().toUriString();
+
+        MockHttpSession session = new MockHttpSession();
+        MvcResult authzResult = mockMvc.perform(get(authzUri).session(session))
+            .andExpect(status().is3xxRedirection())
+            .andReturn();
+
+        String loginLocation = authzResult.getResponse().getHeader("Location");
+        assertThat(loginLocation).contains("/t/alpha-corp/login");
+
+        // 2. POST /t/alpha-corp/login → redirect to /t/alpha-corp/oauth2/authorize
+        MvcResult loginResult = mockMvc.perform(post("/t/alpha-corp/login")
+                .param("username", "alice")
+                .param("password", "password")
+                .session(session)
+                .with(csrf()))
+            .andExpect(status().is3xxRedirection())
+            .andReturn();
+
+        String postLoginLocation = loginResult.getResponse().getHeader("Location");
+        assertThat(postLoginLocation).contains("/t/alpha-corp/oauth2/authorize");
+
+        // 3. GET /t/alpha-corp/oauth2/authorize (authenticated) → redirect with authorization code
+        MvcResult codeResult = mockMvc.perform(get(postLoginLocation).session(session))
+            .andExpect(status().is3xxRedirection())
+            .andReturn();
+
+        String codeLocation = codeResult.getResponse().getHeader("Location");
+        String code = UriComponentsBuilder.fromUriString(codeLocation).build()
+            .getQueryParams().getFirst("code");
+        assertThat(code).isNotBlank();
+
+        // 4. POST /t/alpha-corp/oauth2/token → access token
+        String tokenJson = mockMvc.perform(post("/t/alpha-corp/oauth2/token")
+                .param("grant_type", "authorization_code")
+                .param("code", code)
+                .param("redirect_uri", "http://localhost/callback")
+                .param("code_verifier", codeVerifier)
+                .param("client_id", clientId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.access_token").exists())
+            .andReturn().getResponse().getContentAsString();
+
+        String accessToken = objectMapper.readTree(tokenJson).get("access_token").asText();
+        Map<String, Object> claims = SignedJWT.parse(accessToken).getJWTClaimsSet().getClaims();
+
+        assertThat(claims.get("tenant")).isEqualTo("alpha-corp");
+        assertThat(claims.get("roles")).isInstanceOf(List.class);
+        assertThat((List<?>) claims.get("roles")).isEmpty();
+        assertThat(claims.get("iss")).asString().isEqualTo("http://localhost/t/alpha-corp");
+    }
+
+    @Test
+    void userinfoEndpointReturnsClaimsForTenantUser() throws Exception {
+        userRepository.save(new User(
+            null, alphaCorpTenant.id(), "bob",
+            passwordEncoder.encode("password"),
+            true, false, false, LocalDateTime.now()
+        ));
+
+        String internalId = UUID.randomUUID().toString();
+        String clientId = UUID.randomUUID().toString();
+        RegisteredClient rc = RegisteredClient.withId(internalId)
+            .clientId(clientId)
+            .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+            .redirectUri("http://localhost/callback")
+            .scope(OidcScopes.OPENID)
+            .clientSettings(ClientSettings.builder()
+                .requireProofKey(true)
+                .requireAuthorizationConsent(false)
+                .build())
+            .build();
+        registeredClientRepository.save(rc);
+        tenantClientRepository.save(new TenantClient(
+            null, internalId, alphaApp.id(), alphaCorpTenant.id(), "UserInfo Test Client", false
+        ));
+
+        byte[] verifierBytes = new byte[32];
+        new SecureRandom().nextBytes(verifierBytes);
+        String codeVerifier = Base64.getUrlEncoder().withoutPadding().encodeToString(verifierBytes);
+        byte[] hash = MessageDigest.getInstance("SHA-256").digest(codeVerifier.getBytes(StandardCharsets.US_ASCII));
+        String codeChallenge = Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+
+        MockHttpSession session = new MockHttpSession();
+        mockMvc.perform(get(UriComponentsBuilder.fromPath("/t/alpha-corp/oauth2/authorize")
+                .queryParam("response_type", "code")
+                .queryParam("client_id", clientId)
+                .queryParam("redirect_uri", "http://localhost/callback")
+                .queryParam("scope", OidcScopes.OPENID)
+                .queryParam("state", "s1")
+                .queryParam("code_challenge", codeChallenge)
+                .queryParam("code_challenge_method", "S256")
+                .build().toUriString()).session(session))
+            .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(post("/t/alpha-corp/login")
+                .param("username", "bob")
+                .param("password", "password")
+                .session(session)
+                .with(csrf()))
+            .andExpect(status().is3xxRedirection());
+
+        MvcResult codeResult = mockMvc.perform(get(UriComponentsBuilder.fromPath("/t/alpha-corp/oauth2/authorize")
+                .queryParam("response_type", "code")
+                .queryParam("client_id", clientId)
+                .queryParam("redirect_uri", "http://localhost/callback")
+                .queryParam("scope", OidcScopes.OPENID)
+                .queryParam("state", "s1")
+                .queryParam("code_challenge", codeChallenge)
+                .queryParam("code_challenge_method", "S256")
+                .build().toUriString()).session(session))
+            .andExpect(status().is3xxRedirection())
+            .andReturn();
+
+        String code = UriComponentsBuilder.fromUriString(codeResult.getResponse().getHeader("Location"))
+            .build().getQueryParams().getFirst("code");
+
+        String tokenJson = mockMvc.perform(post("/t/alpha-corp/oauth2/token")
+                .param("grant_type", "authorization_code")
+                .param("code", code)
+                .param("redirect_uri", "http://localhost/callback")
+                .param("code_verifier", codeVerifier)
+                .param("client_id", clientId))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        String accessToken = objectMapper.readTree(tokenJson).get("access_token").asText();
+
+        mockMvc.perform(get("/t/alpha-corp/userinfo")
+                .header("Authorization", "Bearer " + accessToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sub").isNotEmpty());
     }
 }

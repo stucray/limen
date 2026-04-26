@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
 public class TenantOAuth2RoutingFilter extends OncePerRequestFilter {
 
     private static final Pattern TENANT_PATH =
-        Pattern.compile("^/t/([^/]+)/(oauth2|.well-known)/.*");
+        Pattern.compile("^/t/([^/]+)/((oauth2|\\.well-known|connect)/.*|login|userinfo)$");
 
     private final TenantRepository tenantRepository;
 
@@ -61,6 +61,7 @@ public class TenantOAuth2RoutingFilter extends OncePerRequestFilter {
         }
 
         TenantContext.set(slug, tenant.id());
+        request.getSession(true).setAttribute("OAUTH2_TENANT_SLUG", slug);
         try {
             chain.doFilter(new TenantOAuth2RequestWrapper(request, slug), response);
         } finally {
