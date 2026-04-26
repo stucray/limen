@@ -108,6 +108,15 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<environmentVariables>
+						<LIMEN_KEY_ENCRYPTION_KEY>dGVzdC1rZWstdGVzdC1rZWstdGVzdC1rZWstdGVzdC0=</LIMEN_KEY_ENCRYPTION_KEY>
+					</environmentVariables>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 
