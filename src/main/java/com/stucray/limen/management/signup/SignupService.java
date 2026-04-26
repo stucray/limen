@@ -1,8 +1,8 @@
 package com.stucray.limen.management.signup;
 
 import com.stucray.limen.tenant.Tenant;
+import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
-import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,15 +22,18 @@ public class SignupService {
     );
 
     private final TenantRepository tenantRepository;
+    private final TenantProvisioningService tenantProvisioningService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     public SignupService(
         TenantRepository tenantRepository,
+        TenantProvisioningService tenantProvisioningService,
         UserRepository userRepository,
         PasswordEncoder passwordEncoder
     ) {
         this.tenantRepository = tenantRepository;
+        this.tenantProvisioningService = tenantProvisioningService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -74,9 +77,7 @@ public class SignupService {
             return new SignupResult.Error("password", "Password must be at least 8 characters");
         }
 
-        Tenant tenant = tenantRepository.save(
-            new Tenant(null, slug, orgName, TenantStatus.ACTIVE, LocalDateTime.now())
-        );
+        Tenant tenant = tenantProvisioningService.createTenant(slug, orgName);
         userRepository.save(new User(
             null, tenant.id(), username,
             passwordEncoder.encode(form.password()),
