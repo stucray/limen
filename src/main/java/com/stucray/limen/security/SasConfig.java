@@ -1,6 +1,7 @@
 package com.stucray.limen.security;
 
 import com.stucray.limen.management.clients.TenantClientRepository;
+import com.stucray.limen.oauth2.TenantAwareOAuth2AuthorizationService;
 import com.stucray.limen.oauth2.TenantAwareRegisteredClientRepository;
 import com.stucray.limen.oauth2.TenantContext;
 import com.stucray.limen.oauth2.TenantIssuerContextFilter;
@@ -16,6 +17,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
@@ -68,11 +70,13 @@ public class SasConfig {
     }
 
     @Bean
-    public JdbcOAuth2AuthorizationService authorizationService(
+    public OAuth2AuthorizationService authorizationService(
         JdbcTemplate jdbcTemplate,
         RegisteredClientRepository registeredClientRepository
     ) {
-        return new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository);
+        JdbcOAuth2AuthorizationService delegate =
+            new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository);
+        return new TenantAwareOAuth2AuthorizationService(delegate, jdbcTemplate, registeredClientRepository);
     }
 
     @Bean
