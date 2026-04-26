@@ -78,14 +78,11 @@ class IssuerContractTest {
             .andExpect(jsonPath("$.token_endpoint").value("http://localhost:8090/oauth2/token"));
     }
 
-    @Test
-    void jwksEndpointServesRsaKey() throws Exception {
-        mockMvc.perform(get("/oauth2/jwks"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.keys").isArray())
-            .andExpect(jsonPath("$.keys[0].kty").value("RSA"))
-            .andExpect(jsonPath("$.keys[0].kid").isNotEmpty());
-    }
+    // Legacy global JWKS endpoint test removed in slice 5a (#18): the JWKSource bean is now
+    // TenantJwkSource, which requires a tenant context (issuer or TenantContext). The global
+    // /oauth2/jwks endpoint has no tenant context and intentionally fails — clients must use
+    // /t/{slug}/.well-known/jwks.json. Tenant-scoped JWKS isolation is asserted in
+    // TenantOAuth2RoutingIntegrationTest#tenantJwksEndpointsServeIsolatedKeys.
 
     // Legacy global authorization-code flow test removed: end-to-end token issuance is now
     // tenant-scoped (see TenantOAuth2RoutingIntegrationTest#authorizationCodePkceFlowProducesTokenWithTenantClaims).

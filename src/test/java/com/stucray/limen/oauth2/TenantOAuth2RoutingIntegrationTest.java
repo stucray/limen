@@ -2,6 +2,10 @@ package com.stucray.limen.oauth2;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jwt.SignedJWT;
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.management.applications.Application;
@@ -11,6 +15,7 @@ import com.stucray.limen.management.clients.ClientManagementService.ClientCreati
 import com.stucray.limen.management.clients.TenantClient;
 import com.stucray.limen.management.clients.TenantClientRepository;
 import com.stucray.limen.tenant.Tenant;
+import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
@@ -59,6 +64,7 @@ class TenantOAuth2RoutingIntegrationTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired TenantRepository tenantRepository;
+    @Autowired TenantProvisioningService tenantProvisioningService;
     @Autowired ApplicationRepository applicationRepository;
     @Autowired ClientManagementService clientManagementService;
     @Autowired RegisteredClientRepository registeredClientRepository;
@@ -80,12 +86,8 @@ class TenantOAuth2RoutingIntegrationTest {
         jdbcTemplate.execute("DELETE FROM users WHERE tenant_id != (SELECT id FROM tenants WHERE slug = 'system')");
         jdbcTemplate.execute("DELETE FROM tenants WHERE slug != 'system'");
 
-        alphaCorpTenant = tenantRepository.save(new Tenant(
-            null, "alpha-corp", "Alpha Corp", TenantStatus.ACTIVE, LocalDateTime.now()
-        ));
-        betaCorpTenant = tenantRepository.save(new Tenant(
-            null, "beta-corp", "Beta Corp", TenantStatus.ACTIVE, LocalDateTime.now()
-        ));
+        alphaCorpTenant = tenantProvisioningService.createTenant("alpha-corp", "Alpha Corp");
+        betaCorpTenant = tenantProvisioningService.createTenant("beta-corp", "Beta Corp");
         alphaApp = applicationRepository.save(new Application(
             null, alphaCorpTenant.id(), "Alpha App", "Test app", LocalDateTime.now()
         ));
@@ -300,6 +302,53 @@ class TenantOAuth2RoutingIntegrationTest {
         assertThat(claims.get("roles")).isInstanceOf(List.class);
         assertThat((List<?>) claims.get("roles")).isEmpty();
         assertThat(claims.get("iss")).asString().isEqualTo("http://localhost/t/alpha-corp");
+    }
+
+    @Test
+    void tenantJwksEndpointsServeIsolatedKeys() throws Exception {
+        ClientCreationResult result = clientManagementService.createClient(
+            alphaApp.id(), alphaCorpTenant.id(),
+            "isolation-m2m",
+            Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
+            Set.of(), Set.of(), Set.of("read"),
+            false, true, 5, 30, false
+        );
+        String oauthClientId = jdbcTemplate.queryForObject(
+            "SELECT client_id FROM oauth2_registered_client WHERE id = ?",
+            String.class, result.client().registeredClientId()
+        );
+
+        String tokenJson = mockMvc.perform(post("/t/alpha-corp/oauth2/token")
+                .param("grant_type", "client_credentials")
+                .param("scope", "read")
+                .with(httpBasic(oauthClientId, result.rawSecret())))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        String accessToken = objectMapper.readTree(tokenJson).get("access_token").asText();
+        SignedJWT jwt = SignedJWT.parse(accessToken);
+        String kid = jwt.getHeader().getKeyID();
+
+        String alphaJwksJson = mockMvc.perform(get("/t/alpha-corp/oauth2/jwks"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        JWKSet alphaJwks = JWKSet.parse(alphaJwksJson);
+        JWK alphaMatch = alphaJwks.getKeyByKeyId(kid);
+        assertThat(alphaMatch).as("alpha JWKS contains the signing kid").isNotNull();
+        assertThat(jwt.verify(new RSASSAVerifier((RSAKey) alphaMatch)))
+            .as("alpha-issued token verifies against alpha's JWKS")
+            .isTrue();
+
+        String betaJwksJson = mockMvc.perform(get("/t/beta-corp/oauth2/jwks"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        JWKSet betaJwks = JWKSet.parse(betaJwksJson);
+        assertThat(betaJwks.getKeyByKeyId(kid))
+            .as("beta JWKS does NOT contain alpha's signing kid")
+            .isNull();
+        RSAKey betaActiveKey = (RSAKey) betaJwks.getKeys().getFirst();
+        assertThat(jwt.verify(new RSASSAVerifier(betaActiveKey)))
+            .as("alpha-issued token does not verify against beta's active key")
+            .isFalse();
     }
 
     @Test
