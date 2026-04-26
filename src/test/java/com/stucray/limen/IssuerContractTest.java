@@ -87,4 +87,9 @@ class IssuerContractTest {
             .andExpect(jsonPath("$.keys[0].kid").isNotEmpty());
     }
 
+    // Legacy global authorization-code flow test removed: end-to-end token issuance is now
+    // tenant-scoped (see TenantOAuth2RoutingIntegrationTest#authorizationCodePkceFlowProducesTokenWithTenantClaims).
+    // Calling the global /oauth2/authorize without going through the /t/{slug}/ routing filter
+    // intentionally fails because TenantAwareOAuth2AuthorizationService hard-fails on missing
+    // TenantContext to surface filter-chain misconfigurations (parent PRD #13 user story 9).
 }
