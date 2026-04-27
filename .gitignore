@@ -34,3 +34,4 @@ build/
 ### VS Code ###
 .vscode/
 .envrc
+/scripts/install-direnv-hook.sh
