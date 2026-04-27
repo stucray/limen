@@ -58,6 +58,7 @@
 | **Refresh Token** | A long-lived token used to obtain a new Access Token without re-authenticating | Session token |
 | **ID Token** | A signed JWT containing identity claims about the authenticated User (OIDC) | Identity token |
 | **Signing Key** | The RSA private key the Authorization Server uses to sign all JWTs | Private key, secret key |
+| **Key Encryption Key** | The deployment-wide AES-256 key, supplied via `LIMEN_KEY_ENCRYPTION_KEY`, that encrypts every Tenant's Signing Key at rest | KEK, master key, root key, encryption secret |
 | **JWK** | A JSON Web Key — the public-key representation of the Signing Key exposed to clients | Public key |
 | **JWK Set** | The collection of JWKs published at `/oauth2/jwks` for token verification | Key set, JWKS |
 
@@ -92,6 +93,7 @@
 - Each **Authorization** contains at most one **Authorization Code**, one **Access Token**, one **Refresh Token**, and one **ID Token**
 - An **Authorization Consent** belongs to exactly one **User** and one **Client**
 - The **Authorization Server** signs all Tokens with the **Signing Key** and publishes the corresponding **JWK Set** for verification
+- Each **Tenant** has its own **Signing Key**; every **Signing Key** is encrypted at rest by the single deployment-wide **Key Encryption Key**
 
 ## Example dialogue
 
@@ -110,6 +112,10 @@
 > **Dev:** "Can I assign someone to the whole **Application** so they automatically get access to all its **Clients**?"
 
 > **Domain expert:** "**Application Membership** makes them eligible, but each **Client Membership** must still be created explicitly. Nothing is inherited automatically."
+
+> **Dev:** "What signs the **Tokens** the **Authorization Server** issues?"
+
+> **Domain expert:** "Each **Tenant** has its own **Signing Key**, generated when the **Tenant** is provisioned. The private half is stored encrypted under the deployment's **Key Encryption Key**; the public half is served from the **JWK Set**."
 
 ## Flagged ambiguities
 
