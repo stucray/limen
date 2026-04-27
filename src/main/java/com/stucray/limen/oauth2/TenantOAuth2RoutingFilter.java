@@ -2,6 +2,7 @@ package com.stucray.limen.oauth2;
 
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
+import com.stucray.limen.tenant.TenantScope;
 import com.stucray.limen.tenant.TenantStatus;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,19 +17,23 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Intercepts requests to /t/{slug}/oauth2/** and /t/{slug}/.well-known/**,
- * validates and resolves the tenant, stores it in TenantContext, then strips
- * the /t/{slug} prefix so Spring Authorization Server sees its standard endpoint
- * paths. TenantIssuerContextFilter (registered inside the SAS security chain)
+ * Intercepts requests to /t/{slug}/oauth2/**, /t/{slug}/.well-known/**, /t/{slug}/connect/**,
+ * and /t/{slug}/userinfo, validates and resolves the tenant, binds it on a TenantScope,
+ * then strips the /t/{slug} prefix so Spring Authorization Server sees its standard
+ * endpoint paths. TenantIssuerContextFilter (registered inside the SAS security chain)
  * then sets the per-request AuthorizationServerContext with the correct tenant
  * issuer URL.
+ *
+ * /t/{slug}/login and /t/{slug}/change-password are intentionally NOT matched: the
+ * OAuth2-login filter chain (Order 1) owns those paths and processes them without
+ * URL-strip so the slug is visible to the authentication backend.
  */
 @Component
 @Order(Integer.MIN_VALUE + 10)
 public class TenantOAuth2RoutingFilter extends OncePerRequestFilter {
 
     private static final Pattern TENANT_PATH =
-        Pattern.compile("^/t/([^/]+)/((oauth2|\\.well-known|connect)/.*|login|userinfo)$");
+        Pattern.compile("^/t/([^/]+)/((oauth2|\\.well-known|connect)/.*|userinfo)$");
 
     private final TenantRepository tenantRepository;
 
@@ -60,12 +65,15 @@ public class TenantOAuth2RoutingFilter extends OncePerRequestFilter {
             return;
         }
 
-        TenantContext.set(slug, tenant.id());
-        request.getSession(true).setAttribute("OAUTH2_TENANT_SLUG", slug);
         try {
-            chain.doFilter(new TenantOAuth2RequestWrapper(request, slug), response);
-        } finally {
-            TenantContext.clear();
+            TenantScope.call(slug, tenant.id(), () -> {
+                chain.doFilter(new TenantOAuth2RequestWrapper(request, slug), response);
+                return null;
+            });
+        } catch (IOException | ServletException | RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ServletException(e);
         }
     }
 }

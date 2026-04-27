@@ -1,7 +1,7 @@
 package com.stucray.limen.management.clients;
 
 import com.stucray.limen.management.applications.ApplicationService;
-import com.stucray.limen.management.auth.TenantUserDetails;
+import com.stucray.limen.auth.TenantUserDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.stereotype.Controller;

@@ -123,7 +123,10 @@ class ApplicationManagementIntegrationTest {
             .andReturn();
         MockHttpSession sessionB = (MockHttpSession) loginB.getRequest().getSession(false);
 
+        // TenantAccessFilter force-logs out the cross-tenant session and
+        // redirects to the URL slug's login page (parent PRD #32 user story 7).
         mockMvc.perform(get("/manage/t/corp-a/applications").session(sessionB))
-            .andExpect(status().isForbidden());
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/manage/t/corp-a/login"));
     }
 }

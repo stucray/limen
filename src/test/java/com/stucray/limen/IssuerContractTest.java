@@ -77,7 +77,7 @@ class IssuerContractTest {
     }
 
     // Legacy global JWKS endpoint test removed in slice 5a (#18): the JWKSource bean is now
-    // TenantJwkSource, which requires a tenant context (issuer or TenantContext). The global
+    // TenantJwkSource, which requires a tenant context (issuer or TenantScope). The global
     // /oauth2/jwks endpoint has no tenant context and intentionally fails — clients must use
     // /t/{slug}/.well-known/jwks.json. Tenant-scoped JWKS isolation is asserted in
     // TenantOAuth2RoutingIntegrationTest#tenantJwksEndpointsServeIsolatedKeys.
@@ -86,5 +86,5 @@ class IssuerContractTest {
     // tenant-scoped (see TenantOAuth2RoutingIntegrationTest#authorizationCodePkceFlowProducesTokenWithTenantClaims).
     // Calling the global /oauth2/authorize without going through the /t/{slug}/ routing filter
     // intentionally fails because TenantAwareOAuth2AuthorizationService hard-fails on missing
-    // TenantContext to surface filter-chain misconfigurations (parent PRD #13 user story 9).
+    // TenantScope to surface filter-chain misconfigurations (parent PRD #13 user story 9).
 }

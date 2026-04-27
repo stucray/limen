@@ -1,12 +1,13 @@
 package com.stucray.limen.oauth2;
 
 import com.stucray.limen.management.clients.TenantClientRepository;
+import com.stucray.limen.tenant.TenantScope;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 
 /**
  * Wraps JdbcRegisteredClientRepository and rejects lookups for clients that do not
- * belong to the tenant currently set in TenantContext.
+ * belong to the tenant currently bound on TenantScope.
  */
 public class TenantAwareRegisteredClientRepository implements RegisteredClientRepository {
 
@@ -40,7 +41,7 @@ public class TenantAwareRegisteredClientRepository implements RegisteredClientRe
 
     private RegisteredClient checkTenantOwnership(RegisteredClient rc) {
         if (rc == null) return null;
-        Long currentTenantId = TenantContext.getTenantId();
+        Long currentTenantId = TenantScope.tenantId();
         if (currentTenantId == null) return rc; // non-tenant context (e.g. management console)
 
         boolean owned = tenantClientRepository

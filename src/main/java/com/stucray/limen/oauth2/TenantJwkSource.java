@@ -10,6 +10,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.stucray.limen.security.SigningKeyStore;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
+import com.stucray.limen.tenant.TenantScope;
 import org.springframework.security.oauth2.server.authorization.context.AuthorizationServerContext;
 import org.springframework.security.oauth2.server.authorization.context.AuthorizationServerContextHolder;
 
@@ -32,7 +33,7 @@ public class TenantJwkSource implements JWKSource<SecurityContext> {
         Long tenantId = resolveTenantId();
         if (tenantId == null) {
             throw new IllegalStateException(
-                "TenantJwkSource invoked with no tenant context — no AuthorizationServerContext issuer and no TenantContext"
+                "TenantJwkSource invoked with no tenant context — no AuthorizationServerContext issuer and no TenantScope"
             );
         }
         RSAKey activeKey = signingKeyStore.getActiveSigningKey(tenantId);
@@ -55,6 +56,6 @@ public class TenantJwkSource implements JWKSource<SecurityContext> {
                 }
             }
         }
-        return TenantContext.getTenantId();
+        return TenantScope.tenantId();
     }
 }

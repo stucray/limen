@@ -1,4 +1,4 @@
-package com.stucray.limen.management.auth;
+package com.stucray.limen.auth;
 
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.user.User;
@@ -32,10 +32,9 @@ public final class TenantUserDetails implements UserDetails {
         return user.passwordHash();
     }
 
-    /** Returns "{tenantSlug}:{username}" — used as the identity key in the security context. */
     @Override
     public String getUsername() {
-        return tenant.slug() + ":" + user.username();
+        return user.username();
     }
 
     @Override

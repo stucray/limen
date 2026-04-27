@@ -7,8 +7,8 @@ import com.stucray.limen.management.clients.TenantClient;
 import com.stucray.limen.management.clients.TenantClientRepository;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
+import com.stucray.limen.tenant.TenantScope;
 import com.stucray.limen.tenant.TenantStatus;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,70 +81,70 @@ class TenantAwareOAuth2AuthorizationServiceIntegrationTest {
         ));
     }
 
-    @AfterEach
-    void tearDown() {
-        TenantContext.clear();
-    }
-
     @Test
-    void saveWithoutTenantContextThrows() {
+    void saveWithoutTenantScopeThrows() {
         OAuth2Authorization auth = buildAuthorizationWithAccessToken("alice", "tok-1");
 
         assertThatThrownBy(() -> authorizationService.save(auth))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("TenantContext");
+            .hasMessageContaining("TenantScope");
     }
 
     @Test
-    void findByIdWithoutTenantContextThrows() {
+    void findByIdWithoutTenantScopeThrows() {
         assertThatThrownBy(() -> authorizationService.findById("any-id"))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("TenantContext");
+            .hasMessageContaining("TenantScope");
     }
 
     @Test
-    void findByTokenWithoutTenantContextThrows() {
+    void findByTokenWithoutTenantScopeThrows() {
         assertThatThrownBy(() -> authorizationService.findByToken("any-token", OAuth2TokenType.ACCESS_TOKEN))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("TenantContext");
+            .hasMessageContaining("TenantScope");
     }
 
     @Test
-    void crossTenantFindByIdReturnsNull() {
-        TenantContext.set(alpha.slug(), alpha.id());
-        OAuth2Authorization saved = buildAuthorizationWithAccessToken("alice", "tok-alpha-1");
-        authorizationService.save(saved);
+    void crossTenantFindByIdReturnsNull() throws Exception {
+        OAuth2Authorization saved = TenantScope.call(alpha.slug(), alpha.id(), () -> {
+            OAuth2Authorization a = buildAuthorizationWithAccessToken("alice", "tok-alpha-1");
+            authorizationService.save(a);
+            assertThat(authorizationService.findById(a.getId())).isNotNull();
+            return a;
+        });
 
-        // Verify alpha can read it back
-        assertThat(authorizationService.findById(saved.getId())).isNotNull();
-
-        // Switch context to beta
-        TenantContext.set(beta.slug(), beta.id());
-        assertThat(authorizationService.findById(saved.getId())).isNull();
+        TenantScope.run(beta.slug(), beta.id(), () -> {
+            assertThat(authorizationService.findById(saved.getId())).isNull();
+        });
     }
 
     @Test
-    void crossTenantFindByTokenReturnsNull() {
-        TenantContext.set(alpha.slug(), alpha.id());
-        OAuth2Authorization saved = buildAuthorizationWithAccessToken("alice", "tok-alpha-2");
-        authorizationService.save(saved);
+    void crossTenantFindByTokenReturnsNull() throws Exception {
+        OAuth2Authorization saved = TenantScope.call(alpha.slug(), alpha.id(), () -> {
+            OAuth2Authorization a = buildAuthorizationWithAccessToken("alice", "tok-alpha-2");
+            authorizationService.save(a);
+            OAuth2Authorization underAlpha =
+                authorizationService.findByToken("tok-alpha-2", OAuth2TokenType.ACCESS_TOKEN);
+            assertThat(underAlpha).isNotNull();
+            assertThat(underAlpha.getId()).isEqualTo(a.getId());
+            return a;
+        });
 
-        // Verify alpha can find by access token
-        OAuth2Authorization underAlpha =
-            authorizationService.findByToken("tok-alpha-2", OAuth2TokenType.ACCESS_TOKEN);
-        assertThat(underAlpha).isNotNull();
-        assertThat(underAlpha.getId()).isEqualTo(saved.getId());
-
-        // Beta cannot find it even with the exact token value
-        TenantContext.set(beta.slug(), beta.id());
-        assertThat(authorizationService.findByToken("tok-alpha-2", OAuth2TokenType.ACCESS_TOKEN)).isNull();
+        TenantScope.run(beta.slug(), beta.id(), () -> {
+            assertThat(authorizationService.findByToken("tok-alpha-2", OAuth2TokenType.ACCESS_TOKEN)).isNull();
+        });
+        // saved is intentionally referenced to silence the "may be unused" warning;
+        // the real assertion is the null result above.
+        assertThat(saved).isNotNull();
     }
 
     @Test
-    void savePersistsTenantIdColumn() {
-        TenantContext.set(alpha.slug(), alpha.id());
-        OAuth2Authorization saved = buildAuthorizationWithAccessToken("alice", "tok-alpha-3");
-        authorizationService.save(saved);
+    void savePersistsTenantIdColumn() throws Exception {
+        OAuth2Authorization saved = TenantScope.call(alpha.slug(), alpha.id(), () -> {
+            OAuth2Authorization a = buildAuthorizationWithAccessToken("alice", "tok-alpha-3");
+            authorizationService.save(a);
+            return a;
+        });
 
         Long persistedTenantId = jdbcTemplate.queryForObject(
             "SELECT tenant_id FROM oauth2_authorization WHERE id = ?",

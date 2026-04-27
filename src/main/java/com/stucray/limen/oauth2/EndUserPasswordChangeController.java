@@ -1,5 +1,6 @@
 package com.stucray.limen.oauth2;
 
+import com.stucray.limen.auth.TenantUserDetails;
 import com.stucray.limen.management.users.UserManagementService;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.user.User;
@@ -7,7 +8,6 @@ import com.stucray.limen.user.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.stereotype.Controller;
@@ -46,7 +46,7 @@ public class EndUserPasswordChangeController {
     @PostMapping("/t/{slug}/change-password")
     public String submit(
         @PathVariable String slug,
-        @AuthenticationPrincipal UserDetails principal,
+        @AuthenticationPrincipal TenantUserDetails principal,
         @RequestParam String newPassword,
         @RequestParam String confirmPassword,
         HttpServletRequest request,
@@ -67,7 +67,7 @@ public class EndUserPasswordChangeController {
         Long tenantId = tenantRepository.findBySlug(slug)
             .orElseThrow(() -> new IllegalArgumentException("Unknown tenant: " + slug))
             .id();
-        User user = userRepository.findByUsernameAndTenantId(principal.getUsername(), tenantId)
+        User user = userRepository.findByUsernameAndTenantId(principal.displayUsername(), tenantId)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
         userManagementService.changePassword(user.id(), tenantId, newPassword);
 

@@ -1,6 +1,15 @@
+limen:
+  security:
+    # Override in production. Used to sign the remember-me cookie identity.
+    remember-me-key: dev-remember-me-key-change-me
+    # 14 days
+    remember-me-validity-seconds: 1209600
 spring:
   application:
     name: limen
+  threads:
+    virtual:
+      enabled: true
   datasource:
     url: jdbc:postgresql://localhost:5433/auth
     username: auth

@@ -10,8 +10,9 @@ public class ManagementWebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(new TenantAccessInterceptor())
-            .addPathPatterns("/manage/t/**");
+        // Cross-tenant URL access is enforced by the TenantAccessFilter inside
+        // each security chain (force-logout + redirect). The interceptor is no
+        // longer needed.
         registry.addInterceptor(new PasswordChangeRequiredInterceptor())
             .addPathPatterns("/manage/t/**");
     }
