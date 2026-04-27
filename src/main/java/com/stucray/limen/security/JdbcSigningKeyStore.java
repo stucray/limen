@@ -70,7 +70,7 @@ public class JdbcSigningKeyStore implements SigningKeyStore {
         });
     }
 
-    public static void insertActiveSigningKey(Connection conn, long tenantId, String kekPassword) throws SQLException {
+    private static void insertActiveSigningKey(Connection conn, long tenantId, String kekPassword) throws SQLException {
         RSAKey rsaKey;
         try {
             rsaKey = new RSAKeyGenerator(RSA_KEY_SIZE)
