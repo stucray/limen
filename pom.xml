@@ -58,6 +58,10 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security-oauth2-authorization-server</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>org.postgresql</groupId>
@@ -113,7 +117,7 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
 					<environmentVariables>
-						<LIMEN_KEY_ENCRYPTION_KEY>dGVzdC1rZWstdGVzdC1rZWstdGVzdC1rZWstdGVzdC0=</LIMEN_KEY_ENCRYPTION_KEY>
+						<LIMEN_SECURITY_KEK>dGVzdC1rZWstdGVzdC1rZWstdGVzdC1rZWstdGVzdC0=</LIMEN_SECURITY_KEK>
 					</environmentVariables>
 				</configuration>
 			</plugin>

@@ -35,9 +35,12 @@ class UserBootstrapTest {
         given(tenantRepository.findBySlug("system")).willReturn(Optional.of(SYSTEM_TENANT));
     }
 
+    private static final BootstrapAdminProperties NO_ADMIN = new BootstrapAdminProperties(null, null);
+    private static final BootstrapAdminProperties ADMIN = new BootstrapAdminProperties("admin", "pass");
+
     @Test
     void alwaysBootstrapsSystemTenant() throws Exception {
-        new UserBootstrap(null, null, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
+        new UserBootstrap(NO_ADMIN, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
         verify(tenantRepository).findBySlug("system");
         verifyNoInteractions(tenantProvisioningService, userRepository, passwordEncoder);
     }
@@ -47,17 +50,14 @@ class UserBootstrapTest {
         given(tenantRepository.findBySlug("system")).willReturn(Optional.empty());
         given(tenantProvisioningService.createTenant("system", "System")).willReturn(SYSTEM_TENANT);
 
-        new UserBootstrap(null, null, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
+        new UserBootstrap(NO_ADMIN, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
 
         verify(tenantProvisioningService).createTenant("system", "System");
     }
 
     @Test
     void doesNothingWithUsersWhenCredentialsUnset() throws Exception {
-        new UserBootstrap(null, "pass", tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
-        verifyNoInteractions(userRepository, passwordEncoder);
-
-        new UserBootstrap("admin", null, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
+        new UserBootstrap(NO_ADMIN, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
         verifyNoInteractions(userRepository, passwordEncoder);
     }
 
@@ -66,7 +66,7 @@ class UserBootstrapTest {
         given(userRepository.findByUsernameAndTenantId("admin", 1L)).willReturn(Optional.empty());
         given(passwordEncoder.encode("pass")).willReturn("hashed");
 
-        new UserBootstrap("admin", "pass", tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
+        new UserBootstrap(ADMIN, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
 
         verify(userRepository).save(argThat(u ->
             u.username().equals("admin") && u.passwordHash().equals("hashed")
@@ -80,7 +80,8 @@ class UserBootstrapTest {
         given(userRepository.findByUsernameAndTenantId("admin", 1L)).willReturn(Optional.of(existing));
         given(passwordEncoder.encode("newpass")).willReturn("newhash");
 
-        new UserBootstrap("admin", "newpass", tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
+        new UserBootstrap(new BootstrapAdminProperties("admin", "newpass"),
+            tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
 
         verify(userRepository).save(argThat(u -> u.id().equals(10L) && u.passwordHash().equals("newhash")));
     }

@@ -4,7 +4,6 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.encrypt.BytesEncryptor;
 import org.springframework.security.crypto.encrypt.Encryptors;
@@ -16,7 +15,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.text.ParseException;
-import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
@@ -27,39 +25,13 @@ public class JdbcSigningKeyStore implements SigningKeyStore {
     private static final String ALGORITHM = "RS256";
     private static final int RSA_KEY_SIZE = 2048;
     private static final int SALT_BYTES = 16;
-    private static final int KEK_BYTES = 32;
 
     private final JdbcTemplate jdbcTemplate;
     private final String kekPassword;
 
-    public JdbcSigningKeyStore(
-        JdbcTemplate jdbcTemplate,
-        @Value("${LIMEN_KEY_ENCRYPTION_KEY:}") String kek
-    ) {
+    public JdbcSigningKeyStore(JdbcTemplate jdbcTemplate, SecurityProperties properties) {
         this.jdbcTemplate = jdbcTemplate;
-        this.kekPassword = validateKek(kek);
-    }
-
-    private static String validateKek(String kek) {
-        if (kek == null || kek.isBlank()) {
-            throw new IllegalStateException(
-                "LIMEN_KEY_ENCRYPTION_KEY is not set. Provide a base64-encoded 256-bit AES key."
-            );
-        }
-        byte[] decoded;
-        try {
-            decoded = Base64.getDecoder().decode(kek);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalStateException(
-                "LIMEN_KEY_ENCRYPTION_KEY is not valid base64: " + e.getMessage(), e
-            );
-        }
-        if (decoded.length != KEK_BYTES) {
-            throw new IllegalStateException(
-                "LIMEN_KEY_ENCRYPTION_KEY must decode to " + KEK_BYTES + " bytes (256 bits); got " + decoded.length
-            );
-        }
-        return kek;
+        this.kekPassword = properties.kek();
     }
 
     @Override

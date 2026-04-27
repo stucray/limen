@@ -5,7 +5,6 @@ import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -19,23 +18,20 @@ public class UserBootstrap implements CommandLineRunner {
     static final String SYSTEM_SLUG = "system";
     static final String SYSTEM_DISPLAY_NAME = "System";
 
-    private final String adminUsername;
-    private final String adminPassword;
+    private final BootstrapAdminProperties adminProperties;
     private final TenantRepository tenantRepository;
     private final TenantProvisioningService tenantProvisioningService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     public UserBootstrap(
-        @Value("${LIMEN_ADMIN_USERNAME:#{null}}") String adminUsername,
-        @Value("${LIMEN_ADMIN_PASSWORD:#{null}}") String adminPassword,
+        BootstrapAdminProperties adminProperties,
         TenantRepository tenantRepository,
         TenantProvisioningService tenantProvisioningService,
         UserRepository userRepository,
         PasswordEncoder passwordEncoder
     ) {
-        this.adminUsername = adminUsername;
-        this.adminPassword = adminPassword;
+        this.adminProperties = adminProperties;
         this.tenantRepository = tenantRepository;
         this.tenantProvisioningService = tenantProvisioningService;
         this.userRepository = userRepository;
@@ -48,14 +44,14 @@ public class UserBootstrap implements CommandLineRunner {
         Tenant systemTenant = tenantRepository.findBySlug(SYSTEM_SLUG)
             .orElseGet(() -> tenantProvisioningService.createTenant(SYSTEM_SLUG, SYSTEM_DISPLAY_NAME));
 
-        if (adminUsername == null || adminPassword == null) return;
+        if (!adminProperties.isConfigured()) return;
 
-        String hash = passwordEncoder.encode(adminPassword);
-        userRepository.findByUsernameAndTenantId(adminUsername, systemTenant.id())
+        String hash = passwordEncoder.encode(adminProperties.password());
+        userRepository.findByUsernameAndTenantId(adminProperties.username(), systemTenant.id())
             .ifPresentOrElse(
                 existing -> userRepository.save(existing.withPasswordHash(hash).withMustChangePassword(false)),
                 () -> userRepository.save(
-                    new User(null, systemTenant.id(), adminUsername, hash, true, false, false, LocalDateTime.now())
+                    new User(null, systemTenant.id(), adminProperties.username(), hash, true, false, false, LocalDateTime.now())
                 )
             );
     }
