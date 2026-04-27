@@ -1,0 +1,363 @@
+# Limen — Architecture
+
+> A companion to `UBIQUITOUS_LANGUAGE.md`. That file defines *what we call things*; this file describes *how the system is built*.
+
+## 1. Purpose
+
+Limen is a **multi-tenant OAuth2 / OIDC Authorization Server** built on top of Spring Authorization Server (SAS). It is a SaaS-style product: a single deployment hosts many independent **Tenants**, each with its own User pool, Applications, Clients, signing keys, and issuer URL.
+
+The product is aimed at developers and organisations who need a hosted identity provider for their own applications without standing up Keycloak or paying for a commercial IdP. A new Tenant is created via public self-service signup; from that point on, the Tenant Owner manages everything for their Tenant through the management console at `/manage/t/{slug}/`.
+
+Concretely, Limen provides:
+
+- **Per-tenant OIDC issuer** at `https://{host}/t/{slug}/` with its own `.well-known/openid-configuration`, JWKS, authorization, token, introspection, revocation and userinfo endpoints.
+- **Per-tenant signing keys** (RS256, RSA-2048), stored encrypted at rest using a single Key Encryption Key (KEK) supplied via environment variable.
+- **Tenant-scoped storage** for all SAS persistence interfaces (`RegisteredClientRepository`, `OAuth2AuthorizationService`, `OAuth2AuthorizationConsentService`).
+- **A management console** (Thymeleaf + REST) for managing Applications, Clients, Users and (in v2) Roles and Memberships.
+- **A System Tenant** at the slug `system` for cross-tenant operations performed by System Admins.
+
+## 2. Stack
+
+| Layer | Choice |
+|---|---|
+| Language | Java 26 |
+| Framework | Spring Boot 4.0.5 |
+| OAuth2 / OIDC | Spring Authorization Server (via `spring-boot-starter-security-oauth2-authorization-server`) |
+| Persistence | Spring Data JDBC (records, no JPA / Hibernate) |
+| Database | PostgreSQL |
+| Schema migrations | Flyway |
+| Web UI | Thymeleaf |
+| Crypto | Spring Security Crypto (`Encryptors.stronger`), Nimbus JOSE+JWT |
+| Tests | Spring Boot Test + Testcontainers (Postgres) |
+| Build | Maven |
+
+## 3. Domain Model
+
+The canonical definitions live in `UBIQUITOUS_LANGUAGE.md`. The diagram below shows how those concepts map to persisted entities in v1.
+
+```mermaid
+erDiagram
+    TENANT ||--o{ USER : contains
+    TENANT ||--o{ APPLICATION : contains
+    TENANT ||--o{ TENANT_SIGNING_KEY : "owns"
+    TENANT ||--o{ OAUTH2_AUTHORIZATION : "scopes"
+    TENANT ||--o{ OAUTH2_AUTHORIZATION_CONSENT : "scopes"
+    APPLICATION ||--o{ CLIENT_METADATA : groups
+    CLIENT_METADATA ||--|| OAUTH2_REGISTERED_CLIENT : "1:1"
+
+    TENANT {
+        uuid id PK
+        string slug UK
+        string display_name
+        enum status "ACTIVE | SUSPENDED"
+    }
+    USER {
+        uuid id PK
+        uuid tenant_id FK
+        string username
+        string password_hash
+        bool enabled
+        bool must_change_password
+        bool tenant_owner
+    }
+    APPLICATION {
+        uuid id PK
+        uuid tenant_id FK
+        string name
+        string description
+    }
+    CLIENT_METADATA {
+        uuid id PK
+        uuid tenant_id FK
+        uuid application_id FK
+        string registered_client_id UK
+        string display_name
+        bool confidential
+    }
+    TENANT_SIGNING_KEY {
+        uuid id PK
+        uuid tenant_id FK
+        string kid
+        string algorithm
+        bytea private_key_ciphertext
+        bytea iv
+        text public_key_jwk
+        enum status "ACTIVE | RETIRED"
+    }
+    OAUTH2_REGISTERED_CLIENT {
+        string id PK
+        string client_id
+        string client_secret
+        string scopes
+        string grant_types
+        string redirect_uris
+    }
+```
+
+A few things worth calling out:
+
+- **`User.username` is unique within a Tenant**, not globally. The same username can exist in multiple Tenants.
+- **`client_metadata` joins to `oauth2_registered_client` 1:1** via a UNIQUE foreign key. The SAS table holds the OAuth2-wire fields (client id/secret, grant types, redirect URIs); `client_metadata` holds Limen-specific fields (display name, owning Application, owning Tenant). This split keeps Limen's tenant model from leaking into Spring's schema.
+- **`tenant_signing_key` enforces "at most one ACTIVE key per Tenant"** with a partial unique index: `UNIQUE(tenant_id) WHERE status = 'ACTIVE'`. This is the enforcement point for key rotation.
+- **Roles, Memberships, Scopes are not yet persisted.** The PRD agreed they would be deferred to v2; the current schema does not preclude adding them.
+
+## 4. Architecture Overview
+
+### 4.1 Component layout
+
+```mermaid
+flowchart TB
+    subgraph "End User Browser"
+      EU[OAuth2 client app]
+      MGT[Tenant Owner]
+    end
+
+    subgraph "Limen JVM"
+      direction TB
+
+      subgraph "Servlet filter chain"
+        ROUT["TenantOAuth2RoutingFilter<br/>matches /t/{slug}/oauth2|.well-known|connect|userinfo"]
+        ISS[TenantIssuerContextFilter]
+        SAS["Spring Authorization Server<br/>filter chain"]
+        MGTC["Management filter chain<br/>/manage/t/{slug}/**"]
+      end
+
+      subgraph "Tenant-aware storage decorators"
+        TRCR[TenantAwareRegisteredClientRepository]
+        TAS[TenantAwareOAuth2AuthorizationService]
+        TACS[TenantAwareOAuth2AuthorizationConsentService]
+        TJWK[TenantJwkSource]
+      end
+
+      subgraph "Domain services"
+        TPS[TenantProvisioningService]
+        SKS[JdbcSigningKeyStore]
+        UMS[UserManagementService]
+        CMS[ClientManagementService]
+      end
+
+      DB[(PostgreSQL)]
+    end
+
+    EU -->|/t/acme/oauth2/authorize| ROUT
+    MGT -->|/manage/t/acme/applications| MGTC
+    ROUT --> ISS --> SAS
+    SAS --> TRCR
+    SAS --> TAS
+    SAS --> TACS
+    SAS --> TJWK
+    MGTC --> UMS
+    MGTC --> CMS
+    TPS --> SKS
+    TRCR --> DB
+    TAS --> DB
+    TACS --> DB
+    TJWK --> SKS
+    SKS --> DB
+    UMS --> DB
+    CMS --> DB
+```
+
+There are effectively **two HTTP surfaces** sharing one process:
+
+1. **The OAuth2 / OIDC surface** under `/t/{slug}/...`, served by Spring Authorization Server using tenant-aware decorators over its JDBC-backed storage.
+2. **The management console** under `/manage/t/{slug}/...` and `/signup`, served by ordinary Spring MVC controllers and a separate filter chain.
+
+These surfaces use the same `users` table for authentication but different filter chains and entry points.
+
+### 4.2 Request routing for OAuth2 traffic
+
+```mermaid
+sequenceDiagram
+    participant C as OAuth2 Client
+    participant F as TenantOAuth2RoutingFilter
+    participant CTX as TenantContext (ThreadLocal)
+    participant I as TenantIssuerContextFilter
+    participant SAS as Spring Authorization Server
+    participant J as TenantJwkSource
+
+    C->>F: GET /t/acme/oauth2/authorize?...
+    F->>F: regex match, extract slug "acme"
+    F->>F: load Tenant from DB, check ACTIVE
+    F->>CTX: set(slug, tenantId)
+    F->>I: forward, request URI rewritten to /oauth2/authorize
+    I->>I: build issuer = https://host/t/acme
+    I->>SAS: AuthorizationServerContext set
+    SAS->>J: get JWKSet for current tenant
+    J->>CTX: read tenantId
+    J->>J: load active TenantSigningKey, decrypt
+    J-->>SAS: JWKSet
+    SAS-->>C: redirect / token response
+    F->>CTX: clear() in finally
+```
+
+The two crucial properties:
+
+- **The tenant is resolved before SAS sees the request** — by the time Spring's filter chain runs, the URI no longer contains `/t/{slug}/` and `TenantContext` already holds the resolved tenant. This is what lets us reuse SAS unmodified.
+- **The JWKSource resolves the tenant on demand** rather than being pre-bound at bean construction, which is necessary because there is one shared SAS bean graph but many tenants.
+
+### 4.3 OAuth2 storage decorators
+
+All three SAS storage interfaces are wrapped with a tenant-aware decorator. Two of them (`RegisteredClientRepository`, `OAuth2AuthorizationService`) use a *delegate-then-update* pattern: they call into the standard `JdbcXxx` implementation and then run a follow-up `UPDATE ... SET tenant_id = ?`. The third (`OAuth2AuthorizationConsentService`) writes its own SQL directly because the schema requires `tenant_id` to be part of the composite primary key, which makes the delegate-then-update approach unworkable.
+
+The decorators all *read* by adding a `tenant_id = ?` predicate. A query that returns no row for the current Tenant looks identical to a row that does not exist, so cross-tenant lookups are invisible to the caller.
+
+### 4.4 Signing keys
+
+```mermaid
+flowchart LR
+    KEK[("LIMEN_KEY_ENCRYPTION_KEY<br/>(env)")] --> ENC
+    subgraph JdbcSigningKeyStore
+      GEN[Generate RSA-2048] --> SERIALISE[Serialise private key]
+      SERIALISE --> ENC["Encryptors.stronger<br/>(KEK + per-key salt)"]
+      ENC --> ROW
+    end
+    ROW[("tenant_signing_key row<br/>private_key_ciphertext, iv,<br/>public_key_jwk, status='ACTIVE'")] --> DB[(PostgreSQL)]
+```
+
+Properties:
+
+- **One Key Encryption Key for the deployment**, supplied via `LIMEN_KEY_ENCRYPTION_KEY` (base64-encoded). Compromise of the database alone does not yield usable signing keys; compromise of the JVM process plus the database does.
+- **Per-key random salt** stored in the `iv` column. The column is named `iv` for historical reasons; it is the salt passed to `Encryptors.stronger`, not an AES IV.
+- **Public key stored as a JWK in plaintext** (`public_key_jwk`) so that the JWKS endpoint can be served without decrypting anything.
+- **Keys are created during Tenant provisioning** by `TenantProvisioningService` calling `SigningKeyStore.createForTenant(tenantId)`. The System Tenant does not get a signing key — it never issues tokens.
+- **Rotation is supported by the schema but not yet automated.** The `status` column (`ACTIVE` / `RETIRED`) plus the partial unique index allows multiple keys per Tenant with one ACTIVE; no scheduled job currently performs rotation.
+
+### 4.5 Authentication flows
+
+There are three login flows in the system: an OAuth2 end-user login, a management-console login, and a forced-password-change interception that overlays both.
+
+**Forced password change on the OAuth2 path:**
+
+```mermaid
+sequenceDiagram
+    participant U as End User
+    participant SAS as SAS authorize
+    participant L as /t/{slug}/login
+    participant H as TenantLoginSuccessHandler
+    participant CP as /t/{slug}/change-password
+    participant SR as SavedRequest
+
+    U->>SAS: GET /t/acme/oauth2/authorize?...
+    SAS->>SR: save request
+    SAS->>L: redirect, unauthenticated
+    U->>L: POST credentials
+    L->>H: success
+    H->>H: load User, must_change_password = true?
+    H->>CP: redirect to change-password form
+    U->>CP: POST new password
+    CP->>SR: replay saved /oauth2/authorize
+    SR-->>U: continue OAuth2 flow
+```
+
+The same pattern applies to the management console at `/manage/t/{slug}/...`, with `PasswordChangeRequiredInterceptor` doing the interception instead of the success handler.
+
+### 4.6 Database schema (v1)
+
+| Migration | Purpose |
+|---|---|
+| `V1__sas_tables.sql` | Stock SAS tables: `oauth2_registered_client`, `oauth2_authorization`, `oauth2_authorization_consent` |
+| `V2__auth_users.sql` | `users` table (pre-tenancy) |
+| `V3__persistent_logins.sql` | Spring's remember-me table |
+| `V4__oauth2_clients.sql` | (intentionally empty — clients are created at runtime) |
+| `V5__multi_tenant_schema.sql` | Introduces `tenants`; adds `tenant_id` FK to `users`; rewrites the `users` uniqueness constraint to `(tenant_id, username)`; adds `must_change_password` |
+| `V6__user_tenant_owner_flag.sql` | Adds `tenant_owner` boolean to `users` |
+| `V7__applications.sql` | `applications` table; adds `application_id` FK to `oauth2_registered_client` |
+| `V8__client_metadata.sql` | `client_metadata` table joining SAS `oauth2_registered_client` to a Limen Application + Tenant |
+| `V9__oauth2_authorization_tenant_scope.sql` | Drops and rebuilds `oauth2_authorization` with a `tenant_id` FK |
+| `V10__oauth2_authorization_consent_tenant_scope.sql` | Drops and rebuilds `oauth2_authorization_consent` with `tenant_id` in the composite PK |
+| `V11__tenant_signing_key.sql` | `tenant_signing_key` table with encrypted private key and partial unique index on the active row |
+| `V12__BackfillTenantSigningKeys.java` | Java migration: for every existing non-`system` Tenant lacking an ACTIVE signing key, generates and inserts one using `LIMEN_KEY_ENCRYPTION_KEY`. Lives in `src/main/java/db/migration/` rather than `resources/db/migration/`, intentionally — see note below |
+
+Migrations V9 and V10 are destructive (`DROP TABLE`). They are safe in v1 because the OAuth2 storage tables only ever held ephemeral records (auth codes, access tokens, refresh tokens, consents) and were not yet under load. They would not be safe to repeat in production now.
+
+V12 is a plain `BaseJavaMigration` in the `db.migration` package, not a Spring-managed migration. This is deliberate: a Spring-managed `JavaMigration` would need access to `JdbcSigningKeyStore`, which depends on `JdbcTemplate`, which `@DependsOn(flyway)` — that closes a cycle. As a plain Flyway migration it receives its `Connection` directly from Flyway's `Context` and calls a static helper `JdbcSigningKeyStore.insertActiveSigningKey(conn, tenantId, kek)`, sidestepping Spring entirely.
+
+### 4.7 HTTP route map
+
+| Surface | Pattern | Notes |
+|---|---|---|
+| Public | `GET /signup`, `POST /signup` | Self-service Tenant creation |
+| Public | `GET /login` | Generic landing; redirects to `/manage/t/{slug}/login` when context allows |
+| OAuth2 | `GET /t/{slug}/.well-known/openid-configuration` | Per-tenant discovery |
+| OAuth2 | `GET /t/{slug}/.well-known/jwks.json` | Per-tenant JWKS |
+| OAuth2 | `GET /t/{slug}/oauth2/authorize` | Authorization endpoint |
+| OAuth2 | `POST /t/{slug}/oauth2/token` | Token endpoint |
+| OAuth2 | `POST /t/{slug}/oauth2/introspect`, `POST /t/{slug}/oauth2/revoke` | Introspection and revocation |
+| OAuth2 | `GET /t/{slug}/userinfo` | OIDC UserInfo |
+| OAuth2 | `GET /t/{slug}/login`, `POST /t/{slug}/login` | End-user login |
+| OAuth2 | `GET /t/{slug}/change-password`, `POST /t/{slug}/change-password` | End-user forced password change, with SavedRequest resume |
+| Management | `GET /manage/t/{slug}/login`, `POST /manage/t/{slug}/login` | Tenant Owner / System Admin login |
+| Management | `GET /manage/t/{slug}/` | Dashboard |
+| Management | `/manage/t/{slug}/applications/**` | Application + Client CRUD |
+| Management | `/manage/t/{slug}/users/**` | User CRUD |
+| Management | `/manage/t/{slug}/change-password` | In-console forced password change |
+| System | `/manage/t/system/...` | System Admin operations: suspend / unsuspend / delete Tenants |
+
+### 4.8 Tests
+
+The suite is integration-heavy and runs against real Postgres via Testcontainers. The OAuth2 storage decorators each have a tenant-isolation contract test that proves a row written under Tenant A is invisible to Tenant B. The end-to-end OAuth2 flow has an integration test that exercises the full per-tenant issuer / JWKS / authorize / token chain.
+
+There is currently no separation between unit and integration tests — the fast path is `mvn test`, which boots Testcontainers for everything.
+
+## 5. Current Gaps and Shortcomings
+
+These are known limitations of the v1 surface. None of them block the product working; all of them are fair targets for follow-up work.
+
+### Authentication and identity
+
+- **No MFA, no WebAuthn, no social login.** The PRD scoped v1 to username + password.
+- **No email capability.** Forced password change exists, but there is no password-reset-via-email flow, no signup confirmation, and no notification on suspicious login. Tenant Owners must hand out temporary passwords out-of-band.
+- **No account lockout or brute-force protection** on either the management login or the end-user login.
+- **No session management UI.** Users cannot list or revoke their active sessions, and Tenant Owners cannot terminate a User's sessions.
+
+### Authorization (the v2 hole)
+
+- **Roles, Memberships and Scopes are not yet persisted.** The `roles` JWT claim is currently emitted as `[]` for everyone. This is by design for v1 but it is the largest functional gap in the product.
+
+### Operational concerns
+
+- **No rate limiting** on `/oauth2/token`, `/oauth2/authorize`, `/login`, or `/signup`. A single attacker can hammer the token endpoint or sign up reserved-looking slugs without friction.
+- **No audit log.** Login attempts (success or failure), token issuance, client secret rotation, and Tenant lifecycle events are not recorded.
+- **No metrics / observability.** Spring Boot Actuator is on the classpath but no Micrometer dashboards or counters are wired beyond defaults.
+- **No signing-key rotation job.** The schema supports it; nothing schedules it.
+- **No consent revocation UI.** Consents are persisted per Tenant but end-users have no way to view or revoke them; only direct DB or admin action would clear them.
+
+### Code-level
+
+- **No CSRF / origin checks on Client redirect URIs** beyond what Spring's `RegisteredClient` already enforces. The management UI does not validate that user-supplied redirect URIs use HTTPS, are not localhost, or are not open redirectors.
+- **System Admin console is partial.** Suspend / unsuspend / delete endpoints exist; the surrounding Thymeleaf UI is thin compared to the Tenant Owner console.
+
+### Schema and data model
+
+- **The remember-me `persistent_logins` table is global, not tenant-scoped.** Each row is keyed by username, which is only unique within a Tenant. This is acceptable today because the cookie is checked against `UserDetailsService` which uses `TenantContext`, but it is a footgun if the resolution path ever changes.
+- **`oauth2_registered_client` is a global SAS table.** Tenant scoping is enforced by the `client_metadata` join and by the tenant-aware decorators; nothing in the SAS table itself prevents a stray query from returning cross-tenant rows. The decorators are the only defence.
+
+## 6. Roadmap
+
+Roughly grouped by horizon. None of these are committed to dates.
+
+### v2 — close the authorization hole
+
+1. **Roles, Memberships, Scopes** — the v1 PRD explicitly deferred these. The work is to add the schema (`roles`, `application_membership`, `client_membership`, optional `client_scopes`), wire Memberships through to the `roles` JWT claim, and surface the management UI for assigning them.
+2. **Application + Client membership UI** in the Tenant Owner console.
+
+### v2.5 — operational hardening
+
+3. **Audit log** for login attempts, token issuance, secret rotations, and Tenant lifecycle changes. Likely an append-only Postgres table plus a small viewer in the System Admin console.
+4. **Rate limiting** on `/oauth2/token`, `/login`, and `/signup`. A Bucket4j-style token-bucket per IP and per (tenant, IP) is probably enough for v1.
+5. **Metrics** — Micrometer counters for login success / failure, token issuance, key rotation, plus latency histograms on the token endpoint.
+
+### v3 — identity surface
+
+6. **Email capability** (transactional email provider integration), enabling: signup confirmation, password reset, security notifications.
+7. **MFA** — TOTP first, WebAuthn / passkeys after.
+8. **Session management UI** — for end-users (revoke my own sessions and consents) and for Tenant Owners (revoke a User's sessions).
+9. **Signing-key rotation job** — scheduled, with overlap window so old tokens validate against the retired key during grace period.
+
+### v3+ — platform
+
+10. **Federation / social login** as Tenant-configurable identity providers.
+11. **Per-Tenant branding** (login page logo, colour scheme, custom domain).
+12. **Per-Tenant custom claims** in JWTs.
+13. **Hardware-backed KEK** (KMS / HSM) instead of the env-var KEK, with envelope encryption per signing key.
