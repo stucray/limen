@@ -7,6 +7,9 @@ spring:
     password: secret
   flyway:
     enabled: true
+  docker:
+    compose:
+      lifecycle-management: start_only
 server:
   port: 8090
   servlet:
