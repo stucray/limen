@@ -41,7 +41,7 @@ public class SecurityConfig {
 
         return http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/", "/actuator/health").permitAll()
                 .anyRequest().authenticated()
             )
             .requestCache(rc -> rc.requestCache(requestCache))
