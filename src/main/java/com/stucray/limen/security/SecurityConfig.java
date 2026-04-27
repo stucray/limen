@@ -60,6 +60,7 @@ public class SecurityConfig {
     @Bean
     public PersistentTokenRepository persistentTokenRepository(DataSource dataSource) {
         JdbcTokenRepositoryImpl repo = new JdbcTokenRepositoryImpl();
+        //TODO: How do we replace deprecated method csll?
         repo.setDataSource(dataSource);
         return repo;
     }
