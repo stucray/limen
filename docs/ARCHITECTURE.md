@@ -256,22 +256,9 @@ The same pattern applies to the management console at `/manage/t/{slug}/...`, wi
 
 | Migration | Purpose |
 |---|---|
-| `V1__sas_tables.sql` | Stock SAS tables: `oauth2_registered_client`, `oauth2_authorization`, `oauth2_authorization_consent` |
-| `V2__auth_users.sql` | `users` table (pre-tenancy) |
-| `V3__persistent_logins.sql` | Spring's remember-me table |
-| `V4__oauth2_clients.sql` | (intentionally empty — clients are created at runtime) |
-| `V5__multi_tenant_schema.sql` | Introduces `tenants`; adds `tenant_id` FK to `users`; rewrites the `users` uniqueness constraint to `(tenant_id, username)`; adds `must_change_password` |
-| `V6__user_tenant_owner_flag.sql` | Adds `tenant_owner` boolean to `users` |
-| `V7__applications.sql` | `applications` table; adds `application_id` FK to `oauth2_registered_client` |
-| `V8__client_metadata.sql` | `client_metadata` table joining SAS `oauth2_registered_client` to a Limen Application + Tenant |
-| `V9__oauth2_authorization_tenant_scope.sql` | Drops and rebuilds `oauth2_authorization` with a `tenant_id` FK |
-| `V10__oauth2_authorization_consent_tenant_scope.sql` | Drops and rebuilds `oauth2_authorization_consent` with `tenant_id` in the composite PK |
-| `V11__tenant_signing_key.sql` | `tenant_signing_key` table with encrypted private key and partial unique index on the active row |
-| `V12__BackfillTenantSigningKeys.java` | Java migration: for every existing non-`system` Tenant lacking an ACTIVE signing key, generates and inserts one using `LIMEN_KEY_ENCRYPTION_KEY`. Lives in `src/main/java/db/migration/` rather than `resources/db/migration/`, intentionally — see note below |
+| `V1__initial_schema.sql` | All baseline tables (`tenants`, `users`, `persistent_logins`, `applications`, `oauth2_registered_client`, `oauth2_authorization`, `oauth2_authorization_consent`, `client_metadata`, `tenant_signing_key`) and their indexes, including the partial unique "one ACTIVE signing key per tenant" index |
 
-Migrations V9 and V10 are destructive (`DROP TABLE`). They are safe in v1 because the OAuth2 storage tables only ever held ephemeral records (auth codes, access tokens, refresh tokens, consents) and were not yet under load. They would not be safe to repeat in production now.
-
-V12 is a plain `BaseJavaMigration` in the `db.migration` package, not a Spring-managed migration. This is deliberate: a Spring-managed `JavaMigration` would need access to `JdbcSigningKeyStore`, which depends on `JdbcTemplate`, which `@DependsOn(flyway)` — that closes a cycle. As a plain Flyway migration it receives its `Connection` directly from Flyway's `Context` and calls a static helper `JdbcSigningKeyStore.insertActiveSigningKey(conn, tenantId, kek)`, sidestepping Spring entirely.
+The schema was originally built up across 12 migrations during the v1 PRD, including two destructive `DROP TABLE / CREATE TABLE` steps to retrofit tenant scoping onto the OAuth2 storage tables. Before any production data existed, those were consolidated into the single baseline above. Future migrations must be **additive** (`ALTER TABLE ADD COLUMN ... NULL` → backfill → `ALTER ... NOT NULL`) — never `DROP TABLE` on the tenant-scoped OAuth2 tables, since they will hold live grants and consents.
 
 ### 4.7 HTTP route map
 

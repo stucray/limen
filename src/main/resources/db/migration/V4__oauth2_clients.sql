@@ -1,1 +1,0 @@
--- oauth2_registered_client table created in V1. Clients are registered at runtime via RegisteredClientRepository.
