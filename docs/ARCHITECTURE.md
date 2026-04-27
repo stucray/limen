@@ -265,7 +265,7 @@ The schema was originally built up across 12 migrations during the v1 PRD, inclu
 | Surface | Pattern | Notes |
 |---|---|---|
 | Public | `GET /signup`, `POST /signup` | Self-service Tenant creation |
-| Public | `GET /login` | Generic landing; redirects to `/manage/t/{slug}/login` when context allows |
+| Public | `GET /login`, `POST /login` | Form-login URL. Serves the OAuth2 end-user login form (reached internally as `/login` after `TenantOAuth2RoutingFilter` strips `/t/{slug}/` from `/t/{slug}/login`) and also acts as the catch-all formLogin for any unauthenticated request that doesn't match a higher-precedence chain. The overlap is a known gap — see §5. |
 | OAuth2 | `GET /t/{slug}/.well-known/openid-configuration` | Per-tenant discovery |
 | OAuth2 | `GET /t/{slug}/.well-known/jwks.json` | Per-tenant JWKS |
 | OAuth2 | `GET /t/{slug}/oauth2/authorize` | Authorization endpoint |
@@ -297,6 +297,7 @@ These are known limitations of the v1 surface. None of them block the product wo
 - **No email capability.** Forced password change exists, but there is no password-reset-via-email flow, no signup confirmation, and no notification on suspicious login. Tenant Owners must hand out temporary passwords out-of-band.
 - **No account lockout or brute-force protection** on either the management login or the end-user login.
 - **No session management UI.** Users cannot list or revoke their active sessions, and Tenant Owners cannot terminate a User's sessions.
+- **`/login` does double duty as the OAuth2 end-user login form and the catch-all formLogin entry point.** Internal `/t/{slug}/login` traffic is rewritten to `/login` by `TenantOAuth2RoutingFilter` and authenticates correctly into the OAuth2 flow via `TenantLoginSuccessHandler`. But the catch-all `SecurityConfig` chain also wires `formLogin().loginPage("/login")` against `.anyRequest().authenticated()`, so any unauthenticated request that doesn't match the OAuth2 or management chains is bounced to the same `/login`. After authenticating, the saved-request mechanism redirects the visitor back to their original URL — which is typically `/`, has no controller, and returns 404. The narrow workaround is to give `/` a useful destination (e.g. redirect it to `/manage/t/system/login`); the broader fix is to remove the catch-all formLogin entirely and let each surface declare its own login URL with its own success handler and default target.
 
 ### Authorization (the v2 hole)
 
