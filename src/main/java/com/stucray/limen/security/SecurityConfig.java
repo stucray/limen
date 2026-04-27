@@ -16,6 +16,7 @@ import org.springframework.security.web.authentication.rememberme.JdbcTokenRepos
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 
 @Configuration
 @EnableWebSecurity
@@ -31,11 +32,19 @@ public class SecurityConfig {
         UserRepository userRepository,
         TenantRepository tenantRepository
     ) throws Exception {
+        HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
+        requestCache.setRequestMatcher(req -> {
+            if (!"GET".equalsIgnoreCase(req.getMethod())) return false;
+            String accept = req.getHeader("Accept");
+            return accept != null && accept.contains("text/html");
+        });
+
         return http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health").permitAll()
                 .anyRequest().authenticated()
             )
+            .requestCache(rc -> rc.requestCache(requestCache))
             .formLogin(form -> form
                 .loginPage("/login").permitAll()
                 .successHandler(new TenantLoginSuccessHandler(userRepository, tenantRepository))
