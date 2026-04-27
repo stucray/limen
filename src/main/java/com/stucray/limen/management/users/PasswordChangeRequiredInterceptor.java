@@ -1,6 +1,6 @@
 package com.stucray.limen.management.users;
 
-import com.stucray.limen.management.auth.TenantUserDetails;
+import com.stucray.limen.auth.TenantUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;

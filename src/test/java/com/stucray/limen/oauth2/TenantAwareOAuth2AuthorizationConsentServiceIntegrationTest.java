@@ -7,8 +7,8 @@ import com.stucray.limen.management.clients.TenantClient;
 import com.stucray.limen.management.clients.TenantClientRepository;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
+import com.stucray.limen.tenant.TenantScope;
 import com.stucray.limen.tenant.TenantStatus;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -80,13 +80,8 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
         ));
     }
 
-    @AfterEach
-    void tearDown() {
-        TenantContext.clear();
-    }
-
     @Test
-    void saveWithoutTenantContextThrows() {
+    void saveWithoutTenantScopeThrows() {
         OAuth2AuthorizationConsent consent = OAuth2AuthorizationConsent
             .withId(client.getId(), "alice")
             .authority(new SimpleGrantedAuthority("SCOPE_openid"))
@@ -94,18 +89,18 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
 
         assertThatThrownBy(() -> consentService.save(consent))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("TenantContext");
+            .hasMessageContaining("TenantScope");
     }
 
     @Test
-    void findByIdWithoutTenantContextThrows() {
+    void findByIdWithoutTenantScopeThrows() {
         assertThatThrownBy(() -> consentService.findById(client.getId(), "alice"))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("TenantContext");
+            .hasMessageContaining("TenantScope");
     }
 
     @Test
-    void removeWithoutTenantContextThrows() {
+    void removeWithoutTenantScopeThrows() {
         OAuth2AuthorizationConsent consent = OAuth2AuthorizationConsent
             .withId(client.getId(), "alice")
             .authority(new SimpleGrantedAuthority("SCOPE_openid"))
@@ -113,32 +108,34 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
 
         assertThatThrownBy(() -> consentService.remove(consent))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("TenantContext");
+            .hasMessageContaining("TenantScope");
     }
 
     @Test
     void crossTenantFindByIdReturnsNull() {
-        TenantContext.set(alpha.slug(), alpha.id());
-        OAuth2AuthorizationConsent consent = OAuth2AuthorizationConsent
-            .withId(client.getId(), "alice")
-            .authority(new SimpleGrantedAuthority("SCOPE_openid"))
-            .build();
-        consentService.save(consent);
+        TenantScope.run(alpha.slug(), alpha.id(), () -> {
+            OAuth2AuthorizationConsent consent = OAuth2AuthorizationConsent
+                .withId(client.getId(), "alice")
+                .authority(new SimpleGrantedAuthority("SCOPE_openid"))
+                .build();
+            consentService.save(consent);
+            assertThat(consentService.findById(client.getId(), "alice")).isNotNull();
+        });
 
-        assertThat(consentService.findById(client.getId(), "alice")).isNotNull();
-
-        TenantContext.set(beta.slug(), beta.id());
-        assertThat(consentService.findById(client.getId(), "alice")).isNull();
+        TenantScope.run(beta.slug(), beta.id(), () -> {
+            assertThat(consentService.findById(client.getId(), "alice")).isNull();
+        });
     }
 
     @Test
     void savePersistsTenantIdColumn() {
-        TenantContext.set(alpha.slug(), alpha.id());
-        OAuth2AuthorizationConsent consent = OAuth2AuthorizationConsent
-            .withId(client.getId(), "alice")
-            .authority(new SimpleGrantedAuthority("SCOPE_openid"))
-            .build();
-        consentService.save(consent);
+        TenantScope.run(alpha.slug(), alpha.id(), () -> {
+            OAuth2AuthorizationConsent consent = OAuth2AuthorizationConsent
+                .withId(client.getId(), "alice")
+                .authority(new SimpleGrantedAuthority("SCOPE_openid"))
+                .build();
+            consentService.save(consent);
+        });
 
         Long persistedTenantId = jdbcTemplate.queryForObject(
             "SELECT tenant_id FROM oauth2_authorization_consent "
@@ -150,22 +147,23 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
 
     @Test
     void updateOverwritesAuthoritiesWithinTenant() {
-        TenantContext.set(alpha.slug(), alpha.id());
-        consentService.save(OAuth2AuthorizationConsent
-            .withId(client.getId(), "alice")
-            .authority(new SimpleGrantedAuthority("SCOPE_openid"))
-            .build());
-        consentService.save(OAuth2AuthorizationConsent
-            .withId(client.getId(), "alice")
-            .authority(new SimpleGrantedAuthority("SCOPE_openid"))
-            .authority(new SimpleGrantedAuthority("SCOPE_profile"))
-            .build());
+        TenantScope.run(alpha.slug(), alpha.id(), () -> {
+            consentService.save(OAuth2AuthorizationConsent
+                .withId(client.getId(), "alice")
+                .authority(new SimpleGrantedAuthority("SCOPE_openid"))
+                .build());
+            consentService.save(OAuth2AuthorizationConsent
+                .withId(client.getId(), "alice")
+                .authority(new SimpleGrantedAuthority("SCOPE_openid"))
+                .authority(new SimpleGrantedAuthority("SCOPE_profile"))
+                .build());
 
-        OAuth2AuthorizationConsent consent = consentService.findById(client.getId(), "alice");
-        assertThat(consent).isNotNull();
-        assertThat(consent.getAuthorities())
-            .extracting("authority")
-            .containsExactlyInAnyOrder("SCOPE_openid", "SCOPE_profile");
+            OAuth2AuthorizationConsent consent = consentService.findById(client.getId(), "alice");
+            assertThat(consent).isNotNull();
+            assertThat(consent.getAuthorities())
+                .extracting("authority")
+                .containsExactlyInAnyOrder("SCOPE_openid", "SCOPE_profile");
+        });
 
         Integer rowCount = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM oauth2_authorization_consent "
@@ -177,12 +175,14 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
 
     @Test
     void removeDeletesOnlyCallingTenantsRow() {
-        TenantContext.set(alpha.slug(), alpha.id());
         OAuth2AuthorizationConsent alphaConsent = OAuth2AuthorizationConsent
             .withId(client.getId(), "alice")
             .authority(new SimpleGrantedAuthority("SCOPE_openid"))
             .build();
-        consentService.save(alphaConsent);
+
+        TenantScope.run(alpha.slug(), alpha.id(), () -> {
+            consentService.save(alphaConsent);
+        });
 
         // Plant a row directly for tenant beta to verify remove is tenant-scoped.
         // Bypassing the service avoids needing a beta client_metadata mapping (which
@@ -194,7 +194,9 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
         );
 
         // Remove under alpha — beta's row should survive.
-        consentService.remove(alphaConsent);
+        TenantScope.run(alpha.slug(), alpha.id(), () -> {
+            consentService.remove(alphaConsent);
+        });
 
         Integer alphaRows = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM oauth2_authorization_consent WHERE tenant_id = ?",

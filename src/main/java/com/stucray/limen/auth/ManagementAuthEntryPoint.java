@@ -1,4 +1,4 @@
-package com.stucray.limen.management.auth;
+package com.stucray.limen.auth;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -9,7 +9,11 @@ import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class TenantAuthEntryPoint implements AuthenticationEntryPoint {
+/**
+ * Redirects unauthenticated requests to the matching tenant's management login,
+ * falling back to /manage/t/system/login when no slug is recoverable from the URL.
+ */
+public final class ManagementAuthEntryPoint implements AuthenticationEntryPoint {
 
     private static final Pattern SLUG_PATTERN = Pattern.compile("/manage/t/([^/]+)/.*");
 
@@ -19,8 +23,7 @@ public class TenantAuthEntryPoint implements AuthenticationEntryPoint {
         HttpServletResponse response,
         AuthenticationException authException
     ) throws IOException {
-        String uri = request.getRequestURI();
-        Matcher matcher = SLUG_PATTERN.matcher(uri);
+        Matcher matcher = SLUG_PATTERN.matcher(request.getRequestURI());
         String slug = matcher.matches() ? matcher.group(1) : "system";
         response.sendRedirect(request.getContextPath() + "/manage/t/" + slug + "/login");
     }

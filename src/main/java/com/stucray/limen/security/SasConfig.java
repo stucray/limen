@@ -2,15 +2,16 @@ package com.stucray.limen.security;
 
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.stucray.limen.auth.SasJsonMapperFactory;
 import com.stucray.limen.management.clients.TenantClientRepository;
 import com.stucray.limen.oauth2.TenantAwareOAuth2AuthorizationConsentService;
 import com.stucray.limen.oauth2.TenantAwareOAuth2AuthorizationService;
 import com.stucray.limen.oauth2.TenantAwareRegisteredClientRepository;
-import com.stucray.limen.oauth2.TenantContext;
 import com.stucray.limen.oauth2.TenantIssuerContextFilter;
 import com.stucray.limen.oauth2.TenantJwkSource;
 import com.stucray.limen.oauth2.TenantLoginUrlAuthenticationEntryPoint;
 import com.stucray.limen.tenant.TenantRepository;
+import com.stucray.limen.tenant.TenantScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -33,6 +34,7 @@ import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
 
@@ -52,7 +54,7 @@ public class SasConfig {
             .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
             .oauth2ResourceServer(rs -> rs.jwt(Customizer.withDefaults()))
             .exceptionHandling(ex -> ex.defaultAuthenticationEntryPointFor(
-                new TenantLoginUrlAuthenticationEntryPoint(),
+                TenantLoginUrlAuthenticationEntryPoint.fromTenantScope(),
                 new OrRequestMatcher(
                     htmlRequestMatcher(),
                     PathPatternRequestMatcher.withDefaults().matcher("/oauth2/authorize")
@@ -75,13 +77,24 @@ public class SasConfig {
     }
 
     @Bean
+    public JsonMapper sasJsonMapper() {
+        return SasJsonMapperFactory.create();
+    }
+
+    @Bean
     public OAuth2AuthorizationService authorizationService(
         JdbcTemplate jdbcTemplate,
-        RegisteredClientRepository registeredClientRepository
+        RegisteredClientRepository registeredClientRepository,
+        JsonMapper sasJsonMapper
     ) {
         JdbcOAuth2AuthorizationService delegate =
             new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository);
-        return new TenantAwareOAuth2AuthorizationService(delegate, jdbcTemplate, registeredClientRepository);
+        delegate.setAuthorizationRowMapper(
+            new JdbcOAuth2AuthorizationService.JsonMapperOAuth2AuthorizationRowMapper(
+                registeredClientRepository, sasJsonMapper));
+        delegate.setAuthorizationParametersMapper(
+            new JdbcOAuth2AuthorizationService.JsonMapperOAuth2AuthorizationParametersMapper(sasJsonMapper));
+        return new TenantAwareOAuth2AuthorizationService(delegate, jdbcTemplate, registeredClientRepository, sasJsonMapper);
     }
 
     @Bean
@@ -111,7 +124,7 @@ public class SasConfig {
     public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
         return context -> {
             if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) return;
-            String slug = TenantContext.getSlug();
+            String slug = TenantScope.slug();
             if (slug != null) {
                 context.getClaims().claim("tenant", slug);
             }

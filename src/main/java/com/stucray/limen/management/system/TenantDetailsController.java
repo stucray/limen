@@ -1,6 +1,6 @@
 package com.stucray.limen.management.system;
 
-import com.stucray.limen.management.auth.TenantUserDetails;
+import com.stucray.limen.auth.TenantUserDetails;
 import com.stucray.limen.tenant.TenantRepository;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;

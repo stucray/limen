@@ -1,5 +1,6 @@
 package com.stucray.limen.oauth2;
 
+import com.stucray.limen.tenant.TenantScope;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
@@ -22,7 +23,7 @@ import java.util.Set;
  * principal_name). Instead we write tenant-aware SQL directly and reuse Spring's public
  * row mapper / parameters mapper for value translation.
  *
- * All operations require a TenantContext; missing context throws IllegalStateException.
+ * All operations require an active TenantScope; missing scope throws IllegalStateException.
  */
 public class TenantAwareOAuth2AuthorizationConsentService implements OAuth2AuthorizationConsentService {
 
@@ -116,10 +117,10 @@ public class TenantAwareOAuth2AuthorizationConsentService implements OAuth2Autho
     }
 
     private static Long requireTenantId() {
-        Long tenantId = TenantContext.getTenantId();
+        Long tenantId = TenantScope.tenantId();
         if (tenantId == null) {
             throw new IllegalStateException(
-                "TenantAwareOAuth2AuthorizationConsentService called without TenantContext"
+                "TenantAwareOAuth2AuthorizationConsentService called without TenantScope"
             );
         }
         return tenantId;

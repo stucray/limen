@@ -137,7 +137,10 @@ class ManagementLoginIntegrationTest {
             null, "other-corp", "Other Corp", TenantStatus.ACTIVE, LocalDateTime.now()
         ));
 
+        // TenantAccessFilter force-logs the cross-tenant session out and
+        // redirects to the URL slug's login page (defence-in-depth, parent PRD #32 user story 7).
         mockMvc.perform(get("/manage/t/other-corp/").session(session))
-            .andExpect(status().isForbidden());
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/manage/t/other-corp/login"));
     }
 }

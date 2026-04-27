@@ -1,5 +1,6 @@
 package com.stucray.limen.oauth2;
 
+import com.stucray.limen.tenant.TenantScope;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,7 +30,7 @@ public class TenantIssuerContextFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
         HttpServletRequest request, HttpServletResponse response, FilterChain chain
     ) throws ServletException, IOException {
-        String slug = TenantContext.getSlug();
+        String slug = TenantScope.slug();
         if (slug != null) {
             String issuer = buildBaseUrl(request) + "/t/" + slug;
             AuthorizationServerSettings tenantSettings = AuthorizationServerSettings.builder()

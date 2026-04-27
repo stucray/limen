@@ -1,5 +1,6 @@
 package com.stucray.limen.oauth2;
 
+import com.stucray.limen.tenant.TenantScope;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
@@ -7,6 +8,7 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.util.Assert;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 
@@ -14,11 +16,11 @@ import java.util.List;
  * Decorates an OAuth2AuthorizationService to enforce tenant isolation at the storage layer.
  *
  * Save delegates to the wrapped service then UPDATEs tenant_id on the inserted row from
- * TenantContext. Reads run tenant-filtered SQL using Spring's OAuth2AuthorizationRowMapper.
+ * TenantScope. Reads run tenant-filtered SQL using Spring's OAuth2AuthorizationRowMapper.
  * findByToken delegates to inherit Spring's column-routing for token types, then re-fetches
  * via the tenant-filtered findById.
  *
- * All operations require a TenantContext; missing context throws IllegalStateException.
+ * All operations require an active TenantScope; missing scope throws IllegalStateException.
  */
 public class TenantAwareOAuth2AuthorizationService implements OAuth2AuthorizationService {
 
@@ -29,11 +31,13 @@ public class TenantAwareOAuth2AuthorizationService implements OAuth2Authorizatio
     public TenantAwareOAuth2AuthorizationService(
         OAuth2AuthorizationService delegate,
         JdbcTemplate jdbcTemplate,
-        RegisteredClientRepository registeredClientRepository
+        RegisteredClientRepository registeredClientRepository,
+        JsonMapper jsonMapper
     ) {
         this.delegate = delegate;
         this.jdbcTemplate = jdbcTemplate;
-        this.rowMapper = new JdbcOAuth2AuthorizationService.JsonMapperOAuth2AuthorizationRowMapper(registeredClientRepository);
+        this.rowMapper = new JdbcOAuth2AuthorizationService.JsonMapperOAuth2AuthorizationRowMapper(
+            registeredClientRepository, jsonMapper);
     }
 
     @Override
@@ -101,10 +105,10 @@ public class TenantAwareOAuth2AuthorizationService implements OAuth2Authorizatio
     }
 
     private static Long requireTenantId() {
-        Long tenantId = TenantContext.getTenantId();
+        Long tenantId = TenantScope.tenantId();
         if (tenantId == null) {
             throw new IllegalStateException(
-                "TenantAwareOAuth2AuthorizationService called without TenantContext"
+                "TenantAwareOAuth2AuthorizationService called without TenantScope"
             );
         }
         return tenantId;

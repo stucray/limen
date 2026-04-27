@@ -1,4 +1,4 @@
-package com.stucray.limen.management.auth;
+package com.stucray.limen.auth;
 
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
@@ -11,7 +11,9 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
 
+@Component
 public class TenantAuthProvider implements AuthenticationProvider {
 
     private final TenantRepository tenantRepository;
