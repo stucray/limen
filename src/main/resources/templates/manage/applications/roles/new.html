@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>New Role</title></head>
+<body>
+<h1>New Role — <span th:text="${app.name()}"></span></h1>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/roles'}">← Roles</a>
+
+<div th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+<form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/roles'}">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <div><label>Name <input type="text" name="name" th:value="${name}" autofocus required maxlength="64"/></label></div>
+    <div><label>Description <textarea name="description" th:text="${description}"></textarea></label></div>
+    <button type="submit">Create</button>
+</form>
+</body>
+</html>
