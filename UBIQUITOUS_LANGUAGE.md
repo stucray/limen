@@ -41,8 +41,13 @@
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Membership** | An explicit assignment of a User to an Application or Client, carrying one or more Roles | Assignment, enrollment, participation |
-| **Role** | A named permission defined at Application level, assigned to a User via a Membership, and emitted as the `roles` claim in JWTs | Authority, permission, grant |
+| **Application Membership** | A User's grant of access to an Application, carrying zero or more App Roles. Eligibility prerequisite for any Client Membership in the same Application | App membership, app assignment |
+| **Client Membership** | A User's grant of access to a specific Client within an Application, carrying zero or more Client Roles. Required for the User to complete `/oauth2/authorize` against that Client | Client assignment |
+| **Membership** | Umbrella term covering both Application Membership and Client Membership; always qualify in writing if the distinction matters | Assignment, enrollment, participation |
+| **App Role** | A Role attached to an Application Membership. Governs management-console authority over the Application. Never appears in JWTs | Application role, console role |
+| **Client Role** | A Role attached to a Client Membership. Emitted as a value in the `roles` claim of JWTs issued for that Client | Runtime role |
+| **Role** | A named string defined per Application (`role` table). The same Role can be assigned as either an App Role or a Client Role; its meaning depends on which Membership type it is attached to. Distinct from tenant-level "Role" — see disambiguation below | Authority, permission, grant |
+| **Tenant-level Role** | An out-of-band administrative status implemented as a boolean column on `users` — currently `tenant_owner` (Tenant Owner) and the System-Tenant-only equivalent (System Admin). Not a row in the `role` table; never appears in JWTs | App-level role |
 | **Scope** | An OAuth2 permission defined per Client, requested during token flows, and emitted as the `scope` claim in JWTs | Role, permission |
 
 ## Authorization & Consent
@@ -100,11 +105,12 @@
 - A **Persistent Login** is bound to one **Tenant**; presenting its cookie at another **Tenant**'s URL is rejected
 - A **User** with **Forced Password Change** set must complete it before any **Session** or **Authorization** proceeds
 - A **Tenant** contains zero or more **Applications**
-- An **Application** contains zero or more **Clients** and defines the **Roles** available to all of them
-- A **User** may have a **Membership** in an **Application** and/or in individual **Clients** within it
-- **Application Membership** makes a **User** eligible for **Client Membership** but does not automatically grant it — **Client Membership** is always explicit
-- A **Membership** carries one or more **Roles**; a **User** may hold multiple **Roles** within a single **Membership**
-- **Roles** travel in JWTs as the `roles` claim; **Scopes** travel as the `scope` claim — they are distinct concepts serving different consumers
+- An **Application** contains zero or more **Clients** and defines the **Roles** assignable as either **App Roles** or **Client Roles** under it
+- A **User** may have an **Application Membership** in an Application and/or a **Client Membership** in individual Clients within it
+- **Application Membership** makes a **User** eligible for **Client Membership** but does not automatically grant it — **Client Membership** is always explicit. Revoking an **Application Membership** cascades to revoke all of that User's **Client Memberships** under that Application
+- Each **Membership** carries zero or more **Roles**; an empty Role set is a valid Membership and means the User has access but no specific authority
+- Only **Client Roles** travel in JWTs as the `roles` claim — App Roles never do. **Tenant-level Roles** (Tenant Owner, System Admin) also never appear in JWTs. **Scopes** travel as the `scope` claim — they are distinct concepts serving different consumers
+- A User without a **Client Membership** for the requested Client is rejected at `/oauth2/authorize` with `access_denied`, even after a successful End-User Login
 - A **User** may have zero or more **Persistent Logins** (one per device/browser)
 - Each **Authorization** contains at most one **Authorization Code**, one **Access Token**, one **Refresh Token**, and one **ID Token**
 - An **Authorization Consent** belongs to exactly one **User** and one **Client**
@@ -147,6 +153,7 @@
 - **"Principal"** must be avoided — it has a specific meaning in Spring Security (`java.security.Principal`) and will cause confusion in a Spring Boot codebase.
 - **"Registered Client"** is a Spring implementation term (`RegisteredClient`). Use **Client** in all domain conversations and documentation.
 - **"Role" vs "Scope"** are frequently conflated. **Role** is a management concept (assigned to Users via Memberships, defined per Application, `roles` JWT claim, consumed by Spring Resource Servers). **Scope** is an OAuth2 wire concept (defined per Client, requested during token flows, `scope` JWT claim). Both appear in JWTs but as separate claims.
+- **"Role"** is itself overloaded across two planes. The `role` table is **per Application** and holds the Roles assignable as either an **App Role** (Application Membership) or a **Client Role** (Client Membership). The JWT `roles` claim only contains **Client Roles** for the Client being authorized — App Roles never travel in JWTs. Separately, **Tenant Owner** and **System Admin** are *tenant-level* Roles implemented as boolean flags on `users` (`tenant_owner` and the System-Tenant equivalent) — they are not rows in the `role` table and they govern console authority, not JWT contents. In writing, qualify as **App Role**, **Client Role**, **Tenant Owner**, or **System Admin** rather than the bare word "role" wherever the plane is not obvious from context.
 - **"Authorization"** is overloaded in Spring Security (the process of checking permissions) and in the OAuth2 domain (a persisted grant record). In this codebase, **Authorization** means the OAuth2 grant record. The process of checking permissions should be called **access control**.
 - **"Token"** alone is ambiguous. Always qualify with the type: **Access Token**, **Refresh Token**, **ID Token**.
 - **"Admin"** unqualified is ambiguous now that both **System Admin** and **Tenant Owner** exist. Always qualify.
