@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Add Member</title></head>
+<body>
+<h1>Add Member — <span th:text="${app.name()}"></span></h1>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/members'}">← Members</a>
+
+<div th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+<form th:if="${!grantableUsers.isEmpty()}" method="post"
+      th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/members'}">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <div>
+        <label>User
+            <select name="userId" required>
+                <option th:each="u : ${grantableUsers}" th:value="${u.id()}" th:text="${u.username()}"></option>
+            </select>
+        </label>
+    </div>
+    <button type="submit">Grant membership</button>
+</form>
+<p th:if="${grantableUsers.isEmpty()}">All users in this tenant already have a membership for this application.</p>
+</body>
+</html>
