@@ -13,6 +13,9 @@
 | --- | --- | --- |
 | **Tenant** | A named isolation boundary with its own scoped User pool, Applications, and Clients | Realm, organisation, workspace, account |
 | **Tenant Owner** | A Role held by one or more Users within a Tenant, granting full management authority over it | Tenant admin, tenant manager |
+| **Slug** | The URL-safe identifier for a Tenant, appearing as the path segment in `/t/{slug}/…` and `/manage/t/{slug}/…` | Tenant key, tenant name, code, handle |
+| **Display Name** | The human-readable name of a Tenant, distinct from its Slug | Title, label |
+| **Tenant Isolation** | The guarantee that data, credentials, sessions, and cookies scoped to one Tenant cannot be accessed from another Tenant's HTTP surface | Tenant separation, multi-tenancy boundary |
 
 ## Identity
 
@@ -62,12 +65,20 @@
 | **JWK** | A JSON Web Key — the public-key representation of the Signing Key exposed to clients | Public key |
 | **JWK Set** | The collection of JWKs published at `/oauth2/jwks` for token verification | Key set, JWKS |
 
+## Login Surfaces
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **Management Login** | The login surface at `/manage/t/{slug}/login` used by Tenant Owners and System Admins to access the management console | Console login, admin login |
+| **End-User Login** | The login surface at `/t/{slug}/login` used by OAuth2 end-users during the authorization code flow | OAuth2 login, app login |
+| **Forced Password Change** | The state, signalled by the `must_change_password` flag on a User, requiring a new password to be set before any other authenticated action proceeds | Password reset, mandatory change |
+
 ## Sessions & Persistent Authentication
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **Session** | A server-side record of an authenticated User's HTTP context, identified by `JSESSIONID` | Login session |
-| **Persistent Login** | A database-backed remember-me token enabling re-authentication across browser restarts | Remember-me, stay logged in |
+| **Persistent Login** | A database-backed remember-me token enabling re-authentication across browser restarts; bound to exactly one Tenant | Remember-me, stay logged in |
 | **Series** | The stable identifier for a Persistent Login chain; rotated on compromise detection | Token ID |
 
 ## Authorization Server
@@ -82,7 +93,12 @@
 
 ## Relationships
 
+- Each **Tenant** has a unique **Slug** and an independent **Display Name**
+- **Tenant Isolation** applies across credentials, **Sessions**, **Persistent Logins**, OAuth2 **Authorizations**, and **Authorization Consents** — none of these may cross **Tenant** boundaries
 - A **User** belongs to exactly one **Tenant** (including the **System Tenant**)
+- **Management Login** and **End-User Login** both validate against the **User** pool of the named **Tenant** — the same **Username** in two **Tenants** authenticates two different **Users**
+- A **Persistent Login** is bound to one **Tenant**; presenting its cookie at another **Tenant**'s URL is rejected
+- A **User** with **Forced Password Change** set must complete it before any **Session** or **Authorization** proceeds
 - A **Tenant** contains zero or more **Applications**
 - An **Application** contains zero or more **Clients** and defines the **Roles** available to all of them
 - A **User** may have a **Membership** in an **Application** and/or in individual **Clients** within it
@@ -117,6 +133,14 @@
 
 > **Domain expert:** "Each **Tenant** has its own **Signing Key**, generated when the **Tenant** is provisioned. The private half is stored encrypted under the deployment's **Key Encryption Key**; the public half is served from the **JWK Set**."
 
+> **Dev:** "If two **Tenants** both have a **User** named `alice`, what stops the wrong **User** from authenticating?"
+
+> **Domain expert:** "**Tenant Isolation**. **Management Login** and **End-User Login** both carry the **Slug** from the URL into the auth backend, so credentials are validated against `(tenant_id, username)`, not `username` alone. A **Persistent Login** for tenant A presented at tenant B's URL is also rejected — the cookie is bound to the **Tenant** that issued it."
+
+> **Dev:** "And **Forced Password Change**?"
+
+> **Domain expert:** "Set the flag on a **User** and their next successful authentication — either surface — diverts to a change-password form before any **Session** is fully established or any **Authorization** can resume."
+
 ## Flagged ambiguities
 
 - **"User"** was previously used only for management-level identities. It now covers all authenticated identities — management users and OAuth2 end-users are the **same entity type**, differentiated by **Role** and **Membership**, not by entity type. Do not introduce separate entity types for these personas.
@@ -126,3 +150,6 @@
 - **"Authorization"** is overloaded in Spring Security (the process of checking permissions) and in the OAuth2 domain (a persisted grant record). In this codebase, **Authorization** means the OAuth2 grant record. The process of checking permissions should be called **access control**.
 - **"Token"** alone is ambiguous. Always qualify with the type: **Access Token**, **Refresh Token**, **ID Token**.
 - **"Admin"** unqualified is ambiguous now that both **System Admin** and **Tenant Owner** exist. Always qualify.
+- **"Login"** unqualified is ambiguous between **Management Login** (`/manage/t/{slug}/login`) and **End-User Login** (`/t/{slug}/login`). They share an auth backend but serve different actors and different post-login destinations — always qualify.
+- **"Slug"** vs **"Display Name"** must be kept distinct. The **Slug** is the URL identifier and is immutable in practice; the **Display Name** is the human-readable label and may change. Avoid "tenant name" — it conflates the two.
+- **"TenantContext"** (the deprecated `ThreadLocal` carrier) is no longer in the codebase. Per-request tenant binding is now `TenantScope` — a Spring/Loom-friendly `ScopedValue`. This is implementation detail rather than a domain term, but stale references in old discussions should be read as `TenantScope`.
