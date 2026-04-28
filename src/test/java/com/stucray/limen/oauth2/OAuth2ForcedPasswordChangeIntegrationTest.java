@@ -62,6 +62,10 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        jdbcTemplate.execute("DELETE FROM client_membership");
+        jdbcTemplate.execute("DELETE FROM application_membership_role");
+        jdbcTemplate.execute("DELETE FROM application_membership");
+        jdbcTemplate.execute("DELETE FROM role");
         jdbcTemplate.execute("DELETE FROM oauth2_registered_client WHERE application_id IS NOT NULL");
         jdbcTemplate.execute("DELETE FROM applications");
         jdbcTemplate.execute("DELETE FROM users WHERE tenant_id != (SELECT id FROM tenants WHERE slug = 'system')");
