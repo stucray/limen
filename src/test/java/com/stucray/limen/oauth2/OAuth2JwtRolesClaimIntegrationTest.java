@@ -8,8 +8,8 @@ import com.stucray.limen.management.applications.ApplicationRepository;
 import com.stucray.limen.management.clients.TenantClient;
 import com.stucray.limen.management.clients.TenantClientRepository;
 import com.stucray.limen.management.memberships.ApplicationMembershipService;
-import com.stucray.limen.management.memberships.ClientMembership;
 import com.stucray.limen.management.memberships.ClientMembershipService;
+import com.stucray.limen.management.memberships.ClientMembershipTestFixture;
 import com.stucray.limen.management.roles.Role;
 import com.stucray.limen.management.roles.RoleRepository;
 import com.stucray.limen.tenant.Tenant;
@@ -52,11 +52,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Slice 4 (#43) end-to-end: a User with an Application Membership and a Client
- * Membership carrying Roles completes the authorization code + PKCE flow, and
- * the resulting JWT carries the Roles in the {@code roles} claim. Also covers
- * the negative branch — a User without Client Membership still issues a token
- * with empty {@code roles} (slice 5 / #44 is what later turns this into a gate).
+ * End-to-end: a User with an Application Membership and a Client Membership
+ * carrying Roles completes the authorization code + PKCE flow, and the
+ * resulting JWT carries the Roles in the {@code roles} claim. The
+ * Membership-without-Roles branch still issues a token with empty
+ * {@code roles}; the no-Membership branch is rejected by the gate (slice 5 /
+ * #44) and is covered in {@link OAuth2AuthorizeMembershipGateIntegrationTest}.
  */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
@@ -117,13 +118,10 @@ class OAuth2JwtRolesClaimIntegrationTest {
         TenantClient client = createPkceClient("acme-spa");
 
         // 2. Grant Application + Client Membership and assign the Roles.
-        applicationMembershipService.grant(app.id(), tenant.id(), alice.id(), admin.id());
-        ClientMembership cm = clientMembershipService.grant(
-            client.registeredClientId(), app.id(), tenant.id(), alice.id(), admin.id()
-        );
-        clientMembershipService.updateRoles(
-            cm.id(), client.registeredClientId(), app.id(), tenant.id(),
-            Set.of(viewer.id(), editor.id())
+        ClientMembershipTestFixture.grant(
+            applicationMembershipService, clientMembershipService,
+            app.id(), tenant.id(), alice.id(), admin.id(),
+            client.registeredClientId(), Set.of(viewer.id(), editor.id())
         );
 
         // 3. Run the authorization code + PKCE flow as alice.
@@ -139,10 +137,15 @@ class OAuth2JwtRolesClaimIntegrationTest {
     }
 
     @Test
-    void jwtCarriesEmptyRolesWhenUserHasNoClientMembership() throws Exception {
-        // No Memberships granted — slice 4 still issues the token (the gate is
-        // slice 5). roles must be the empty list.
-        TenantClient client = createPkceClient("acme-spa-no-membership");
+    void jwtCarriesEmptyRolesWhenMembershipHasNoRolesAssigned() throws Exception {
+        // Membership presence (not Role count) is the gate — Membership without
+        // Roles passes the gate and yields a JWT with roles: [].
+        TenantClient client = createPkceClient("acme-spa-no-roles");
+        ClientMembershipTestFixture.grant(
+            applicationMembershipService, clientMembershipService,
+            app.id(), tenant.id(), alice.id(), admin.id(),
+            client.registeredClientId(), Set.of()
+        );
 
         Map<String, Object> claims = runAuthorizationCodeFlow(client, "alice");
 

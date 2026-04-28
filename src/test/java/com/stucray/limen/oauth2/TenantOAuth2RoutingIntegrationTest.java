@@ -14,6 +14,9 @@ import com.stucray.limen.management.clients.ClientManagementService;
 import com.stucray.limen.management.clients.ClientManagementService.ClientCreationResult;
 import com.stucray.limen.management.clients.TenantClient;
 import com.stucray.limen.management.clients.TenantClientRepository;
+import com.stucray.limen.management.memberships.ApplicationMembershipService;
+import com.stucray.limen.management.memberships.ClientMembershipService;
+import com.stucray.limen.management.memberships.ClientMembershipTestFixture;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
@@ -70,6 +73,8 @@ class TenantOAuth2RoutingIntegrationTest {
     @Autowired RegisteredClientRepository registeredClientRepository;
     @Autowired TenantClientRepository tenantClientRepository;
     @Autowired UserRepository userRepository;
+    @Autowired ApplicationMembershipService applicationMembershipService;
+    @Autowired ClientMembershipService clientMembershipService;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired JdbcTemplate jdbcTemplate;
 
@@ -78,6 +83,7 @@ class TenantOAuth2RoutingIntegrationTest {
     Tenant alphaCorpTenant;
     Tenant betaCorpTenant;
     Application alphaApp;
+    User alphaAdmin;
 
     @BeforeEach
     void setUp() {
@@ -97,6 +103,11 @@ class TenantOAuth2RoutingIntegrationTest {
         betaCorpTenant = tenantProvisioningService.createTenant("beta-corp", "Beta Corp");
         alphaApp = applicationRepository.save(new Application(
             null, alphaCorpTenant.id(), "Alpha App", "Test app", LocalDateTime.now()
+        ));
+        alphaAdmin = userRepository.save(new User(
+            null, alphaCorpTenant.id(), "alpha-admin",
+            passwordEncoder.encode("password"),
+            true, false, true, LocalDateTime.now()
         ));
     }
 
@@ -218,7 +229,7 @@ class TenantOAuth2RoutingIntegrationTest {
 
     @Test
     void authorizationCodePkceFlowProducesTokenWithTenantClaims() throws Exception {
-        userRepository.save(new User(
+        User alice = userRepository.save(new User(
             null, alphaCorpTenant.id(), "alice",
             passwordEncoder.encode("password"),
             true, false, false, LocalDateTime.now()
@@ -242,6 +253,11 @@ class TenantOAuth2RoutingIntegrationTest {
         tenantClientRepository.save(new TenantClient(
             null, internalId, alphaApp.id(), alphaCorpTenant.id(), "PKCE Test Client", false
         ));
+        ClientMembershipTestFixture.grant(
+            applicationMembershipService, clientMembershipService,
+            alphaApp.id(), alphaCorpTenant.id(), alice.id(), alphaAdmin.id(),
+            internalId, Set.of()
+        );
 
         // PKCE code verifier + challenge
         byte[] verifierBytes = new byte[32];
@@ -360,7 +376,7 @@ class TenantOAuth2RoutingIntegrationTest {
 
     @Test
     void userinfoEndpointReturnsClaimsForTenantUser() throws Exception {
-        userRepository.save(new User(
+        User bob = userRepository.save(new User(
             null, alphaCorpTenant.id(), "bob",
             passwordEncoder.encode("password"),
             true, false, false, LocalDateTime.now()
@@ -383,6 +399,11 @@ class TenantOAuth2RoutingIntegrationTest {
         tenantClientRepository.save(new TenantClient(
             null, internalId, alphaApp.id(), alphaCorpTenant.id(), "UserInfo Test Client", false
         ));
+        ClientMembershipTestFixture.grant(
+            applicationMembershipService, clientMembershipService,
+            alphaApp.id(), alphaCorpTenant.id(), bob.id(), alphaAdmin.id(),
+            internalId, Set.of()
+        );
 
         byte[] verifierBytes = new byte[32];
         new SecureRandom().nextBytes(verifierBytes);

@@ -5,6 +5,9 @@ import com.nimbusds.jwt.SignedJWT;
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.management.applications.Application;
 import com.stucray.limen.management.applications.ApplicationRepository;
+import com.stucray.limen.management.memberships.ApplicationMembershipService;
+import com.stucray.limen.management.memberships.ClientMembershipService;
+import com.stucray.limen.management.memberships.ClientMembershipTestFixture;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
@@ -53,6 +56,8 @@ class ClientTokenSettingsIntegrationTest {
     @Autowired ClientManagementService clientManagementService;
     @Autowired TenantClientRepository tenantClientRepository;
     @Autowired UserRepository userRepository;
+    @Autowired ApplicationMembershipService applicationMembershipService;
+    @Autowired ClientMembershipService clientMembershipService;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired JdbcTemplate jdbcTemplate;
 
@@ -60,6 +65,7 @@ class ClientTokenSettingsIntegrationTest {
 
     Tenant tenant;
     Application app;
+    User alice;
 
     @BeforeEach
     void setUp() {
@@ -77,7 +83,15 @@ class ClientTokenSettingsIntegrationTest {
 
         tenant = tenantProvisioningService.createTenant("token-test", "Token Test");
         app = applicationRepository.save(new Application(null, tenant.id(), "Test App", null, LocalDateTime.now()));
-        userRepository.save(new User(null, tenant.id(), "alice", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
+        alice = userRepository.save(new User(null, tenant.id(), "alice", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
+    }
+
+    private void grantMembership(String registeredClientId) {
+        ClientMembershipTestFixture.grant(
+            applicationMembershipService, clientMembershipService,
+            app.id(), tenant.id(), alice.id(), alice.id(),
+            registeredClientId, Set.of()
+        );
     }
 
     @Test
@@ -120,6 +134,7 @@ class ClientTokenSettingsIntegrationTest {
             Set.of("http://localhost/callback"), Set.of(), Set.of(OidcScopes.OPENID),
             true, true, 5, 30, false
         );
+        grantMembership(result.client().registeredClientId());
 
         String oauthClientId = jdbcTemplate.queryForObject(
             "SELECT client_id FROM oauth2_registered_client WHERE id = ?",
@@ -183,6 +198,7 @@ class ClientTokenSettingsIntegrationTest {
             Set.of("http://localhost/callback"), Set.of(), Set.of(OidcScopes.OPENID),
             false, true, 5, 30, false  // reuseRefreshTokens=false → rotation
         );
+        grantMembership(result.client().registeredClientId());
 
         String oauthClientId = jdbcTemplate.queryForObject(
             "SELECT client_id FROM oauth2_registered_client WHERE id = ?",
@@ -221,6 +237,7 @@ class ClientTokenSettingsIntegrationTest {
             Set.of("http://localhost/callback"), Set.of(), Set.of(OidcScopes.OPENID),
             false, true, 5, 30, true  // reuseRefreshTokens=true
         );
+        grantMembership(result.client().registeredClientId());
 
         String oauthClientId = jdbcTemplate.queryForObject(
             "SELECT client_id FROM oauth2_registered_client WHERE id = ?",
