@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="layout(pageTitle, content)">
+<head th:replace="~{fragments/head :: head(${pageTitle})}"></head>
+<body class="auth-shell">
+<main th:replace="${content}"></main>
+</body>
+</html>

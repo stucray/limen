@@ -1,27 +1,41 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head><title>Edit Member Roles</title></head>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout-authed :: layout(~{::title}, ~{::main})}">
+<head><title>Edit member roles</title></head>
 <body>
-<h1>Member roles — <span th:text="${memberUsername}"></span> on <span th:text="${app.name()}"></span></h1>
-<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/members'}">← Members</a>
+<main class="container">
+    <ol class="breadcrumb" aria-label="breadcrumb">
+        <li><a th:href="@{'/manage/t/' + ${slug} + '/'}">Home</a></li>
+        <li><a th:href="@{'/manage/t/' + ${slug} + '/applications'}">Applications</a></li>
+        <li th:text="${app.name()}">App</li>
+        <li><a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/members'}">Members</a></li>
+        <li th:text="${memberUsername}">user</li>
+    </ol>
 
-<div th:if="${errorMessage}" th:text="${errorMessage}"></div>
+    <hgroup>
+        <h1>Member roles</h1>
+        <p><strong th:text="${memberUsername}">user</strong> on <strong th:text="${app.name()}">app</strong></p>
+    </hgroup>
 
-<form method="post"
-      th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/members/' + ${membership.id()} + '/edit'}">
-    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-    <fieldset>
-        <legend>Roles</legend>
-        <p th:if="${allRoles.isEmpty()}">No roles defined for this application yet.</p>
-        <div th:each="role : ${allRoles}">
-            <label>
+    <p class="form-error" th:if="${errorMessage}" th:text="${errorMessage}"></p>
+
+    <form method="post"
+          th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/members/' + ${membership.id()} + '/edit'}"
+          class="stack">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <fieldset>
+            <legend>Roles</legend>
+            <p class="muted" th:if="${allRoles.isEmpty()}">No roles defined for this application yet.</p>
+            <label th:each="role : ${allRoles}">
                 <input type="checkbox" name="roleIds" th:value="${role.id()}"
                        th:checked="${assignedRoleIds.contains(role.id())}"/>
                 <span th:text="${role.name()}"></span>
             </label>
+        </fieldset>
+        <div class="form-actions">
+            <button type="submit">Save</button>
+            <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/members'}" class="btn btn--secondary">Cancel</a>
         </div>
-    </fieldset>
-    <button type="submit">Save</button>
-</form>
+    </form>
+</main>
 </body>
 </html>

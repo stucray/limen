@@ -148,9 +148,10 @@ class UserDetailControllerIntegrationTest {
             .andReturn().getResponse().getContentAsString();
 
         // Read-only contract: no membership-mutating forms or links on this page.
+        // (The global Sign out form in the page header posts to /manage/logout, not into the tenant URL space.)
         org.assertj.core.api.Assertions.assertThat(body).doesNotContain("/edit");
         org.assertj.core.api.Assertions.assertThat(body).doesNotContain("/delete");
-        org.assertj.core.api.Assertions.assertThat(body).doesNotContain("<form");
+        org.assertj.core.api.Assertions.assertThat(body).doesNotContain("action=\"/manage/t/");
     }
 
     @Test
