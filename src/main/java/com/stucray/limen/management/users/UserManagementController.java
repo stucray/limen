@@ -1,6 +1,7 @@
 package com.stucray.limen.management.users;
 
 import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.management.memberships.UserMembershipPortfolioQuery;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -11,9 +12,14 @@ import org.springframework.web.bind.annotation.*;
 public class UserManagementController {
 
     private final UserManagementService userManagementService;
+    private final UserMembershipPortfolioQuery userMembershipPortfolioQuery;
 
-    public UserManagementController(UserManagementService userManagementService) {
+    public UserManagementController(
+        UserManagementService userManagementService,
+        UserMembershipPortfolioQuery userMembershipPortfolioQuery
+    ) {
         this.userManagementService = userManagementService;
+        this.userMembershipPortfolioQuery = userMembershipPortfolioQuery;
     }
 
     @GetMapping
@@ -80,6 +86,19 @@ public class UserManagementController {
     ) {
         userManagementService.deleteUser(userId, principal.tenantId());
         return "redirect:/manage/t/" + slug + "/users";
+    }
+
+    @GetMapping("/{userId}")
+    public String detail(
+        @PathVariable String slug,
+        @PathVariable Long userId,
+        @AuthenticationPrincipal TenantUserDetails principal,
+        Model model
+    ) {
+        model.addAttribute("slug", slug);
+        model.addAttribute("user", userManagementService.getUser(userId, principal.tenantId()));
+        model.addAttribute("appMemberships", userMembershipPortfolioQuery.portfolioFor(userId, principal.tenantId()));
+        return "manage/users/detail";
     }
 
     @GetMapping("/{userId}/reset-password")

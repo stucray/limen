@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title th:text="'User · ' + ${user.username()}">User</title></head>
+<body>
+<h1 th:text="${user.username()}">username</h1>
+<a th:href="@{'/manage/t/' + ${slug} + '/users'}">← Users</a>
+
+<dl>
+    <dt>Status</dt>
+    <dd th:text="${user.enabled()} ? 'Active' : 'Disabled'"></dd>
+    <dt>Tenant Owner</dt>
+    <dd th:text="${user.tenantOwner()} ? 'Yes' : 'No'"></dd>
+</dl>
+
+<h2>Memberships</h2>
+
+<p th:if="${#lists.isEmpty(appMemberships)}">
+    No Memberships yet.
+    Grant this User access from an
+    <a th:href="@{'/manage/t/' + ${slug} + '/applications'}">Application</a>.
+</p>
+
+<ul th:unless="${#lists.isEmpty(appMemberships)}" class="memberships">
+    <li th:each="app : ${appMemberships}">
+        <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.applicationId()} + '/members'}"
+           th:text="${app.applicationName()}">App name</a>
+        <span th:if="${#lists.isEmpty(app.appRoles())}"> — no App Roles</span>
+        <span th:unless="${#lists.isEmpty(app.appRoles())}">
+            — App Roles: <span th:text="${#strings.listJoin(app.appRoles(), ', ')}">role names</span>
+        </span>
+
+        <ul th:if="${!#lists.isEmpty(app.clientMemberships())}">
+            <li th:each="client : ${app.clientMemberships()}">
+                <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.applicationId()} + '/clients/' + ${client.registeredClientId()} + '/members'}"
+                   th:text="${client.clientDisplayName()}">Client name</a>
+                <span th:if="${#lists.isEmpty(client.clientRoles())}"> — no Client Roles</span>
+                <span th:unless="${#lists.isEmpty(client.clientRoles())}">
+                    — Client Roles: <span th:text="${#strings.listJoin(client.clientRoles(), ', ')}">role names</span>
+                </span>
+            </li>
+        </ul>
+    </li>
+</ul>
+</body>
+</html>
