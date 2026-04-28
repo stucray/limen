@@ -13,7 +13,7 @@ Concretely, Limen provides:
 - **Per-tenant OIDC issuer** at `https://{host}/t/{slug}/` with its own `.well-known/openid-configuration`, JWKS, authorization, token, introspection, revocation and userinfo endpoints.
 - **Per-tenant signing keys** (RS256, RSA-2048), stored encrypted at rest using a single Key Encryption Key (KEK) supplied via environment variable.
 - **Tenant-scoped storage** for all SAS persistence interfaces (`RegisteredClientRepository`, `OAuth2AuthorizationService`, `OAuth2AuthorizationConsentService`).
-- **A management console** (Thymeleaf + REST) for managing Applications, Clients, Users and (in v2) Roles and Memberships.
+- **A management console** (Thymeleaf + REST) for managing Applications, Clients, Users, Roles, and Memberships.
 - **A System Tenant** at the slug `system` for cross-tenant operations performed by System Admins.
 
 ## 2. Stack
@@ -34,7 +34,7 @@ Concretely, Limen provides:
 
 ## 3. Domain Model
 
-The canonical definitions live in `UBIQUITOUS_LANGUAGE.md`. The diagram below shows how those concepts map to persisted entities in v1.
+The canonical definitions live in `UBIQUITOUS_LANGUAGE.md`. The diagram below shows how those concepts map to persisted entities as of v2.
 
 ```mermaid
 erDiagram
@@ -44,6 +44,16 @@ erDiagram
     TENANT ||--o{ OAUTH2_AUTHORIZATION : "scopes"
     TENANT ||--o{ OAUTH2_AUTHORIZATION_CONSENT : "scopes"
     APPLICATION ||--o{ CLIENT_METADATA : groups
+    APPLICATION ||--o{ ROLE : "defines"
+    APPLICATION ||--o{ APPLICATION_MEMBERSHIP : "scopes"
+    USER ||--o{ APPLICATION_MEMBERSHIP : "holds"
+    APPLICATION_MEMBERSHIP ||--o{ APPLICATION_MEMBERSHIP_ROLE : "assigns"
+    APPLICATION_MEMBERSHIP ||--o{ CLIENT_MEMBERSHIP : "gates"
+    USER ||--o{ CLIENT_MEMBERSHIP : "holds"
+    CLIENT_METADATA ||--o{ CLIENT_MEMBERSHIP : "scopes"
+    CLIENT_MEMBERSHIP ||--o{ CLIENT_MEMBERSHIP_ROLE : "assigns"
+    ROLE ||--o{ APPLICATION_MEMBERSHIP_ROLE : "referenced by"
+    ROLE ||--o{ CLIENT_MEMBERSHIP_ROLE : "referenced by"
     CLIENT_METADATA ||--|| OAUTH2_REGISTERED_CLIENT : "1:1"
 
     TENANT {
@@ -75,6 +85,35 @@ erDiagram
         string display_name
         bool confidential
     }
+    ROLE {
+        bigint id PK
+        bigint application_id FK
+        string name
+        string description
+    }
+    APPLICATION_MEMBERSHIP {
+        bigint id PK
+        bigint user_id FK
+        bigint application_id FK
+        timestamptz granted_at
+        bigint granted_by FK
+    }
+    APPLICATION_MEMBERSHIP_ROLE {
+        bigint application_membership_id PK_FK
+        bigint role_id PK_FK
+    }
+    CLIENT_MEMBERSHIP {
+        bigint id PK
+        bigint user_id FK
+        bigint client_metadata_id FK
+        bigint application_membership_id FK
+        timestamptz granted_at
+        bigint granted_by FK
+    }
+    CLIENT_MEMBERSHIP_ROLE {
+        bigint client_membership_id PK_FK
+        bigint role_id PK_FK
+    }
     TENANT_SIGNING_KEY {
         uuid id PK
         uuid tenant_id FK
@@ -100,7 +139,10 @@ A few things worth calling out:
 - **`User.username` is unique within a Tenant**, not globally. The same username can exist in multiple Tenants.
 - **`client_metadata` joins to `oauth2_registered_client` 1:1** via a UNIQUE foreign key. The SAS table holds the OAuth2-wire fields (client id/secret, grant types, redirect URIs); `client_metadata` holds Limen-specific fields (display name, owning Application, owning Tenant). This split keeps Limen's tenant model from leaking into Spring's schema.
 - **`tenant_signing_key` enforces "at most one ACTIVE key per Tenant"** with a partial unique index: `UNIQUE(tenant_id) WHERE status = 'ACTIVE'`. This is the enforcement point for key rotation.
-- **Roles, Memberships, Scopes are not yet persisted.** The PRD agreed they would be deferred to v2; the current schema does not preclude adding them.
+- **`role` is per-Application.** The same row can be assigned as either an App Role (via `application_membership_role`) or a Client Role (via `client_membership_role`). `ON DELETE RESTRICT` from both join tables means you cannot delete a Role that is still in use — admin must unassign first.
+- **`client_membership` has a hard FK + `ON DELETE CASCADE` to `application_membership`.** Application Membership is the eligibility gate; revoking it cascades the Client Memberships, matching the UL invariant.
+- **Tenant isolation is transitive for the new tables.** `application_membership.application_id → applications.tenant_id` and `client_membership.client_metadata_id → client_metadata.tenant_id` both carry the boundary; the membership tables themselves do not need a `tenant_id` column. The service-layer queries (`UserMembershipPortfolioQuery`, `ClientMembershipQuery`) still apply an explicit `tenant_id` predicate as defence in depth, matching the existing decorator pattern.
+- **`granted_by` is `ON DELETE SET NULL`** so deleting a granter does not cascade-revoke their grants. `granted_at` + `granted_by` form a minimal forensic trail until the audit log lands in v2.5.
 
 ## 4. Architecture Overview
 
@@ -267,16 +309,92 @@ sequenceDiagram
 
 The same pattern applies to the management console at `/manage/t/{slug}/...`, with `PasswordChangeRequiredInterceptor` doing the interception instead of the success handler.
 
-### 4.6 Database schema (v1)
+### 4.6 Authorization — Roles, Memberships, and the JWT `roles` claim
+
+v1 left the `roles` JWT claim hardcoded to `[]`. v2 replaces that with a query against the new Membership tables and adds an explicit gate at `/oauth2/authorize` that rejects authenticated Users without a Client Membership.
+
+**The two planes.** Roles are defined per Application in the `role` table. The same Role row can be attached as either an **App Role** (via `application_membership_role`) or a **Client Role** (via `client_membership_role`). App Roles govern management-console authority over the Application; they never appear in JWTs. Client Roles are what the resource server reads from the `roles` claim.
+
+**JWT emission rule.** `SasConfig.jwtTokenCustomizer()` calls `ClientMembershipQuery.rolesFor(userId, registeredClientId, tenantId)`, which runs:
+
+```sql
+SELECT r.name
+  FROM client_membership cm
+  JOIN client_membership_role cmr ON cmr.client_membership_id = cm.id
+  JOIN role r                     ON r.id = cmr.role_id
+  JOIN client_metadata m          ON m.id = cm.client_metadata_id
+ WHERE cm.user_id = ?
+   AND m.registered_client_id = ?
+   AND m.tenant_id = ?
+ ORDER BY r.name;
+```
+
+The `tenant_id` predicate is redundant — the FK chain already enforces containment — but it is kept explicit as defence in depth, matching the `TenantAware*` decorator pattern. The customizer emits the resulting list as the `roles` claim alongside the existing `tenant` claim. A Client Membership with zero Roles emits `roles: []`; that is a valid, working state, just one without specific authority.
+
+**`/oauth2/authorize` Membership gate.** A `MembershipGateFilter` sits inside the SAS security chain after the SAS pre-validation filter and before `OAuth2AuthorizationEndpointFilter`. It runs only when the request matches `/oauth2/authorize`, the principal is an authenticated `TenantUserDetails`, and the `client_id` parameter resolves to a known `RegisteredClient`. If `ClientMembershipQuery.hasMembership(...)` returns `false`, the filter writes a redirect back to the Client's `redirect_uri` with `error=access_denied` and the original `state`, per RFC 6749 §4.1.2.1.
+
+End-User Login at `/t/{slug}/login` is unchanged. Credentials are still checked against the Tenant's User pool the same way; the Membership gate sits one step downstream so authentication and authorization remain separable failure modes.
+
+```mermaid
+sequenceDiagram
+    participant U as End User
+    participant L as /t/{slug}/login
+    participant G as MembershipGateFilter
+    participant CMQ as ClientMembershipQuery
+    participant SAS as OAuth2AuthorizationEndpointFilter
+    participant TC as JwtTokenCustomizer
+
+    U->>L: credentials OK → SavedRequest replays /oauth2/authorize
+    SAS-->>G: pre-validation done, principal authenticated
+    G->>CMQ: hasMembership(userId, clientId, tenantId)?
+    alt no Client Membership
+        CMQ-->>G: false
+        G-->>U: 302 redirect_uri?error=access_denied&state=...
+    else has Client Membership
+        CMQ-->>G: true
+        G->>SAS: continue chain
+        SAS-->>TC: code → token exchange
+        TC->>CMQ: rolesFor(userId, clientId, tenantId)
+        CMQ-->>TC: ["viewer", ...]
+        TC-->>U: JWT with roles: ["viewer", ...]
+    end
+```
+
+**Implementation note — why a Filter, not an AuthenticationProvider.** The PRD originally proposed an `AuthenticationProvider` decorator on `OAuth2AuthorizationCodeRequestAuthenticationProvider`. SAS 7's configurer captures the validator composite via reflection on an `instanceof` check after `authenticationProviders(consumer)` runs: wrapping or replacing the original provider breaks `OAuth2AuthorizationCodeRequestValidatingFilter` construction (`Assert.notNull(authenticationValidator)`); inserting alongside lets `ProviderManager` catch the gate's `AuthenticationException` and fall through to the original provider, which then issues a code anyway. A pre-endpoint filter has none of those failure modes. The full reasoning lives in the `MembershipGateFilter` class comment.
+
+**Read paths into Memberships.** Two narrow, JdbcTemplate-backed query modules sit alongside the CRUD services:
+
+| Module | Reader | Purpose |
+|---|---|---|
+| `ClientMembershipQuery` | `JwtTokenCustomizer`, `MembershipGateFilter` | Per-(user, client, tenant) Roles list + presence check on the request hot path |
+| `UserMembershipPortfolioQuery` | User detail screen | Per-(user, tenant) full portfolio: every App Membership with App Roles, nested with Client Memberships and Client Roles |
+
+Both apply the explicit `tenant_id` predicate. `UserMembershipPortfolioQuery` issues two SELECTs (one per membership table) and assembles in Java rather than COALESCE-ing in SQL — the assembly is cheaper to read than a six-way join.
+
+**UI surface.** Per-Application primary, per-User read-only:
+
+| Route | Purpose |
+|---|---|
+| `/manage/t/{slug}/applications/{appId}/roles/**` | Role catalogue CRUD |
+| `/manage/t/{slug}/applications/{appId}/members/**` | Application Membership grant / Role assign / revoke |
+| `/manage/t/{slug}/applications/{appId}/clients/{clientId}/members/**` | Client Membership grant / Role assign / revoke (gated on existing App Membership) |
+| `/manage/t/{slug}/users/{userId}` | Read-only Membership portfolio for the User; rows link back to the per-Application / per-Client editing screens |
+
+There is intentionally no second write path on the User detail page — all editing happens from the Application screens.
+
+### 4.7 Database schema
 
 | Migration | Purpose |
 |---|---|
 | `V1__initial_schema.sql` | All baseline tables (`tenants`, `users`, `persistent_logins`, `applications`, `oauth2_registered_client`, `oauth2_authorization`, `oauth2_authorization_consent`, `client_metadata`, `tenant_signing_key`) and their indexes, including the partial unique "one ACTIVE signing key per tenant" index |
 | `V2__add_tenant_to_persistent_logins.sql` | Adds `tenant_id` to `persistent_logins`, swaps the primary key to `(tenant_id, series)`, and indexes `(tenant_id, username)`. `TRUNCATE`s existing rows — the conservative response to a tenant-isolation gap, since the old two-segment cookie format cannot represent the tenant either |
+| `V3__role_catalogue.sql` | Adds the per-Application `role` table (`UNIQUE(application_id, name)`). Discrete rows replace freeform strings: typo-proof assignment, safe renames, room for future metadata, and a natural surface for the "Manage Roles" screen. `ON DELETE CASCADE` from `applications`; the role-assignment join tables in V4/V5 reference `role` with `ON DELETE RESTRICT` so an in-use Role cannot be silently removed |
+| `V4__application_membership.sql` | Adds `application_membership` (`UNIQUE(user_id, application_id)`) and `application_membership_role`. App Memberships govern management-console authority over the Application; their Roles never travel in JWTs |
+| `V5__client_membership.sql` | Adds `client_membership` (`UNIQUE(user_id, client_metadata_id)`) and `client_membership_role`. Hard FK + `ON DELETE CASCADE` from `client_membership.application_membership_id` to `application_membership(id)` enforces the eligibility-gate semantic at the schema level: revoking an App Membership cascades the Client Memberships under it. The cross-table invariant (Client Membership's App Membership must reference the same Application as the Client Membership's Client) is enforced in the service layer rather than via a DB trigger |
 
-The schema was originally built up across 12 migrations during the v1 PRD, including two destructive `DROP TABLE / CREATE TABLE` steps to retrofit tenant scoping onto the OAuth2 storage tables. Before any production data existed, those were consolidated into the single baseline above. Future migrations must be **additive** (`ALTER TABLE ADD COLUMN ... NULL` → backfill → `ALTER ... NOT NULL`) — never `DROP TABLE` on the tenant-scoped OAuth2 tables, since they will hold live grants and consents.
+Future migrations must be **additive** (`ALTER TABLE ADD COLUMN ... NULL` → backfill → `ALTER ... NOT NULL`) — never `DROP TABLE` on the tenant-scoped OAuth2 tables, since they will hold live grants and consents.
 
-### 4.7 HTTP route map
+### 4.8 HTTP route map
 
 | Surface | Pattern | Notes |
 |---|---|---|
@@ -293,19 +411,22 @@ The schema was originally built up across 12 migrations during the v1 PRD, inclu
 | Management | `GET /manage/t/{slug}/login`, `POST /manage/t/{slug}/login` | Tenant Owner / System Admin login |
 | Management | `GET /manage/t/{slug}/` | Dashboard |
 | Management | `/manage/t/{slug}/applications/**` | Application + Client CRUD |
-| Management | `/manage/t/{slug}/users/**` | User CRUD |
+| Management | `/manage/t/{slug}/applications/{appId}/roles/**` | Role catalogue CRUD |
+| Management | `/manage/t/{slug}/applications/{appId}/members/**` | Application Membership + App Role assignment |
+| Management | `/manage/t/{slug}/applications/{appId}/clients/{clientId}/members/**` | Client Membership + Client Role assignment |
+| Management | `/manage/t/{slug}/users/**` | User CRUD; `GET /users/{userId}` shows the User's read-only Membership portfolio |
 | Management | `/manage/t/{slug}/change-password` | In-console forced password change |
 | System | `/manage/t/system/...` | System Admin operations: suspend / unsuspend / delete Tenants |
 
-### 4.8 Tests
+### 4.9 Tests
 
-The suite is integration-heavy and runs against real Postgres via Testcontainers. The OAuth2 storage decorators each have a tenant-isolation contract test that proves a row written under Tenant A is invisible to Tenant B. The end-to-end OAuth2 flow has an integration test that exercises the full per-tenant issuer / JWKS / authorize / token chain.
+The suite is integration-heavy and runs against real Postgres via Testcontainers. The OAuth2 storage decorators each have a tenant-isolation contract test that proves a row written under Tenant A is invisible to Tenant B. The end-to-end OAuth2 flow has an integration test that exercises the full per-tenant issuer / JWKS / authorize / token chain. The v2 Membership work adds an end-to-end test that drives the full Membership-to-JWT path (`OAuth2JwtRolesClaimIntegrationTest`) and a gate test that asserts `access_denied` for an authenticated User without a Client Membership (`OAuth2AuthorizeMembershipGateIntegrationTest`).
 
 There is currently no separation between unit and integration tests — the fast path is `mvn test`, which boots Testcontainers for everything.
 
 ## 5. Current Gaps and Shortcomings
 
-These are known limitations of the v1 surface. None of them block the product working; all of them are fair targets for follow-up work.
+These are known limitations of the current surface. None of them block the product working; all of them are fair targets for follow-up work.
 
 ### Authentication and identity
 
@@ -313,10 +434,6 @@ These are known limitations of the v1 surface. None of them block the product wo
 - **No email capability.** Forced password change exists, but there is no password-reset-via-email flow, no signup confirmation, and no notification on suspicious login. Tenant Owners must hand out temporary passwords out-of-band.
 - **No account lockout or brute-force protection** on either the management login or the end-user login.
 - **No session management UI.** Users cannot list or revoke their active sessions, and Tenant Owners cannot terminate a User's sessions.
-
-### Authorization (the v2 hole)
-
-- **Roles, Memberships and Scopes are not yet persisted.** The `roles` JWT claim is currently emitted as `[]` for everyone. This is by design for v1 but it is the largest functional gap in the product.
 
 ### Operational concerns
 
@@ -339,10 +456,10 @@ These are known limitations of the v1 surface. None of them block the product wo
 
 Roughly grouped by horizon. None of these are committed to dates.
 
-### v2 — close the authorization hole
+### ~~v2 — close the authorization hole~~ (shipped 2026-04-28)
 
-1. **Roles, Memberships, Scopes** — the v1 PRD explicitly deferred these. The work is to add the schema (`roles`, `application_membership`, `client_membership`, optional `client_scopes`), wire Memberships through to the `roles` JWT claim, and surface the management UI for assigning them.
-2. **Application + Client membership UI** in the Tenant Owner console.
+1. ~~**Roles, Memberships, Scopes** — the v1 PRD explicitly deferred these.~~ Shipped: per-Application `role` catalogue, split `application_membership` / `client_membership` tables with role-join tables, real `roles` JWT claim from Client Memberships, `/oauth2/authorize` Membership gate. Scopes intentionally untouched (still on `oauth2_registered_client.scopes`); see §4.6 for the wiring. PRD #39, slices #40–#46.
+2. ~~**Application + Client membership UI** in the Tenant Owner console.~~ Shipped: per-Application Members and Roles screens, per-Client Members screen, read-only Membership portfolio on the User detail page (rows link back to the Application screens for editing).
 
 ### v2.5 — operational hardening
 
