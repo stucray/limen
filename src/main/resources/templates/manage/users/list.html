@@ -17,7 +17,7 @@
     </thead>
     <tbody>
         <tr th:each="user : ${users}">
-            <td th:text="${user.username()}"></td>
+            <td><a th:href="@{'/manage/t/' + ${slug} + '/users/' + ${user.id()}}" th:text="${user.username()}"></a></td>
             <td th:text="${user.enabled() ? 'Active' : 'Disabled'}"></td>
             <td th:text="${user.tenantOwner() ? 'Yes' : 'No'}"></td>
             <td>
