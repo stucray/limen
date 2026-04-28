@@ -35,6 +35,11 @@ class RoleManagementServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // Clear any membership-role assignments from membership tests so the
+        // role delete below is not blocked by ON DELETE RESTRICT.
+        jdbcTemplate.execute("DELETE FROM client_membership");
+        jdbcTemplate.execute("DELETE FROM application_membership_role");
+        jdbcTemplate.execute("DELETE FROM application_membership");
         jdbcTemplate.execute("DELETE FROM role");
         jdbcTemplate.execute("DELETE FROM applications");
         jdbcTemplate.execute("DELETE FROM tenants WHERE slug IN ('roles-a', 'roles-b')");

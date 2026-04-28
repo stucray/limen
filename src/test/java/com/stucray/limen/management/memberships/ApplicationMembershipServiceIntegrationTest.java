@@ -47,6 +47,10 @@ class ApplicationMembershipServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // client_membership rows (from ClientMembership tests) FK back into
+        // application_membership and role; clear them first so the existing
+        // DELETEs below don't trip ON DELETE RESTRICT on role.
+        jdbcTemplate.execute("DELETE FROM client_membership");
         jdbcTemplate.execute("DELETE FROM application_membership_role");
         jdbcTemplate.execute("DELETE FROM application_membership");
         jdbcTemplate.execute("DELETE FROM role");

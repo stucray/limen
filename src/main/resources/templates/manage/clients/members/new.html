@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Add Client Member</title></head>
+<body>
+<h1>Add Member — <span th:text="${client.displayName()}"></span> <small>on <span th:text="${app.name()}"></span></small></h1>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${client.registeredClientId()} + '/members'}">← Members</a>
+
+<div th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+<form th:if="${!grantableUsers.isEmpty()}" method="post"
+      th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${client.registeredClientId()} + '/members'}">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <div>
+        <label>User
+            <select name="userId" required>
+                <option th:each="u : ${grantableUsers}" th:value="${u.id()}" th:text="${u.username()}"></option>
+            </select>
+        </label>
+    </div>
+    <button type="submit">Grant client membership</button>
+</form>
+<p th:if="${grantableUsers.isEmpty()}">No eligible users. Application Membership for this app is required first; once granted, users will appear here.</p>
+</body>
+</html>
