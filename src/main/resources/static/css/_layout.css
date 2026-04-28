@@ -112,3 +112,26 @@
     padding: var(--space-lg);
     background: var(--surface-page);
 }
+
+.landing {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    width: 100%;
+    max-width: var(--content-narrow);
+}
+
+.landing__brand {
+    text-align: center;
+    margin: 0 0 var(--space-sm);
+}
+
+.landing__brand h1 {
+    margin: 0;
+    font-size: var(--font-size-6);
+}
+
+.landing__brand p {
+    margin: var(--space-2xs) 0 0;
+    color: var(--text-muted);
+}

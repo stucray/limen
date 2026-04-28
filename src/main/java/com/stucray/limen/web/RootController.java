@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class RootController {
 
     @GetMapping("/")
-    public String redirectToSystemLogin() {
-        return "redirect:/manage/t/system/login";
+    public String landing() {
+        return "landing";
     }
 }
