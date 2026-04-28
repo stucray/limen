@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Roles</title></head>
+<body>
+<h1>Roles — <span th:text="${app.name()}"></span></h1>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications'}">← Applications</a>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/roles/new'}">New role</a>
+
+<div th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+<table>
+    <thead>
+        <tr><th>Name</th><th>Description</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+        <tr th:each="role : ${roles}">
+            <td th:text="${role.name()}"></td>
+            <td th:text="${role.description()}"></td>
+            <td>
+                <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/roles/' + ${role.id()} + '/edit'}">Edit</a>
+                <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/roles/' + ${role.id()} + '/delete'}" style="display:inline">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit" onclick="return confirm('Delete this role?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+    </tbody>
+</table>
+</body>
+</html>

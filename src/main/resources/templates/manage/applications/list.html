@@ -19,6 +19,7 @@
             <td>
                 <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/edit'}">Edit</a>
                 <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients'}">Clients</a>
+                <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/roles'}">Roles</a>
                 <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/delete'}" style="display:inline">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                     <button type="submit" onclick="return confirm('Delete this application?')">Delete</button>
