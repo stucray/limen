@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="layout(pageTitle, content)">
+<head th:replace="~{fragments/head :: head(${pageTitle})}"></head>
+<body>
+<header class="app-header">
+    <div class="app-header__inner">
+        <span class="app-header__brand">Limen</span>
+        <div class="app-header__user">
+            <span class="app-header__user-name" th:if="${currentUsername}" th:text="${currentUsername}">user</span>
+            <form method="post" th:action="@{/manage/logout}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="btn--ghost">Sign out</button>
+            </form>
+        </div>
+    </div>
+</header>
+<main th:replace="${content}"></main>
+</body>
+</html>

@@ -1,33 +1,50 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout-authed :: layout(~{::title}, ~{::main})}">
 <head><title>Applications</title></head>
 <body>
-<h1>Applications</h1>
-<a th:href="@{'/manage/t/' + ${slug} + '/'}">← Home</a>
-<a th:href="@{'/manage/t/' + ${slug} + '/applications/new'}">New application</a>
+<main class="container">
+    <ol class="breadcrumb" aria-label="breadcrumb">
+        <li><a th:href="@{'/manage/t/' + ${slug} + '/'}">Home</a></li>
+        <li>Applications</li>
+    </ol>
 
-<div th:if="${errorMessage}" th:text="${errorMessage}"></div>
+    <div class="page-header">
+        <hgroup>
+            <h1>Applications</h1>
+            <p>Application registrations and their roles, clients, and members.</p>
+        </hgroup>
+        <a th:href="@{'/manage/t/' + ${slug} + '/applications/new'}" class="btn">New application</a>
+    </div>
 
-<table>
-    <thead>
-        <tr><th>Name</th><th>Description</th><th>Actions</th></tr>
-    </thead>
-    <tbody>
-        <tr th:each="app : ${applications}">
-            <td th:text="${app.name()}"></td>
-            <td th:text="${app.description()}"></td>
-            <td>
-                <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/edit'}">Edit</a>
-                <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients'}">Clients</a>
-                <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/roles'}">Roles</a>
-                <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/members'}">Members</a>
-                <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/delete'}" style="display:inline">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                    <button type="submit" onclick="return confirm('Delete this application?')">Delete</button>
-                </form>
-            </td>
-        </tr>
-    </tbody>
-</table>
+    <p class="form-error" th:if="${errorMessage}" th:text="${errorMessage}"></p>
+
+    <table>
+        <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Description</th>
+                <th scope="col">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="app : ${applications}">
+                <td><a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/edit'}" th:text="${app.name()}"></a></td>
+                <td th:text="${app.description()}" class="muted"></td>
+                <td>
+                    <div class="actions">
+                        <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/edit'}" class="btn btn--secondary">Edit</a>
+                        <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients'}" class="btn btn--secondary">Clients</a>
+                        <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/roles'}" class="btn btn--secondary">Roles</a>
+                        <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/members'}" class="btn btn--secondary">Members</a>
+                        <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/delete'}">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                            <button type="submit" class="btn--danger" onclick="return confirm('Delete this application?')">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</main>
 </body>
 </html>

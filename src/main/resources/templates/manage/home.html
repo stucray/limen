@@ -1,28 +1,37 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout-authed :: layout(~{::title}, ~{::main})}">
 <head>
     <title th:text="|${tenantName} — Limen|">Limen</title>
 </head>
 <body>
+<main class="container">
+    <hgroup>
+        <h1 th:text="${tenantName}">Tenant</h1>
+        <p>Welcome, <span th:text="${username}">user</span>.</p>
+    </hgroup>
 
-<h1 th:text="${tenantName}">Tenant</h1>
-<p>Welcome, <span th:text="${username}">user</span>.</p>
-
-<nav>
-    <ul th:if="${isSystemAdmin}">
-        <li><a th:href="@{'/manage/system/tenants'}">Tenants</a></li>
-    </ul>
-    <ul th:unless="${isSystemAdmin}">
-        <li><a th:href="@{'/manage/t/' + ${slug} + '/users'}">Users</a></li>
-        <li><a th:href="@{'/manage/t/' + ${slug} + '/applications'}">Applications</a></li>
-        <li><a th:href="@{'/manage/t/' + ${slug} + '/settings'}">Tenant Settings</a></li>
-    </ul>
-</nav>
-
-<form method="post" th:action="@{/manage/logout}">
-    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-    <button type="submit">Sign out</button>
-</form>
-
+    <nav class="nav-tiles">
+        <ul th:if="${isSystemAdmin}">
+            <li><a th:href="@{'/manage/system/tenants'}" class="nav-tile">
+                <span class="nav-tile__title">Tenants</span>
+                <span class="nav-tile__desc">Manage tenants across the system.</span>
+            </a></li>
+        </ul>
+        <ul th:unless="${isSystemAdmin}">
+            <li><a th:href="@{'/manage/t/' + ${slug} + '/users'}" class="nav-tile">
+                <span class="nav-tile__title">Users</span>
+                <span class="nav-tile__desc">User accounts and ownership.</span>
+            </a></li>
+            <li><a th:href="@{'/manage/t/' + ${slug} + '/applications'}" class="nav-tile">
+                <span class="nav-tile__title">Applications</span>
+                <span class="nav-tile__desc">Application registrations and roles.</span>
+            </a></li>
+            <li><a th:href="@{'/manage/t/' + ${slug} + '/settings'}" class="nav-tile">
+                <span class="nav-tile__title">Tenant Settings</span>
+                <span class="nav-tile__desc">Tenant-level configuration.</span>
+            </a></li>
+        </ul>
+    </nav>
+</main>
 </body>
 </html>

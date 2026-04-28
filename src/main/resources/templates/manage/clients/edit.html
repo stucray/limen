@@ -1,23 +1,46 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head><title>Edit Client</title></head>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout-authed :: layout(~{::title}, ~{::main})}">
+<head><title>Edit client</title></head>
 <body>
-<h1>Edit Client — <span th:text="${clientSettings.tenantClient().displayName()}"></span></h1>
-<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients'}">← Clients</a>
-<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/members'}">Members</a>
+<main class="container">
+    <ol class="breadcrumb" aria-label="breadcrumb">
+        <li><a th:href="@{'/manage/t/' + ${slug} + '/'}">Home</a></li>
+        <li><a th:href="@{'/manage/t/' + ${slug} + '/applications'}">Applications</a></li>
+        <li th:text="${app.name()}">App</li>
+        <li><a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients'}">Clients</a></li>
+        <li th:text="${clientSettings.tenantClient().displayName()}">Client</li>
+    </ol>
 
-<form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/edit'}">
-    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <div class="page-header">
+        <hgroup>
+            <h1>Edit client</h1>
+            <p th:text="${clientSettings.tenantClient().displayName()}">Client name</p>
+        </hgroup>
+        <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/members'}" class="btn btn--secondary">Members</a>
+    </div>
 
-    <fieldset>
-        <legend>Token settings</legend>
-        <div><label>Access token TTL (minutes) <input type="number" name="accessTokenTtlMinutes" th:value="${clientSettings.accessTokenTtlMinutes()}" min="1" required/></label></div>
-        <div><label>Refresh token TTL (days) <input type="number" name="refreshTokenTtlDays" th:value="${clientSettings.refreshTokenTtlDays()}" min="1" required/></label></div>
-        <div><label><input type="checkbox" name="reuseRefreshTokens" th:checked="${clientSettings.reuseRefreshTokens()}"/> Reuse refresh tokens (uncheck to rotate)</label></div>
-        <div><label><input type="checkbox" name="requirePkce" th:checked="${clientSettings.requirePkce()}"/> Require PKCE</label></div>
-    </fieldset>
+    <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/edit'}" class="stack">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
-    <button type="submit">Save</button>
-</form>
+        <fieldset>
+            <legend>Token settings</legend>
+            <label>
+                Access token TTL (minutes)
+                <input type="number" name="accessTokenTtlMinutes" th:value="${clientSettings.accessTokenTtlMinutes()}" min="1" required/>
+            </label>
+            <label>
+                Refresh token TTL (days)
+                <input type="number" name="refreshTokenTtlDays" th:value="${clientSettings.refreshTokenTtlDays()}" min="1" required/>
+            </label>
+            <label><input type="checkbox" name="reuseRefreshTokens" th:checked="${clientSettings.reuseRefreshTokens()}"/> Reuse refresh tokens (uncheck to rotate)</label>
+            <label><input type="checkbox" name="requirePkce" th:checked="${clientSettings.requirePkce()}"/> Require PKCE</label>
+        </fieldset>
+
+        <div class="form-actions">
+            <button type="submit">Save</button>
+            <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients'}" class="btn btn--secondary">Cancel</a>
+        </div>
+    </form>
+</main>
 </body>
 </html>

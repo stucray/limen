@@ -1,28 +1,43 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout-authed :: layout(~{::title}, ~{::main})}">
 <head><title th:text="|Settings — ${tenant.displayName()}|">Settings</title></head>
 <body>
-<h1>Tenant Settings</h1>
-<a th:href="@{'/manage/t/' + ${slug} + '/'}">← Home</a>
+<main class="container">
+    <ol class="breadcrumb" aria-label="breadcrumb">
+        <li><a th:href="@{'/manage/t/' + ${slug} + '/'}">Home</a></li>
+        <li>Tenant Settings</li>
+    </ol>
 
-<section>
-    <h2>Details</h2>
-    <dl>
-        <dt>Slug</dt><dd th:text="${tenant.slug()}"></dd>
-        <dt>Status</dt><dd th:text="${tenant.status()}"></dd>
-        <dt>Created</dt><dd th:text="${#temporals.format(tenant.createdAt(), 'yyyy-MM-dd')}"></dd>
-    </dl>
-</section>
+    <hgroup>
+        <h1>Tenant settings</h1>
+        <p>Configuration for this tenant.</p>
+    </hgroup>
 
-<section>
-    <h2>Display Name</h2>
-    <form method="post" th:action="@{'/manage/t/' + ${slug} + '/settings/display-name'}">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-        <div>
-            <label>Display name <input type="text" name="displayName" th:value="${tenant.displayName()}" required/></label>
-        </div>
-        <button type="submit">Save</button>
-    </form>
-</section>
+    <section class="section">
+        <h2>Details</h2>
+        <dl class="detail-list">
+            <dt>Slug</dt>
+            <dd><code th:text="${tenant.slug()}"></code></dd>
+            <dt>Status</dt>
+            <dd th:text="${tenant.status()}"></dd>
+            <dt>Created</dt>
+            <dd th:text="${#temporals.format(tenant.createdAt(), 'yyyy-MM-dd')}"></dd>
+        </dl>
+    </section>
+
+    <section class="section">
+        <h2>Display name</h2>
+        <form method="post" th:action="@{'/manage/t/' + ${slug} + '/settings/display-name'}" class="stack">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <label>
+                Display name
+                <input type="text" name="displayName" th:value="${tenant.displayName()}" required/>
+            </label>
+            <div class="form-actions">
+                <button type="submit">Save</button>
+            </div>
+        </form>
+    </section>
+</main>
 </body>
 </html>

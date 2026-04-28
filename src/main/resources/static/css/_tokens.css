@@ -1,0 +1,67 @@
+:root {
+    --brand: var(--indigo-7);
+    --brand-strong: var(--indigo-9);
+    --brand-soft: var(--indigo-1);
+
+    --surface-page: var(--gray-0);
+    --surface-card: white;
+    --surface-raised: var(--gray-1);
+    --surface-sunken: var(--gray-2);
+
+    --text-strong: var(--gray-9);
+    --text: var(--gray-8);
+    --text-muted: var(--gray-6);
+    --text-on-brand: white;
+
+    --border: var(--gray-3);
+    --border-strong: var(--gray-4);
+
+    --danger: var(--red-7);
+    --danger-strong: var(--red-9);
+    --success: var(--green-7);
+    --warning: var(--orange-7);
+
+    --space-2xs: var(--size-1);
+    --space-xs: var(--size-2);
+    --space-sm: var(--size-3);
+    --space-md: var(--size-4);
+    --space-lg: var(--size-5);
+    --space-xl: var(--size-7);
+    --space-2xl: var(--size-9);
+
+    --radius-sm: var(--radius-2);
+    --radius-md: var(--radius-3);
+    --radius-lg: var(--radius-4);
+
+    --shadow-card: var(--shadow-2);
+    --shadow-overlay: var(--shadow-4);
+
+    --content-max: 72rem;
+    --content-narrow: 28rem;
+
+    --font-body: var(--font-sans);
+    --font-mono: var(--font-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --surface-page: var(--gray-12);
+        --surface-card: var(--gray-11);
+        --surface-raised: var(--gray-10);
+        --surface-sunken: var(--gray-12);
+
+        --text-strong: var(--gray-0);
+        --text: var(--gray-2);
+        --text-muted: var(--gray-5);
+
+        --border: var(--gray-9);
+        --border-strong: var(--gray-8);
+
+        --brand: var(--indigo-4);
+        --brand-strong: var(--indigo-2);
+        --brand-soft: var(--indigo-12);
+
+        --shadow-color: 220 3% 5%;
+        --shadow-strength: 25%;
+    }
+}
