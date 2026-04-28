@@ -18,12 +18,15 @@ import java.time.LocalDateTime;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Bare /login is no longer a POST target — it 302s to the canonical System Tenant
- * management login. Authentication itself is exercised by {@link com.stucray.limen.management.ManagementLoginIntegrationTest}
+ * Bare /login is no longer a POST target — it 302s to the landing page (or to a
+ * specific tenant's management login when given a {@code ?slug=} query parameter).
+ * The root path {@code /} renders the landing page directly. Authentication itself
+ * is exercised by {@link com.stucray.limen.management.ManagementLoginIntegrationTest}
  * (management surface) and by {@code TenantOAuth2RoutingIntegrationTest} /
  * {@code OAuth2ForcedPasswordChangeIntegrationTest} (OAuth2 surface).
  */
@@ -50,17 +53,25 @@ class LoginIntegrationTest {
     }
 
     @Test
-    void bareLoginRedirectsToSystemManagementLogin() throws Exception {
+    void bareLoginRedirectsToLanding() throws Exception {
         mockMvc.perform(get("/login"))
             .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/manage/t/system/login"));
+            .andExpect(redirectedUrl("/"));
     }
 
     @Test
-    void rootRedirectsToSystemManagementLogin() throws Exception {
-        mockMvc.perform(get("/"))
+    void loginWithSlugRedirectsToTenantLogin() throws Exception {
+        mockMvc.perform(get("/login").param("slug", "acme"))
             .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/manage/t/system/login"));
+            .andExpect(redirectedUrl("/manage/t/acme/login"));
+    }
+
+    @Test
+    void rootRendersLandingPage() throws Exception {
+        mockMvc.perform(get("/"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Sign in to your organization")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Create a new organization")));
     }
 
     @Test

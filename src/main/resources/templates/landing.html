@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout(~{::title}, ~{::main})}">
+<head><title>Limen</title></head>
+<body>
+<main class="landing">
+    <hgroup class="landing__brand">
+        <h1>Limen</h1>
+        <p>Identity &amp; access for your applications.</p>
+    </hgroup>
+
+    <article class="card card--auth">
+        <h2>Sign in to your organization</h2>
+        <form method="get" action="/login" class="stack">
+            <label>
+                Organization slug
+                <input type="text" name="slug" placeholder="acme"/>
+            </label>
+            <button type="submit" class="btn--block">Continue</button>
+        </form>
+    </article>
+
+    <article class="card card--auth">
+        <h2>Create a new organization</h2>
+        <p class="muted">Set up a new tenant and become its first owner.</p>
+        <a href="/signup" class="btn btn--secondary btn--block">Sign up</a>
+    </article>
+</main>
+</body>
+</html>
