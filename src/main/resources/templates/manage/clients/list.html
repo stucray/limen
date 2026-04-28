@@ -2,9 +2,9 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head><title>Clients</title></head>
 <body>
-<h1>Clients — <span th:text="${application.name()}"></span></h1>
+<h1>Clients — <span th:text="${app.name()}"></span></h1>
 <a th:href="@{'/manage/t/' + ${slug} + '/applications'}">← Applications</a>
-<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${application.id()} + '/clients/new'}">New client</a>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/new'}">New client</a>
 
 <div th:if="${clientSecret}">
     <strong>Client secret (shown once):</strong> <code th:text="${clientSecret}"></code><br/>
@@ -20,12 +20,13 @@
             <td th:text="${client.displayName()}"></td>
             <td th:text="${client.confidential() ? 'Confidential' : 'Public'}"></td>
             <td>
-                <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${application.id()} + '/clients/' + ${client.registeredClientId()} + '/edit'}">Edit</a>
-                <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${application.id()} + '/clients/' + ${client.registeredClientId()} + '/rotate-secret'}" style="display:inline" th:if="${client.confidential()}">
+                <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${client.registeredClientId()} + '/edit'}">Edit</a>
+                <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${client.registeredClientId()} + '/members'}">Members</a>
+                <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${client.registeredClientId()} + '/rotate-secret'}" style="display:inline" th:if="${client.confidential()}">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                     <button type="submit">Rotate secret</button>
                 </form>
-                <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${application.id()} + '/clients/' + ${client.registeredClientId()} + '/delete'}" style="display:inline">
+                <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${client.registeredClientId()} + '/delete'}" style="display:inline">
                     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                     <button type="submit" onclick="return confirm('Delete this client?')">Delete</button>
                 </form>

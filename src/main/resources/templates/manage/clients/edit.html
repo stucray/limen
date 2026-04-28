@@ -3,9 +3,10 @@
 <head><title>Edit Client</title></head>
 <body>
 <h1>Edit Client — <span th:text="${clientSettings.tenantClient().displayName()}"></span></h1>
-<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${application.id()} + '/clients'}">← Clients</a>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients'}">← Clients</a>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/members'}">Members</a>
 
-<form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${application.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/edit'}">
+<form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/edit'}">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
     <fieldset>

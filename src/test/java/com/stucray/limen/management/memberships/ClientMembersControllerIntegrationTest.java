@@ -3,6 +3,8 @@ package com.stucray.limen.management.memberships;
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.management.applications.Application;
 import com.stucray.limen.management.applications.ApplicationRepository;
+import com.stucray.limen.management.clients.ClientManagementService;
+import com.stucray.limen.management.clients.TenantClient;
 import com.stucray.limen.management.roles.Role;
 import com.stucray.limen.management.roles.RoleRepository;
 import com.stucray.limen.tenant.Tenant;
@@ -19,10 +21,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -35,14 +39,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
-class MembersControllerIntegrationTest {
+class ClientMembersControllerIntegrationTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired TenantRepository tenantRepository;
     @Autowired UserRepository userRepository;
     @Autowired ApplicationRepository applicationRepository;
     @Autowired RoleRepository roleRepository;
-    @Autowired ApplicationMembershipRepository membershipRepository;
+    @Autowired ApplicationMembershipRepository appMembershipRepository;
+    @Autowired ClientMembershipRepository clientMembershipRepository;
+    @Autowired ClientManagementService clientManagementService;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired JdbcTemplate jdbcTemplate;
 
@@ -51,13 +57,11 @@ class MembersControllerIntegrationTest {
     Application appA;
     User ownerA;
     User aliceA;
+    TenantClient clientA;
     MockHttpSession sessionA;
 
     @BeforeEach
     void setUp() throws Exception {
-        // client_membership rows (from ClientMembership tests) FK back into
-        // application_membership and role; clear them first so the existing
-        // DELETEs below don't trip ON DELETE RESTRICT on role.
         jdbcTemplate.execute("DELETE FROM client_membership");
         jdbcTemplate.execute("DELETE FROM application_membership_role");
         jdbcTemplate.execute("DELETE FROM application_membership");
@@ -67,126 +71,146 @@ class MembersControllerIntegrationTest {
         jdbcTemplate.execute("DELETE FROM users WHERE tenant_id IN (SELECT id FROM tenants WHERE slug != 'system')");
         jdbcTemplate.execute("DELETE FROM tenants WHERE slug != 'system'");
 
-        tenantA = tenantRepository.save(new Tenant(null, "members-corp-a", "Members Corp A", TenantStatus.ACTIVE, LocalDateTime.now()));
-        tenantB = tenantRepository.save(new Tenant(null, "members-corp-b", "Members Corp B", TenantStatus.ACTIVE, LocalDateTime.now()));
-        ownerA = userRepository.save(new User(null, tenantA.id(), "owner", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        tenantA = tenantRepository.save(new Tenant(null, "client-mem-a", "Client Mem A", TenantStatus.ACTIVE, LocalDateTime.now()));
+        tenantB = tenantRepository.save(new Tenant(null, "client-mem-b", "Client Mem B", TenantStatus.ACTIVE, LocalDateTime.now()));
+        ownerA = userRepository.save(new User(null, tenantA.id(), "owner", passwordEncoder.encode("pass"), true, false, true,  LocalDateTime.now()));
         aliceA = userRepository.save(new User(null, tenantA.id(), "alice", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
         appA = applicationRepository.save(new Application(null, tenantA.id(), "App A", "desc", LocalDateTime.now()));
+        clientA = clientManagementService.createClient(
+            appA.id(), tenantA.id(), "client-a",
+            Set.of(AuthorizationGrantType.AUTHORIZATION_CODE),
+            Set.of("http://localhost/callback"), Set.of(), Set.of("openid"),
+            false, true, 5, 30, false
+        ).client();
 
-        MvcResult login = mockMvc.perform(post("/manage/t/members-corp-a/login")
+        MvcResult login = mockMvc.perform(post("/manage/t/client-mem-a/login")
                 .param("username", "owner").param("password", "pass").with(csrf()))
             .andReturn();
         sessionA = (MockHttpSession) login.getRequest().getSession(false);
     }
 
+    private String url(String suffix) {
+        return "/manage/t/client-mem-a/applications/" + appA.id() + "/clients/" + clientA.registeredClientId() + suffix;
+    }
+
     @Test
-    void ownerCanListMembers() throws Exception {
-        membershipRepository.save(new ApplicationMembership(
-            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), java.util.Set.of()
+    void ownerCanListClientMembers() throws Exception {
+        ApplicationMembership am = appMembershipRepository.save(new ApplicationMembership(
+            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), Set.of()
+        ));
+        clientMembershipRepository.save(new ClientMembership(
+            null, aliceA.id(), clientA.id(), am.id(), LocalDateTime.now(), ownerA.id(), Set.of()
         ));
 
-        mockMvc.perform(get("/manage/t/members-corp-a/applications/" + appA.id() + "/members").session(sessionA))
+        mockMvc.perform(get(url("/members")).session(sessionA))
             .andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString("alice")));
     }
 
     @Test
-    void ownerCanGrantMembership() throws Exception {
-        mockMvc.perform(post("/manage/t/members-corp-a/applications/" + appA.id() + "/members")
+    void ownerCanGrantClientMembership() throws Exception {
+        appMembershipRepository.save(new ApplicationMembership(
+            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), Set.of()
+        ));
+
+        mockMvc.perform(post(url("/members"))
                 .session(sessionA).with(csrf())
                 .param("userId", aliceA.id().toString()))
             .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/manage/t/members-corp-a/applications/" + appA.id() + "/members"));
+            .andExpect(redirectedUrl(url("/members")));
 
-        var memberships = membershipRepository.findAllByApplicationId(appA.id());
+        var memberships = clientMembershipRepository.findAllByClientMetadataId(clientA.id());
         assertThat(memberships).hasSize(1);
-        ApplicationMembership saved = memberships.get(0);
+        ClientMembership saved = memberships.get(0);
         assertThat(saved.userId()).isEqualTo(aliceA.id());
-        // granted_by should be the authenticated owner.
         assertThat(saved.grantedBy()).isEqualTo(ownerA.id());
         assertThat(saved.grantedAt()).isNotNull();
     }
 
     @Test
-    void duplicateGrantRedisplaysFormWithError() throws Exception {
-        membershipRepository.save(new ApplicationMembership(
-            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), java.util.Set.of()
-        ));
-
-        mockMvc.perform(post("/manage/t/members-corp-a/applications/" + appA.id() + "/members")
+    void grantWithoutAppMembershipRedisplaysFormWithError() throws Exception {
+        // alice has no App Membership for appA, so the eligibility gate fires.
+        mockMvc.perform(post(url("/members"))
                 .session(sessionA).with(csrf())
                 .param("userId", aliceA.id().toString()))
             .andExpect(status().isOk())
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("already a member")));
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("not a member of this application")));
     }
 
     @Test
     void ownerCanAssignRolesViaEditForm() throws Exception {
-        ApplicationMembership m = membershipRepository.save(new ApplicationMembership(
-            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), java.util.Set.of()
+        ApplicationMembership am = appMembershipRepository.save(new ApplicationMembership(
+            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), Set.of()
+        ));
+        ClientMembership cm = clientMembershipRepository.save(new ClientMembership(
+            null, aliceA.id(), clientA.id(), am.id(), LocalDateTime.now(), ownerA.id(), Set.of()
         ));
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
         Role editor = roleRepository.save(new Role(null, appA.id(), "editor", null, LocalDateTime.now()));
 
-        mockMvc.perform(post("/manage/t/members-corp-a/applications/" + appA.id() + "/members/" + m.id() + "/edit")
+        mockMvc.perform(post(url("/members/" + cm.id() + "/edit"))
                 .session(sessionA).with(csrf())
                 .param("roleIds", viewer.id().toString())
                 .param("roleIds", editor.id().toString()))
             .andExpect(status().is3xxRedirection());
 
-        ApplicationMembership reloaded = membershipRepository.findById(m.id()).orElseThrow();
+        ClientMembership reloaded = clientMembershipRepository.findById(cm.id()).orElseThrow();
         assertThat(reloaded.roleIds()).containsExactlyInAnyOrder(viewer.id(), editor.id());
     }
 
     @Test
     void editFormSubmitWithNoRoleIdsClearsAssignments() throws Exception {
+        ApplicationMembership am = appMembershipRepository.save(new ApplicationMembership(
+            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), Set.of()
+        ));
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
-        ApplicationMembership m = membershipRepository.save(new ApplicationMembership(
-            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(),
-            java.util.Set.of(new ApplicationMembershipRole(viewer.id()))
+        ClientMembership cm = clientMembershipRepository.save(new ClientMembership(
+            null, aliceA.id(), clientA.id(), am.id(), LocalDateTime.now(), ownerA.id(),
+            Set.of(new ClientMembershipRole(viewer.id()))
         ));
 
-        mockMvc.perform(post("/manage/t/members-corp-a/applications/" + appA.id() + "/members/" + m.id() + "/edit")
+        mockMvc.perform(post(url("/members/" + cm.id() + "/edit"))
                 .session(sessionA).with(csrf()))
             .andExpect(status().is3xxRedirection());
 
-        assertThat(membershipRepository.findById(m.id()).orElseThrow().roleIds()).isEmpty();
+        assertThat(clientMembershipRepository.findById(cm.id()).orElseThrow().roleIds()).isEmpty();
     }
 
     @Test
-    void ownerCanRevokeMembership() throws Exception {
-        ApplicationMembership m = membershipRepository.save(new ApplicationMembership(
-            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), java.util.Set.of()
+    void ownerCanRevokeClientMembership() throws Exception {
+        ApplicationMembership am = appMembershipRepository.save(new ApplicationMembership(
+            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), Set.of()
+        ));
+        ClientMembership cm = clientMembershipRepository.save(new ClientMembership(
+            null, aliceA.id(), clientA.id(), am.id(), LocalDateTime.now(), ownerA.id(), Set.of()
         ));
 
-        mockMvc.perform(post("/manage/t/members-corp-a/applications/" + appA.id() + "/members/" + m.id() + "/delete")
+        mockMvc.perform(post(url("/members/" + cm.id() + "/delete"))
                 .session(sessionA).with(csrf()))
             .andExpect(status().is3xxRedirection());
 
-        assertThat(membershipRepository.findById(m.id())).isEmpty();
+        assertThat(clientMembershipRepository.findById(cm.id())).isEmpty();
     }
 
     @Test
-    void tenantBSessionCannotReachTenantAMembers() throws Exception {
+    void tenantBSessionCannotReachTenantAClientMembers() throws Exception {
         userRepository.save(new User(null, tenantB.id(), "ownerB", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
-        MvcResult loginB = mockMvc.perform(post("/manage/t/members-corp-b/login")
+        MvcResult loginB = mockMvc.perform(post("/manage/t/client-mem-b/login")
                 .param("username", "ownerB").param("password", "pass").with(csrf()))
             .andReturn();
         MockHttpSession sessionB = (MockHttpSession) loginB.getRequest().getSession(false);
 
-        // TenantAccessFilter force-logs out the cross-tenant session and
-        // redirects to the URL slug's login page.
-        mockMvc.perform(get("/manage/t/members-corp-a/applications/" + appA.id() + "/members").session(sessionB))
+        mockMvc.perform(get(url("/members")).session(sessionB))
             .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/manage/t/members-corp-a/login"));
+            .andExpect(redirectedUrl("/manage/t/client-mem-a/login"));
     }
 
     @Test
-    void membersLinkAppearsOnApplicationsList() throws Exception {
-        mockMvc.perform(get("/manage/t/members-corp-a/applications").session(sessionA))
+    void clientMembersLinkAppearsOnClientsList() throws Exception {
+        mockMvc.perform(get("/manage/t/client-mem-a/applications/" + appA.id() + "/clients").session(sessionA))
             .andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                "/manage/t/members-corp-a/applications/" + appA.id() + "/members"
+                url("/members")
             )));
     }
 }

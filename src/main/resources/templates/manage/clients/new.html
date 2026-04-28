@@ -2,10 +2,10 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head><title>New Client</title></head>
 <body>
-<h1>New Client — <span th:text="${application.name()}"></span></h1>
-<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${application.id()} + '/clients'}">← Clients</a>
+<h1>New Client — <span th:text="${app.name()}"></span></h1>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients'}">← Clients</a>
 
-<form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${application.id()} + '/clients'}">
+<form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients'}">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
     <div><label>Name <input type="text" name="displayName" autofocus required/></label></div>

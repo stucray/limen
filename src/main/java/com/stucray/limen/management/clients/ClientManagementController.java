@@ -36,7 +36,7 @@ public class ClientManagementController {
         Model model
     ) {
         model.addAttribute("slug", slug);
-        model.addAttribute("application", applicationService.getApplication(appId, principal.tenantId()));
+        model.addAttribute("app", applicationService.getApplication(appId, principal.tenantId()));
         model.addAttribute("clients", clientManagementService.listClients(appId, principal.tenantId()));
         return "manage/clients/list";
     }
@@ -49,7 +49,7 @@ public class ClientManagementController {
         Model model
     ) {
         model.addAttribute("slug", slug);
-        model.addAttribute("application", applicationService.getApplication(appId, principal.tenantId()));
+        model.addAttribute("app", applicationService.getApplication(appId, principal.tenantId()));
         return "manage/clients/new";
     }
 
@@ -101,7 +101,7 @@ public class ClientManagementController {
         Model model
     ) {
         model.addAttribute("slug", slug);
-        model.addAttribute("application", applicationService.getApplication(appId, principal.tenantId()));
+        model.addAttribute("app", applicationService.getApplication(appId, principal.tenantId()));
         model.addAttribute("clientSettings", clientManagementService.getClientWithSettings(registeredClientId, principal.tenantId()));
         return "manage/clients/edit";
     }
