@@ -5,6 +5,9 @@ import com.stucray.limen.management.applications.Application;
 import com.stucray.limen.management.applications.ApplicationRepository;
 import com.stucray.limen.management.clients.TenantClient;
 import com.stucray.limen.management.clients.TenantClientRepository;
+import com.stucray.limen.management.memberships.ApplicationMembershipService;
+import com.stucray.limen.management.memberships.ClientMembershipService;
+import com.stucray.limen.management.memberships.ClientMembershipTestFixture;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
@@ -34,6 +37,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,12 +57,15 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     @Autowired RegisteredClientRepository registeredClientRepository;
     @Autowired TenantClientRepository tenantClientRepository;
     @Autowired UserRepository userRepository;
+    @Autowired ApplicationMembershipService applicationMembershipService;
+    @Autowired ClientMembershipService clientMembershipService;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired JdbcTemplate jdbcTemplate;
 
     Tenant tenant;
     Application app;
     String oauthClientId;
+    String registeredClientId;
 
     @BeforeEach
     void setUp() {
@@ -76,9 +83,9 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
         app = applicationRepository.save(new Application(
             null, tenant.id(), "Alpha App", "Test app", LocalDateTime.now()));
 
-        String internalId = UUID.randomUUID().toString();
+        registeredClientId = UUID.randomUUID().toString();
         oauthClientId = UUID.randomUUID().toString();
-        RegisteredClient rc = RegisteredClient.withId(internalId)
+        RegisteredClient rc = RegisteredClient.withId(registeredClientId)
             .clientId(oauthClientId)
             .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
             .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
@@ -91,7 +98,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
             .build();
         registeredClientRepository.save(rc);
         tenantClientRepository.save(new TenantClient(
-            null, internalId, app.id(), tenant.id(), "Test Client", false));
+            null, registeredClientId, app.id(), tenant.id(), "Test Client", false));
     }
 
     @Test
@@ -119,6 +126,11 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
             null, tenant.id(), "alice",
             passwordEncoder.encode("temp"),
             true, true, false, LocalDateTime.now()));
+        ClientMembershipTestFixture.grant(
+            applicationMembershipService, clientMembershipService,
+            app.id(), tenant.id(), original.id(), original.id(),
+            registeredClientId, Set.of()
+        );
 
         MockHttpSession session = startAuthorize(newPkce().challenge());
 

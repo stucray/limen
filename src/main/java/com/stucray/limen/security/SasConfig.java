@@ -6,6 +6,7 @@ import com.stucray.limen.auth.SasJsonMapperFactory;
 import com.stucray.limen.auth.TenantUserDetails;
 import com.stucray.limen.management.clients.TenantClientRepository;
 import com.stucray.limen.management.memberships.ClientMembershipQuery;
+import com.stucray.limen.oauth2.MembershipGateFilter;
 import com.stucray.limen.oauth2.TenantAwareOAuth2AuthorizationConsentService;
 import com.stucray.limen.oauth2.TenantAwareOAuth2AuthorizationService;
 import com.stucray.limen.oauth2.TenantAwareRegisteredClientRepository;
@@ -33,6 +34,7 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
@@ -47,7 +49,11 @@ public class SasConfig {
 
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain authorizationServerSecurityFilterChain(
+        HttpSecurity http,
+        RegisteredClientRepository registeredClientRepository,
+        ClientMembershipQuery clientMembershipQuery
+    ) throws Exception {
         http.oauth2AuthorizationServer(authorizationServer -> {
             http.securityMatcher(authorizationServer.getEndpointsMatcher());
             authorizationServer.oidc(Customizer.withDefaults());
@@ -65,6 +71,16 @@ public class SasConfig {
             .addFilterBefore(
                 new TenantIssuerContextFilter(authorizationServerSettings()),
                 CsrfFilter.class
+            )
+            // Anchor the gate after AuthorizationFilter — the SAS authorization
+            // endpoint filter is itself registered with addFilterAfter on the
+            // same class, so the gate sits adjacent to it in the chain. By that
+            // point the SecurityContext has been hydrated from session and the
+            // request is allowed past `authorizeHttpRequests(...).authenticated()`,
+            // so we know there is an authenticated principal to gate on.
+            .addFilterAfter(
+                new MembershipGateFilter(registeredClientRepository, clientMembershipQuery),
+                AuthorizationFilter.class
             );
         return http.build();
     }
