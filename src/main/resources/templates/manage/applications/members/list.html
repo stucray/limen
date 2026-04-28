@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Members</title></head>
+<body>
+<h1>Members — <span th:text="${app.name()}"></span></h1>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications'}">← Applications</a>
+<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/members/new'}">Add member</a>
+
+<div th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+<table>
+    <thead>
+        <tr><th>User</th><th>Roles</th><th>Granted at</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+        <tr th:each="m : ${memberships}">
+            <td th:text="${usernamesById.get(m.userId())}"></td>
+            <td>
+                <span th:each="rid, it : ${m.roleIds()}">
+                    <span th:text="${roleNamesById.get(rid)}"></span><span th:if="${!it.last}">, </span>
+                </span>
+            </td>
+            <td th:text="${m.grantedAt()}"></td>
+            <td>
+                <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/members/' + ${m.id()} + '/edit'}">Edit roles</a>
+                <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/members/' + ${m.id()} + '/delete'}" style="display:inline">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit" onclick="return confirm('Revoke this membership?')">Revoke</button>
+                </form>
+            </td>
+        </tr>
+    </tbody>
+</table>
+</body>
+</html>
