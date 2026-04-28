@@ -41,6 +41,10 @@ class SystemAdminIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        jdbcTemplate.execute("DELETE FROM client_membership");
+        jdbcTemplate.execute("DELETE FROM application_membership_role");
+        jdbcTemplate.execute("DELETE FROM application_membership");
+        jdbcTemplate.execute("DELETE FROM role");
         jdbcTemplate.execute("DELETE FROM applications");
         jdbcTemplate.execute("DELETE FROM users WHERE tenant_id IN (SELECT id FROM tenants WHERE slug != 'system')");
         jdbcTemplate.execute("DELETE FROM tenants WHERE slug != 'system'");

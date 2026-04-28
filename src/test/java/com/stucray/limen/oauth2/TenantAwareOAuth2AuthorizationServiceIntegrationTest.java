@@ -49,6 +49,10 @@ class TenantAwareOAuth2AuthorizationServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        jdbcTemplate.execute("DELETE FROM client_membership");
+        jdbcTemplate.execute("DELETE FROM application_membership_role");
+        jdbcTemplate.execute("DELETE FROM application_membership");
+        jdbcTemplate.execute("DELETE FROM role");
         jdbcTemplate.execute("DELETE FROM oauth2_authorization");
         jdbcTemplate.execute("DELETE FROM client_metadata");
         jdbcTemplate.execute("DELETE FROM oauth2_registered_client");

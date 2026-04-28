@@ -3,7 +3,9 @@ package com.stucray.limen.security;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.stucray.limen.auth.SasJsonMapperFactory;
+import com.stucray.limen.auth.TenantUserDetails;
 import com.stucray.limen.management.clients.TenantClientRepository;
+import com.stucray.limen.management.memberships.ClientMembershipQuery;
 import com.stucray.limen.oauth2.TenantAwareOAuth2AuthorizationConsentService;
 import com.stucray.limen.oauth2.TenantAwareOAuth2AuthorizationService;
 import com.stucray.limen.oauth2.TenantAwareRegisteredClientRepository;
@@ -20,6 +22,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
@@ -36,8 +39,7 @@ import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.util.ArrayList;
-
+import java.util.List;
 import java.util.Set;
 
 @Configuration
@@ -121,15 +123,34 @@ public class SasConfig {
     }
 
     @Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer() {
+    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(
+        ClientMembershipQuery clientMembershipQuery
+    ) {
         return context -> {
             if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) return;
             String slug = TenantScope.slug();
             if (slug != null) {
                 context.getClaims().claim("tenant", slug);
             }
-            context.getClaims().claim("roles", new ArrayList<>());
+            context.getClaims().claim("roles", resolveRoles(context, clientMembershipQuery));
         };
+    }
+
+    // End-user flows (authorization_code) carry a TenantUserDetails principal —
+    // resolve the user's Client Membership Roles. Non-end-user flows
+    // (client_credentials) have no User behind the token, so roles is empty.
+    private static List<String> resolveRoles(
+        JwtEncodingContext context, ClientMembershipQuery clientMembershipQuery
+    ) {
+        Long tenantId = TenantScope.tenantId();
+        if (tenantId == null) return List.of();
+        Authentication auth = context.getPrincipal();
+        if (auth == null || !(auth.getPrincipal() instanceof TenantUserDetails details)) {
+            return List.of();
+        }
+        return clientMembershipQuery.rolesFor(
+            details.userId(), context.getRegisteredClient().getId(), tenantId
+        );
     }
 
     private static MediaTypeRequestMatcher htmlRequestMatcher() {
