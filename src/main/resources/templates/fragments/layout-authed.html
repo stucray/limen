@@ -4,7 +4,10 @@
 <body>
 <header class="app-header">
     <div class="app-header__inner">
-        <span class="app-header__brand">Limen</span>
+        <span class="app-header__brand">
+            <img th:src="@{/images/shield.svg}" alt="" class="app-header__logo"/>
+            Limen
+        </span>
         <div class="app-header__user">
             <span class="app-header__user-name" th:if="${currentUsername}" th:text="${currentUsername}">user</span>
             <form method="post" th:action="@{/manage/logout}">

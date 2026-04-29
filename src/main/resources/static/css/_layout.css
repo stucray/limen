@@ -28,10 +28,19 @@
 }
 
 .app-header__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2xs);
     font-weight: var(--font-weight-8);
     font-size: var(--font-size-3);
     color: var(--text-strong);
     letter-spacing: -0.02em;
+}
+
+.app-header__logo {
+    height: 1.4em;
+    width: auto;
+    display: block;
 }
 
 .app-header__user {
@@ -124,6 +133,13 @@
 .landing__brand {
     text-align: center;
     margin: 0 0 var(--space-sm);
+}
+
+.landing__logo {
+    width: 5rem;
+    height: auto;
+    display: block;
+    margin: 0 auto var(--space-xs);
 }
 
 .landing__brand h1 {
