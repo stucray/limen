@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" color="#0f172a" class="shield" role="img" aria-label="Limen">
+  <title>Limen — Shield (full)</title>
+  <style>
+    .shield__border { fill: var(--shield-border, var(--shield-fg, currentColor)); opacity: var(--shield-border-opacity, 0.55); }
+    .shield__body   { fill: var(--shield-fg, currentColor); }
+    .shield__stud   { fill: var(--shield-stud, var(--shield-fg, currentColor)); }
+    @media (prefers-color-scheme: dark) {
+      .shield { color: #fafaf9; }
+    }
+  </style>
+  <path class="shield__border" d="M16.77 19.75c-1 0-1.7.8-1.7 1.8v.1c-1.5 25.91 3.03 59.27 24.01 83.52c12.1 14.7 23.91 18.53 24.51 18.73c0 0 .28.09.54.09s.57-.1.57-.1c.5-.2 12.48-4.02 24.49-18.72c19.91-24.21 24.01-58.82 24.01-83.52v-.1c0-1-.8-1.8-1.7-1.8c-.3 0-29.11-1-46.01-15.3c-.7-.6-1.7-.6-2.4 0c-17.11 14.2-46.02 15.2-46.32 15.3z" />
+  <path class="shield__body" d="M26.33 28.31c-.82 0-1.02 1.02-1.02 1.74v.1c0 19.72 3.06 47.4 19 66.71c9.6 11.75 19 14.81 19.41 14.91l.41.1l.41-.1c.41-.1 9.81-3.17 19.41-14.91c15.94-19.31 19-46.89 19-66.71v-.1c0-.82-.41-1.43-1.23-1.43h.1c-.2 0-23.19-.82-36.67-12.16c-1.19-.98-1.94-.2-1.94-.2C49.63 27.6 26.64 28.31 26.33 28.31z" />
+  <g class="shield__studs">
+    <circle class="shield__stud" cx="70.63" cy="14.44" r="1.93" />
+    <circle class="shield__stud" cx="82.21" cy="19.67" r="1.93" />
+    <circle class="shield__stud" cx="95.01" cy="23.21" r="1.93" />
+    <circle class="shield__stud" cx="108.15" cy="25.14" r="1.93" />
+    <circle class="shield__stud" cx="108.57" cy="36.94" r="1.93" />
+    <circle class="shield__stud" cx="107.02" cy="50.76" r="1.93" />
+    <circle class="shield__stud" cx="104.27" cy="64.65" r="1.93" />
+    <circle class="shield__stud" cx="99.67" cy="79"    r="1.93" />
+    <circle class="shield__stud" cx="93.81" cy="91.27" r="1.93" />
+    <circle class="shield__stud" cx="85.74" cy="102.71" r="1.93" />
+    <circle class="shield__stud" cx="75.4"  cy="112.71" r="1.93" />
+    <circle class="shield__stud" cx="64.08" cy="118.11" r="1.93" />
+    <circle class="shield__stud" cx="53.19" cy="112.71" r="1.93" />
+    <circle class="shield__stud" cx="42.86" cy="102.71" r="1.93" />
+    <circle class="shield__stud" cx="34.79" cy="91.27" r="1.93" />
+    <circle class="shield__stud" cx="28.92" cy="79"    r="1.93" />
+    <circle class="shield__stud" cx="24.33" cy="64.65" r="1.93" />
+    <circle class="shield__stud" cx="21.58" cy="50.76" r="1.93" />
+    <circle class="shield__stud" cx="20.02" cy="36.94" r="1.93" />
+    <circle class="shield__stud" cx="20.45" cy="25.14" r="1.93" />
+    <circle class="shield__stud" cx="33.59" cy="23.21" r="1.93" />
+    <circle class="shield__stud" cx="46.39" cy="19.67" r="1.93" />
+    <circle class="shield__stud" cx="57.97" cy="14.44" r="1.93" />
+  </g>
+</svg>
