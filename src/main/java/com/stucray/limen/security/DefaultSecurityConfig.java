@@ -26,7 +26,7 @@ public class DefaultSecurityConfig {
         return http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/", "/login", "/actuator/health").permitAll()
-                .requestMatchers("/css/**").permitAll()
+                .requestMatchers("/css/**", "/images/**").permitAll()
                 .anyRequest().denyAll()
             )
             .csrf(csrf -> csrf
