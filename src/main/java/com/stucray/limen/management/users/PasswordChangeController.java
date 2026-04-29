@@ -37,9 +37,9 @@ public class PasswordChangeController {
             model.addAttribute("errorMessage", "Passwords do not match");
             return "manage/users/change-password";
         }
-        if (newPassword.length() < 8) {
+        if (newPassword.isBlank()) {
             model.addAttribute("slug", slug);
-            model.addAttribute("errorMessage", "Password must be at least 8 characters");
+            model.addAttribute("errorMessage", "Password is required");
             return "manage/users/change-password";
         }
         userManagementService.changePassword(principal.userId(), principal.tenantId(), newPassword);
