@@ -73,8 +73,8 @@ public class SignupService {
             return new SignupResult.Error("username", "Username must be 100 characters or fewer");
         }
 
-        if (form.password() == null || form.password().length() < 8) {
-            return new SignupResult.Error("password", "Password must be at least 8 characters");
+        if (form.password() == null || form.password().isBlank()) {
+            return new SignupResult.Error("password", "Password is required");
         }
 
         Tenant tenant = tenantProvisioningService.createTenant(slug, orgName);
