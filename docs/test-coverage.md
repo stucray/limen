@@ -7,7 +7,7 @@
 ## Headline numbers
 
 | Metric       | Coverage | Δ from baseline | Covered / Total |
-|--------------|---------:|----------------:|----------------:|
+|--------------|---------:|:----------------|----------------:|
 | Instructions |   93.0 % | 🟢 +9.0 %       | 7,001 / 7,529   |
 | Branches     |   74.0 % | 🟢 +4.0 %       | 296 / 400       |
 | Lines        |   94.6 % | 🟢 +8.5 %       | 1,465 / 1,549   |
@@ -20,7 +20,7 @@ Detailed HTML drill-down: `target/site/jacoco/index.html` (gitignored — regene
 Sorted by line coverage, weakest first. Δ Line column compares each package against the PR #59 baseline.
 
 | Package                                        | Line %  | Δ Line       | Branch % | Method % | Missed lines |
-|------------------------------------------------|--------:|-------------:|---------:|---------:|-------------:|
+|------------------------------------------------|--------:|:-------------|---------:|---------:|-------------:|
 | com.stucray.limen (`LimenApplication` only)    |  33.3 % | +0.0 %       | n/a      |  50.0 %  |   2 |
 | com.stucray.limen.management.users             |  87.9 % | 🟢 +8.8 %    |  77.8 %  |  89.3 %  |  11 |
 | com.stucray.limen.auth                         |  89.6 % | 🟢 +3.0 %    |  75.0 %  |  90.3 %  |  21 |
