@@ -80,11 +80,11 @@ The previously-flagged high-priority gaps are now covered:
 
 ```sh
 ./mvnw clean test                            # regenerate target/site/jacoco/
-open target/site/jacoco/index.html           # browse the HTML report
-awk -F, 'NR>1 {im+=$4;ic+=$5;bm+=$6;bc+=$7;lm+=$8;lc+=$9;mm+=$12;mc+=$13} \
-  END {printf "instr %.1f%% branch %.1f%% line %.1f%% method %.1f%%\n", \
-       100*ic/(im+ic), 100*bc/(bm+bc), 100*lc/(lm+lc), 100*mc/(mm+mc)}' \
-  target/site/jacoco/jacoco.csv              # quick headline numbers
+open target/site/jacoco/index.html           # browse the HTML report (optional)
+scripts/coverage-report.sh                   # emit the two markdown tables
+                                             # above (with Δ vs PR #59 baseline)
 ```
+
+`scripts/coverage-report.sh` reads `target/site/jacoco/jacoco.csv`, computes deltas against the hardcoded PR #59 baseline, and prints the **Headline numbers** + **Per-package summary** tables in the format used here (right-aligned percentages with 🟢 / 🔴 / ⚪ indicators). Pipe it into the doc by replacing the two table sections.
 
 If/when a CI pipeline is added, the JaCoCo XML at `target/site/jacoco/jacoco.xml` is the standard upload format for Codecov / Coveralls / Sonar.
