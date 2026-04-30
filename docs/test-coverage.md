@@ -1,6 +1,6 @@
 # Test Coverage Snapshot
 
-**Generated:** 2026-04-30 from commit `1fc3512` (current `main`, plus Slice 3 of the login-pipeline refactor — `TenantAccessFilter` and `TenantPersistentTokenBasedRememberMeServices` now derive their slug regexes from registered `TenantUrlScheme` beans; new `SyntheticSchemeIntegrationTest` registers a third surface and proves bean discovery). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`).
+**Generated:** 2026-04-30 from commit `c331f86` (current `main`, including Slice 3 of the login-pipeline refactor — `TenantAccessFilter` and `TenantPersistentTokenBasedRememberMeServices` now derive their slug regexes from registered `TenantUrlScheme` beans; `SyntheticSchemeIntegrationTest` registers a third surface and proves bean discovery). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`).
 
 **Run:** `./mvnw clean test` — 287 tests, all passing. JaCoCo analyzes 91 production classes.
 
