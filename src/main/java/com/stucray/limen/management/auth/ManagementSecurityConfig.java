@@ -1,19 +1,14 @@
 package com.stucray.limen.management.auth;
 
 import com.stucray.limen.auth.ManagementAuthEntryPoint;
-import com.stucray.limen.auth.ManagementTenantAuthFilter;
-import com.stucray.limen.auth.TenantPersistentTokenBasedRememberMeServices;
-import com.stucray.limen.oauth2.TenantAccessFilter;
-import org.springframework.beans.factory.annotation.Value;
+import com.stucray.limen.auth.login.TenantLogin;
+import com.stucray.limen.auth.login.TenantUrlScheme;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
@@ -21,25 +16,20 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 @Order(2)
 public class ManagementSecurityConfig {
 
-    private final AuthenticationManager authenticationManager;
-    private final TenantPersistentTokenBasedRememberMeServices rememberMeServices;
-    private final String rememberMeKey;
+    private final TenantLogin login;
+    private final TenantUrlScheme managementUrlScheme;
 
     public ManagementSecurityConfig(
-        AuthenticationManager authenticationManager,
-        TenantPersistentTokenBasedRememberMeServices rememberMeServices,
-        @Value("${limen.security.remember-me-key}") String rememberMeKey
+        TenantLogin login,
+        @Qualifier("managementUrlScheme") TenantUrlScheme managementUrlScheme
     ) {
-        this.authenticationManager = authenticationManager;
-        this.rememberMeServices = rememberMeServices;
-        this.rememberMeKey = rememberMeKey;
+        this.login = login;
+        this.managementUrlScheme = managementUrlScheme;
     }
 
     @Bean
     public SecurityFilterChain managementFilterChain(HttpSecurity http) throws Exception {
-        ManagementTenantAuthFilter authFilter = new ManagementTenantAuthFilter(authenticationManager);
-        authFilter.setSecurityContextRepository(new HttpSessionSecurityContextRepository());
-        authFilter.setRememberMeServices(rememberMeServices);
+        login.applyTo(http, managementUrlScheme);
 
         http
             .securityMatcher("/manage/**", "/signup")
@@ -49,9 +39,6 @@ public class ManagementSecurityConfig {
                 .requestMatchers("/manage/t/*/login").permitAll()
                 .anyRequest().authenticated()
             )
-            .addFilterAt(authFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(new TenantAccessFilter(), SecurityContextHolderFilter.class)
-            .rememberMe(rm -> rm.rememberMeServices(rememberMeServices).key(rememberMeKey))
             .exceptionHandling(ex -> ex.authenticationEntryPoint(new ManagementAuthEntryPoint()))
             .logout(logout -> logout
                 .logoutUrl("/manage/logout")

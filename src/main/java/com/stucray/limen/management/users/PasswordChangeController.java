@@ -1,6 +1,11 @@
 package com.stucray.limen.management.users;
 
 import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.auth.login.TenantPasswordChangeFlow;
+import com.stucray.limen.auth.login.TenantUrlScheme;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -12,10 +17,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class PasswordChangeController {
 
-    private final UserManagementService userManagementService;
+    private final TenantPasswordChangeFlow flow;
+    private final TenantUrlScheme scheme;
 
-    public PasswordChangeController(UserManagementService userManagementService) {
-        this.userManagementService = userManagementService;
+    public PasswordChangeController(
+        TenantPasswordChangeFlow flow,
+        @Qualifier("managementUrlScheme") TenantUrlScheme managementUrlScheme
+    ) {
+        this.flow = flow;
+        this.scheme = managementUrlScheme;
     }
 
     @GetMapping("/manage/t/{slug}/change-password")
@@ -30,19 +40,16 @@ public class PasswordChangeController {
         @AuthenticationPrincipal TenantUserDetails principal,
         @RequestParam String newPassword,
         @RequestParam String confirmPassword,
+        HttpServletRequest request,
+        HttpServletResponse response,
         Model model
     ) {
-        if (!newPassword.equals(confirmPassword)) {
+        String error = flow.validate(newPassword, confirmPassword);
+        if (error != null) {
             model.addAttribute("slug", slug);
-            model.addAttribute("errorMessage", "Passwords do not match");
+            model.addAttribute("errorMessage", error);
             return "manage/users/change-password";
         }
-        if (newPassword.isBlank()) {
-            model.addAttribute("slug", slug);
-            model.addAttribute("errorMessage", "Password is required");
-            return "manage/users/change-password";
-        }
-        userManagementService.changePassword(principal.userId(), principal.tenantId(), newPassword);
-        return "redirect:/manage/t/" + slug + "/";
+        return "redirect:" + flow.changeAndRedirect(principal, scheme, newPassword, request, response);
     }
 }
