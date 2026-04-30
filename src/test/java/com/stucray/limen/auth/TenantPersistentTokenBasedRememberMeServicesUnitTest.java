@@ -1,5 +1,6 @@
 package com.stucray.limen.auth;
 
+import com.stucray.limen.auth.login.TenantUrlScheme;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
@@ -10,11 +11,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -35,10 +39,20 @@ class TenantPersistentTokenBasedRememberMeServicesUnitTest {
     Tenant alpha;
     User alice;
 
+    private static final TenantUrlScheme OAUTH2_SCHEME = new TenantUrlScheme(
+        "oauth2",
+        HttpMethod.POST, "/t/*/login",
+        Pattern.compile("^/t/([^/]+)(?:/.*)?$"),
+        "/t/{slug}/login",
+        "/t/{slug}/",
+        "/t/{slug}/change-password"
+    );
+
     @BeforeEach
     void setUp() {
         services = new TenantPersistentTokenBasedRememberMeServices(
-            "test-key", userDetailsService, tokenRepository, tenantRepository);
+            "test-key", userDetailsService, tokenRepository, tenantRepository,
+            List.of(OAUTH2_SCHEME));
         services.setTokenValiditySeconds(3600);
 
         alpha = new Tenant(1L, "alpha", "Alpha", TenantStatus.ACTIVE, LocalDateTime.now());

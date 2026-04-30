@@ -41,15 +41,17 @@ public final class TenantLogin {
     private final TenantPersistentTokenBasedRememberMeServices rememberMeServices;
     private final String rememberMeKey;
     private final List<PostLoginIntent> intents;
+    private final List<TenantUrlScheme> allSchemes;
     private final boolean rememberMeEnabled;
 
     public TenantLogin(
         AuthenticationManager authenticationManager,
         TenantPersistentTokenBasedRememberMeServices rememberMeServices,
         String rememberMeKey,
-        List<PostLoginIntent> intents
+        List<PostLoginIntent> intents,
+        List<TenantUrlScheme> allSchemes
     ) {
-        this(authenticationManager, rememberMeServices, rememberMeKey, intents, true);
+        this(authenticationManager, rememberMeServices, rememberMeKey, intents, allSchemes, true);
     }
 
     private TenantLogin(
@@ -57,12 +59,14 @@ public final class TenantLogin {
         TenantPersistentTokenBasedRememberMeServices rememberMeServices,
         String rememberMeKey,
         List<PostLoginIntent> intents,
+        List<TenantUrlScheme> allSchemes,
         boolean rememberMeEnabled
     ) {
         this.authenticationManager = authenticationManager;
         this.rememberMeServices = rememberMeServices;
         this.rememberMeKey = rememberMeKey;
         this.intents = List.copyOf(intents);
+        this.allSchemes = List.copyOf(allSchemes);
         this.rememberMeEnabled = rememberMeEnabled;
     }
 
@@ -80,11 +84,13 @@ public final class TenantLogin {
     }
 
     public TenantLogin withIntents(List<PostLoginIntent> newIntents) {
-        return new TenantLogin(authenticationManager, rememberMeServices, rememberMeKey, newIntents, rememberMeEnabled);
+        return new TenantLogin(authenticationManager, rememberMeServices, rememberMeKey,
+            newIntents, allSchemes, rememberMeEnabled);
     }
 
     public TenantLogin withRememberMe(boolean enabled) {
-        return new TenantLogin(authenticationManager, rememberMeServices, rememberMeKey, intents, enabled);
+        return new TenantLogin(authenticationManager, rememberMeServices, rememberMeKey,
+            intents, allSchemes, enabled);
     }
 
     public List<PostLoginIntent> intents() {
@@ -111,7 +117,7 @@ public final class TenantLogin {
     public HttpSecurity applyTo(HttpSecurity http, TenantUrlScheme scheme) throws Exception {
         http
             .addFilterAt(filter(scheme), UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(new TenantAccessFilter(), SecurityContextHolderFilter.class);
+            .addFilterAfter(new TenantAccessFilter(allSchemes), SecurityContextHolderFilter.class);
         if (rememberMeEnabled) {
             http.rememberMe(rm -> rm
                 .rememberMeServices(rememberMeServices)

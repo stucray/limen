@@ -1,17 +1,17 @@
 # Test Coverage Snapshot
 
-**Generated:** 2026-04-30 from commit `32e4456` (current `main`, plus Slice 2 of the login-pipeline refactor — `ManagementSecurityConfig` migrated to `login.applyTo(http, managementUrlScheme)`; `ManagementTenantAuthFilter` and now-orphaned `AbstractTenantAuthFilter` deleted; new `TenantPasswordChangeFlow` consolidates the `/t/{slug}/change-password` and `/manage/t/{slug}/change-password` flows; new `ManagementForcedPasswordChangeIntegrationTest` pins the two latent-bug fixes plus broader endpoint coverage). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`).
+**Generated:** 2026-04-30 from commit `1fc3512` (current `main`, plus Slice 3 of the login-pipeline refactor — `TenantAccessFilter` and `TenantPersistentTokenBasedRememberMeServices` now derive their slug regexes from registered `TenantUrlScheme` beans; new `SyntheticSchemeIntegrationTest` registers a third surface and proves bean discovery). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`).
 
-**Run:** `./mvnw clean test` — 285 tests, all passing. JaCoCo analyzes 91 production classes.
+**Run:** `./mvnw clean test` — 287 tests, all passing. JaCoCo analyzes 91 production classes.
 
 ## Headline numbers
 
 | Metric       | Coverage | Δ from baseline | Covered / Total |
 |--------------|---------:|----------------:|----------------:|
-| Instructions | 94.6 % | +10.6 % 🟢 | 7,293 / 7,712 |
-| Branches     | 80.0 % | +10.0 % 🟢 | 339 / 424 |
-| Lines        | 95.7 % | +9.6 % 🟢 | 1,509 / 1,577 |
-| Methods      | 94.2 % | +5.1 % 🟢 | 393 / 417 |
+| Instructions | 94.6 % | +10.6 % 🟢 | 7,299 / 7,719 |
+| Branches     | 80.0 % | +10.0 % 🟢 | 341 / 426 |
+| Lines        | 95.6 % | +9.5 % 🟢 | 1,512 / 1,581 |
+| Methods      | 94.2 % | +5.1 % 🟢 | 391 / 415 |
 
 Detailed HTML drill-down: `target/site/jacoco/index.html` (gitignored — regenerate with `./mvnw clean test`). Per-class CSV: `target/site/jacoco/jacoco.csv`.
 
@@ -22,10 +22,10 @@ Sorted by line coverage, weakest first. Δ Line column compares each package aga
 | Package | Line % | Δ Line | Branch % | Method % | Missed lines |
 |---------|-------:|-------:|---------:|---------:|-------------:|
 | com.stucray.limen | 33.3 % | +0.0 % ⚪ | n/a | 50.0 % | 2 |
-| com.stucray.limen.auth | 87.4 % | +0.8 % 🟢 | 75.0 % | 88.2 % | 21 |
+| com.stucray.limen.auth | 86.8 % | +0.2 % 🟢 | 75.0 % | 88.0 % | 22 |
 | com.stucray.limen.management.users | 87.5 % | +8.4 % 🟢 | 75.0 % | 89.3 % | 11 |
 | com.stucray.limen.security | 92.5 % | +0.0 % ⚪ | 66.7 % | 100.0 % | 8 |
-| com.stucray.limen.oauth2 | 94.3 % | +6.5 % 🟢 | 82.8 % | 96.7 % | 18 |
+| com.stucray.limen.oauth2 | 94.4 % | +6.6 % 🟢 | 83.1 % | 96.7 % | 18 |
 | com.stucray.limen.management.web | 95.2 % | +0.0 % ⚪ | 75.0 % | 100.0 % | 1 |
 | com.stucray.limen.management.memberships | 98.2 % | +20.9 % 🟢 | 85.4 % | 91.5 % | 6 |
 | com.stucray.limen.auth.login | 99.2 % | +99.2 % 🟢 | 83.3 % | 100.0 % | 1 |
