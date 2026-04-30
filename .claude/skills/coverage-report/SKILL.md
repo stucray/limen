@@ -29,6 +29,7 @@ Refresh `docs/test-coverage.md` from a fresh JaCoCo run. Two helpers do the heav
 
 - The script's baseline is hardcoded at PR #59 (commit `e2fcdb0`). Don't change it casually — it's the reference point that makes Δ values meaningful across snapshots. If the user wants a new baseline, edit `scripts/coverage-report.sh` deliberately and call it out.
 - `docs/test-coverage-history.jsonl` is **append-only**. The script writes one new line per run, and this file is committed alongside `docs/test-coverage.md` on every refresh. If a snapshot needs to be retracted (e.g. a botched run got committed), edit the file by hand and surface the edit to the user — don't silently drop entries.
+- The script normalizes the file via `jq -c '.'` before reading it, so accidental pretty-printing (e.g. from a `jq .` debug inspection or an editor reformatter) is repaired on the next run instead of corrupting future appends. If the script ever reports `failed to parse as JSON`, the file has real damage — investigate before re-running.
 - Don't skip `clean` on the maven run — leftover `jacoco.exec` from a prior partial run can produce stale numbers.
 - If a class shows surprising coverage (e.g., a controller dropped from 100 % to 50 %), that's signal — surface it to the user before mechanically pasting the new tables.
 - Production code changes (renames, new classes, deletions) shift which classes appear and may invalidate the per-package baseline rows. If you see new packages or vanished ones, flag it.

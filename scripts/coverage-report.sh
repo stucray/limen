@@ -45,6 +45,19 @@ HISTORY_FILE="$REPO_ROOT/docs/test-coverage-history.jsonl"
 DATE_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 SHA="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 
+# Canonicalize the history file to one-object-per-line JSONL. `jq -c '.'`
+# accepts both already-correct JSONL and concatenated pretty-printed JSON,
+# so this repairs accidental drift (e.g. someone ran `jq .` to inspect it)
+# without touching a correct file beyond a no-op rewrite.
+if [[ -f "$HISTORY_FILE" && -s "$HISTORY_FILE" ]] && command -v jq >/dev/null 2>&1; then
+    if ! jq -c '.' "$HISTORY_FILE" > "$HISTORY_FILE.tmp" 2>/dev/null; then
+        rm -f "$HISTORY_FILE.tmp"
+        echo "warning: $HISTORY_FILE failed to parse as JSON; leaving as-is" >&2
+    else
+        mv "$HISTORY_FILE.tmp" "$HISTORY_FILE"
+    fi
+fi
+
 # Read prior run's headline totals (if any) for the Δ-from-last-run block.
 # Tolerate missing/empty file. Extraction is regex-based on a known shape.
 PREV_INSTR=""; PREV_BRANCH=""; PREV_LINE=""; PREV_METHOD=""
