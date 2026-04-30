@@ -116,6 +116,61 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    void editWithDuplicateNameRedisplaysFormWithError() throws Exception {
+        roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
+        Role editor = roleRepository.save(new Role(null, appA.id(), "editor", null, LocalDateTime.now()));
+
+        mockMvc.perform(post("/manage/t/roles-corp-a/applications/" + appA.id() + "/roles/" + editor.id() + "/edit")
+                .session(sessionA).with(csrf())
+                .param("name", "viewer").param("description", "collision"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("already exists")));
+
+        Role reloaded = roleRepository.findByIdAndApplicationId(editor.id(), appA.id()).orElseThrow();
+        assertThat(reloaded.name()).isEqualTo("editor");
+    }
+
+    @Test
+    void editFormGetRendersTemplateWithRole() throws Exception {
+        Role role = roleRepository.save(new Role(null, appA.id(), "viewer", "read-only", LocalDateTime.now()));
+
+        mockMvc.perform(get("/manage/t/roles-corp-a/applications/" + appA.id() + "/roles/" + role.id() + "/edit")
+                .session(sessionA))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("viewer")));
+    }
+
+    @Test
+    void newFormGetRendersTemplate() throws Exception {
+        mockMvc.perform(get("/manage/t/roles-corp-a/applications/" + appA.id() + "/roles/new").session(sessionA))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void deleteOfRoleAssignedToMembershipRedisplaysListWithError() throws Exception {
+        // Insert a role then directly attach it to an application_membership_role
+        // row so the FK ON DELETE RESTRICT fires when the role is deleted. Using
+        // raw SQL keeps the test independent of the ApplicationMembershipService.
+        Role role = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
+        Long ownerId = userRepository.findByUsernameAndTenantId("owner", tenantA.id()).orElseThrow().id();
+        Long membershipId = jdbcTemplate.queryForObject(
+            "INSERT INTO application_membership (user_id, application_id, granted_at, granted_by) VALUES (?,?,NOW(),?) RETURNING id",
+            Long.class, ownerId, appA.id(), ownerId
+        );
+        jdbcTemplate.update(
+            "INSERT INTO application_membership_role (application_membership_id, role_id) VALUES (?,?)",
+            membershipId, role.id()
+        );
+
+        mockMvc.perform(post("/manage/t/roles-corp-a/applications/" + appA.id() + "/roles/" + role.id() + "/delete")
+                .session(sessionA).with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Cannot delete a role that is still assigned")));
+
+        assertThat(roleRepository.findById(role.id())).isPresent();
+    }
+
+    @Test
     void ownerCanDeleteRole() throws Exception {
         Role role = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
 

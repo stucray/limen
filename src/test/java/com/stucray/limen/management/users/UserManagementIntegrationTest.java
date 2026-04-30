@@ -147,4 +147,48 @@ class UserManagementIntegrationTest {
 
         assertThat(userRepository.findById(newUser.id()).orElseThrow().mustChangePassword()).isFalse();
     }
+
+    @Test
+    void changePasswordRedisplaysFormWhenNewAndConfirmDoNotMatch() throws Exception {
+        User newUser = userRepository.save(new User(null, tenant.id(), "newuser", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
+
+        MvcResult login = mockMvc.perform(post("/manage/t/corp/login")
+                .param("username", "newuser").param("password", "temp").with(csrf()))
+            .andReturn();
+        MockHttpSession newUserSession = (MockHttpSession) login.getRequest().getSession(false);
+
+        mockMvc.perform(post("/manage/t/corp/change-password").session(newUserSession).with(csrf())
+                .param("newPassword", "newpass123").param("confirmPassword", "different1"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("manage/users/change-password"))
+            .andExpect(model().attribute("errorMessage", "Passwords do not match"));
+
+        assertThat(userRepository.findById(newUser.id()).orElseThrow().mustChangePassword()).isTrue();
+    }
+
+    @Test
+    void changePasswordRedisplaysFormWhenNewPasswordIsBlank() throws Exception {
+        User newUser = userRepository.save(new User(null, tenant.id(), "newuser", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
+
+        MvcResult login = mockMvc.perform(post("/manage/t/corp/login")
+                .param("username", "newuser").param("password", "temp").with(csrf()))
+            .andReturn();
+        MockHttpSession newUserSession = (MockHttpSession) login.getRequest().getSession(false);
+
+        mockMvc.perform(post("/manage/t/corp/change-password").session(newUserSession).with(csrf())
+                .param("newPassword", "   ").param("confirmPassword", "   "))
+            .andExpect(status().isOk())
+            .andExpect(view().name("manage/users/change-password"))
+            .andExpect(model().attribute("errorMessage", "Password is required"));
+
+        assertThat(userRepository.findById(newUser.id()).orElseThrow().mustChangePassword()).isTrue();
+    }
+
+    @Test
+    void changePasswordFormGetRendersTemplateWithSlug() throws Exception {
+        mockMvc.perform(get("/manage/t/corp/change-password").session(ownerSession))
+            .andExpect(status().isOk())
+            .andExpect(view().name("manage/users/change-password"))
+            .andExpect(model().attribute("slug", "corp"));
+    }
 }

@@ -159,6 +159,51 @@ class ClientMembersControllerIntegrationTest {
     }
 
     @Test
+    void editFormSubmitWithUnknownRoleIdRedisplaysFormWithError() throws Exception {
+        ApplicationMembership am = appMembershipRepository.save(new ApplicationMembership(
+            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), Set.of()
+        ));
+        ClientMembership cm = clientMembershipRepository.save(new ClientMembership(
+            null, aliceA.id(), clientA.id(), am.id(), LocalDateTime.now(), ownerA.id(), Set.of()
+        ));
+
+        mockMvc.perform(post(url("/members/" + cm.id() + "/edit"))
+                .session(sessionA).with(csrf())
+                .param("roleIds", "999999"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Role not found: 999999")));
+
+        assertThat(clientMembershipRepository.findById(cm.id()).orElseThrow().roleIds()).isEmpty();
+    }
+
+    @Test
+    void editFormGetRendersTemplateWithMembershipDetails() throws Exception {
+        ApplicationMembership am = appMembershipRepository.save(new ApplicationMembership(
+            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), Set.of()
+        ));
+        ClientMembership cm = clientMembershipRepository.save(new ClientMembership(
+            null, aliceA.id(), clientA.id(), am.id(), LocalDateTime.now(), ownerA.id(), Set.of()
+        ));
+        roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
+
+        mockMvc.perform(get(url("/members/" + cm.id() + "/edit")).session(sessionA))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("alice")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("viewer")));
+    }
+
+    @Test
+    void newFormGetRendersGrantableUsers() throws Exception {
+        appMembershipRepository.save(new ApplicationMembership(
+            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), Set.of()
+        ));
+
+        mockMvc.perform(get(url("/members/new")).session(sessionA))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("alice")));
+    }
+
+    @Test
     void editFormSubmitWithNoRoleIdsClearsAssignments() throws Exception {
         ApplicationMembership am = appMembershipRepository.save(new ApplicationMembership(
             null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), Set.of()
