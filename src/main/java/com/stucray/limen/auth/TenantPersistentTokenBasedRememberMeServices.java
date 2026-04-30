@@ -1,5 +1,6 @@
 package com.stucray.limen.auth;
 
+import com.stucray.limen.auth.login.TenantUrlScheme;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,8 +17,7 @@ import org.springframework.security.web.authentication.rememberme.RememberMeAuth
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Date;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.List;
 
 /**
  * Tenant-scoped remember-me. Cookie value is encoded as
@@ -37,24 +37,24 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
     public static final int DEFAULT_SERIES_LENGTH = 16;
     public static final int DEFAULT_TOKEN_LENGTH = 16;
 
-    private static final Pattern OAUTH2_SLUG = Pattern.compile("^/t/([^/]+)/.*");
-    private static final Pattern MGMT_SLUG = Pattern.compile("^/manage/t/([^/]+)/.*");
-
     private final TenantPersistentTokenRepository tokenRepository;
     private final TenantUserDetailsService tenantUserDetailsService;
     private final TenantRepository tenantRepository;
+    private final List<TenantUrlScheme> schemes;
     private final SecureRandom random = new SecureRandom();
 
     public TenantPersistentTokenBasedRememberMeServices(
         String key,
         TenantUserDetailsService userDetailsService,
         TenantPersistentTokenRepository tokenRepository,
-        TenantRepository tenantRepository
+        TenantRepository tenantRepository,
+        List<TenantUrlScheme> schemes
     ) {
         super(key, userDetailsService);
         this.tokenRepository = tokenRepository;
         this.tenantUserDetailsService = userDetailsService;
         this.tenantRepository = tenantRepository;
+        this.schemes = schemes;
     }
 
     @Override
@@ -137,11 +137,12 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
         }
     }
 
-    private static String extractUrlSlug(String uri) {
-        Matcher m = MGMT_SLUG.matcher(uri);
-        if (m.matches()) return m.group(1);
-        m = OAUTH2_SLUG.matcher(uri);
-        return m.matches() ? m.group(1) : null;
+    private String extractUrlSlug(String uri) {
+        for (TenantUrlScheme scheme : schemes) {
+            String slug = scheme.slugFrom(uri);
+            if (slug != null) return slug;
+        }
+        return null;
     }
 
     private String encodeBase64(int byteLength) {

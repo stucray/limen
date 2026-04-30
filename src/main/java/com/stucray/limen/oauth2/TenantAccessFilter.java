@@ -1,6 +1,7 @@
 package com.stucray.limen.oauth2;
 
 import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.auth.login.TenantUrlScheme;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,14 +12,17 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.List;
 
 /**
  * Defence-in-depth: when an authenticated request's URL slug differs from the
  * principal's tenant slug, force-logout (clear context, invalidate session) and
- * redirect to the URL slug's login page. Covers both `/t/{slug}/...` and
- * `/manage/t/{slug}/...`.
+ * redirect to the URL slug's login page.
+ *
+ * The set of recognized URL surfaces is derived from the registered
+ * {@link TenantUrlScheme} beans — adding a new login surface (or registering a
+ * synthetic one in tests) extends cross-tenant defence to that surface
+ * automatically.
  *
  * Must be installed inside the Spring Security filter chain, AFTER the
  * SecurityContextHolderFilter — otherwise SecurityContextHolder is empty and
@@ -26,30 +30,33 @@ import java.util.regex.Pattern;
  */
 public final class TenantAccessFilter extends OncePerRequestFilter {
 
-    private static final Pattern OAUTH2_TENANT = Pattern.compile("^/t/([^/]+)/.*");
-    private static final Pattern MANAGEMENT_TENANT = Pattern.compile("^/manage/t/([^/]+)/.*");
+    private final List<TenantUrlScheme> schemes;
+
+    public TenantAccessFilter(List<TenantUrlScheme> schemes) {
+        this.schemes = schemes;
+    }
 
     @Override
     protected void doFilterInternal(
         HttpServletRequest request, HttpServletResponse response, FilterChain chain
     ) throws ServletException, IOException {
         String uri = request.getRequestURI();
-        String urlSlug;
-        String loginPath;
-
-        Matcher mgmtMatch = MANAGEMENT_TENANT.matcher(uri);
-        Matcher oauthMatch = OAUTH2_TENANT.matcher(uri);
-        if (mgmtMatch.matches()) {
-            urlSlug = mgmtMatch.group(1);
-            loginPath = "/manage/t/" + urlSlug + "/login";
-        } else if (oauthMatch.matches()) {
-            urlSlug = oauthMatch.group(1);
-            loginPath = "/t/" + urlSlug + "/login";
-        } else {
+        TenantUrlScheme matched = null;
+        String urlSlug = null;
+        for (TenantUrlScheme scheme : schemes) {
+            String slug = scheme.slugFrom(uri);
+            if (slug != null) {
+                matched = scheme;
+                urlSlug = slug;
+                break;
+            }
+        }
+        if (matched == null) {
             chain.doFilter(request, response);
             return;
         }
 
+        String loginPath = matched.loginUrl(urlSlug);
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated()
             && auth.getPrincipal() instanceof TenantUserDetails details

@@ -31,7 +31,7 @@ class TenantLoginUnitTest {
         intentA = (req, res, p, scheme) -> null;
         intentB = (req, res, p, scheme) -> null;
         intentC = (req, res, p, scheme) -> null;
-        original = new TenantLogin(authManager, rememberMe, "key", List.of(intentA, intentB));
+        original = new TenantLogin(authManager, rememberMe, "key", List.of(intentA, intentB), List.of());
     }
 
     @Test
@@ -77,7 +77,7 @@ class TenantLoginUnitTest {
                                   TenantUrlScheme scheme) { return null; }
         }
         TenantLogin login = new TenantLogin(
-            authManager, rememberMe, "key", List.of(new IntentX(), new IntentY()));
+            authManager, rememberMe, "key", List.of(new IntentX(), new IntentY()), List.of());
 
         Method post = TenantLogin.class.getDeclaredMethod("verifyOrderUniqueness");
         post.setAccessible(true);
@@ -108,7 +108,7 @@ class TenantLoginUnitTest {
                                   TenantUrlScheme scheme) { return null; }
         }
         TenantLogin login = new TenantLogin(
-            authManager, rememberMe, "key", List.of(new IntentX(), new IntentY()));
+            authManager, rememberMe, "key", List.of(new IntentX(), new IntentY()), List.of());
 
         Method post = TenantLogin.class.getDeclaredMethod("verifyOrderUniqueness");
         post.setAccessible(true);
@@ -119,7 +119,7 @@ class TenantLoginUnitTest {
     void verifyOrderUniquenessIgnoresIntentsWithoutOrder() throws Exception {
         // Two lambda intents have no @Order annotation; default chain mixes them with no collision.
         TenantLogin login = new TenantLogin(authManager, rememberMe, "key",
-            List.of(intentA, intentB, intentC));
+            List.of(intentA, intentB, intentC), List.of());
 
         Method post = TenantLogin.class.getDeclaredMethod("verifyOrderUniqueness");
         post.setAccessible(true);
