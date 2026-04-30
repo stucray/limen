@@ -6,12 +6,12 @@
 
 ## Headline numbers
 
-| Metric       | Coverage | Δ from baseline                  | Covered / Total |
-|--------------|---------:|---------------------------------:|----------------:|
-| Instructions |   93.0 % | $\color{green}{+9.0\\%}$         | 7,001 / 7,529   |
-| Branches     |   74.0 % | $\color{green}{+4.0\\%}$         | 296 / 400       |
-| Lines        |   94.6 % | $\color{green}{+8.5\\%}$         | 1,465 / 1,549   |
-| Methods      |   92.9 % | $\color{green}{+3.8\\%}$         | 367 / 395       |
+| Metric       | Coverage | Δ from baseline | Covered / Total |
+|--------------|---------:|----------------:|----------------:|
+| Instructions |   93.0 % | 🟢 +9.0 %       | 7,001 / 7,529   |
+| Branches     |   74.0 % | 🟢 +4.0 %       | 296 / 400       |
+| Lines        |   94.6 % | 🟢 +8.5 %       | 1,465 / 1,549   |
+| Methods      |   92.9 % | 🟢 +3.8 %       | 367 / 395       |
 
 Detailed HTML drill-down: `target/site/jacoco/index.html` (gitignored — regenerate with `./mvnw clean test`). Per-class CSV: `target/site/jacoco/jacoco.csv`.
 
@@ -19,25 +19,25 @@ Detailed HTML drill-down: `target/site/jacoco/index.html` (gitignored — regene
 
 Sorted by line coverage, weakest first. Δ Line column compares each package against the PR #59 baseline.
 
-| Package                                        | Line %  | Δ Line                          | Branch % | Method % | Missed lines |
-|------------------------------------------------|--------:|--------------------------------:|---------:|---------:|-------------:|
-| com.stucray.limen (`LimenApplication` only)    |  33.3 % | +0.0 %                          | n/a      |  50.0 %  |   2 |
-| com.stucray.limen.management.users             |  87.9 % | $\color{green}{+8.8\\%}$        |  77.8 %  |  89.3 %  |  11 |
-| com.stucray.limen.auth                         |  89.6 % | $\color{green}{+3.0\\%}$        |  75.0 %  |  90.3 %  |  21 |
-| com.stucray.limen.management.signup            |  90.0 % | +0.0 %                          |  64.3 %  | 100.0 %  |   5 |
-| com.stucray.limen.security                     |  92.5 % | +0.0 %                          |  66.7 %  | 100.0 %  |   8 |
-| com.stucray.limen.oauth2                       |  92.5 % | $\color{green}{+4.7\\%}$        |  71.2 %  |  92.5 %  |  27 |
-| com.stucray.limen.management.applications      |  94.1 % | $\color{green}{+17.6\\%}$       |  83.3 %  |  88.2 %  |   3 |
-| com.stucray.limen.management.web               |  95.2 % | +0.0 %                          |  75.0 %  | 100.0 %  |   1 |
-| com.stucray.limen.management.memberships       |  98.2 % | $\color{green}{+20.9\\%}$       |  85.4 %  |  91.5 %  |   6 |
-| com.stucray.limen.identity                     | 100.0 % | +0.0 %                          |  50.0 %  | 100.0 %  |   0 |
-| com.stucray.limen.management.auth              | 100.0 % | +0.0 %                          |  50.0 %  | 100.0 %  |   0 |
-| com.stucray.limen.management.clients           | 100.0 % | +0.0 %                          |  69.4 %  |  92.6 %  |   0 |
-| com.stucray.limen.management.roles             | 100.0 % | $\color{green}{+31.5\\%}$       | 100.0 %  | 100.0 %  |   0 |
-| com.stucray.limen.management.system            | 100.0 % | +0.0 %                          | 100.0 %  |  72.7 %  |   0 |
-| com.stucray.limen.tenant                       | 100.0 % | +0.0 %                          | 100.0 %  | 100.0 %  |   0 |
-| com.stucray.limen.user                         | 100.0 % | +0.0 %                          | n/a      | 100.0 %  |   0 |
-| com.stucray.limen.web                          | 100.0 % | +0.0 %                          |  75.0 %  | 100.0 %  |   0 |
+| Package                                        | Line %  | Δ Line       | Branch % | Method % | Missed lines |
+|------------------------------------------------|--------:|-------------:|---------:|---------:|-------------:|
+| com.stucray.limen (`LimenApplication` only)    |  33.3 % | +0.0 %       | n/a      |  50.0 %  |   2 |
+| com.stucray.limen.management.users             |  87.9 % | 🟢 +8.8 %    |  77.8 %  |  89.3 %  |  11 |
+| com.stucray.limen.auth                         |  89.6 % | 🟢 +3.0 %    |  75.0 %  |  90.3 %  |  21 |
+| com.stucray.limen.management.signup            |  90.0 % | +0.0 %       |  64.3 %  | 100.0 %  |   5 |
+| com.stucray.limen.security                     |  92.5 % | +0.0 %       |  66.7 %  | 100.0 %  |   8 |
+| com.stucray.limen.oauth2                       |  92.5 % | 🟢 +4.7 %    |  71.2 %  |  92.5 %  |  27 |
+| com.stucray.limen.management.applications      |  94.1 % | 🟢 +17.6 %   |  83.3 %  |  88.2 %  |   3 |
+| com.stucray.limen.management.web               |  95.2 % | +0.0 %       |  75.0 %  | 100.0 %  |   1 |
+| com.stucray.limen.management.memberships       |  98.2 % | 🟢 +20.9 %   |  85.4 %  |  91.5 %  |   6 |
+| com.stucray.limen.identity                     | 100.0 % | +0.0 %       |  50.0 %  | 100.0 %  |   0 |
+| com.stucray.limen.management.auth              | 100.0 % | +0.0 %       |  50.0 %  | 100.0 %  |   0 |
+| com.stucray.limen.management.clients           | 100.0 % | +0.0 %       |  69.4 %  |  92.6 %  |   0 |
+| com.stucray.limen.management.roles             | 100.0 % | 🟢 +31.5 %   | 100.0 %  | 100.0 %  |   0 |
+| com.stucray.limen.management.system            | 100.0 % | +0.0 %       | 100.0 %  |  72.7 %  |   0 |
+| com.stucray.limen.tenant                       | 100.0 % | +0.0 %       | 100.0 %  | 100.0 %  |   0 |
+| com.stucray.limen.user                         | 100.0 % | +0.0 %       | n/a      | 100.0 %  |   0 |
+| com.stucray.limen.web                          | 100.0 % | +0.0 %       |  75.0 %  | 100.0 %  |   0 |
 
 ## Closed in this round
 
