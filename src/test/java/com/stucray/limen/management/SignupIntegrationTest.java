@@ -4,6 +4,9 @@ import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.tenant.TenantRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -97,5 +100,33 @@ class SignupIntegrationTest {
                 .with(csrf()))
             .andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Slug may only contain")));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("invalidFormCases")
+    void invalidFormFieldRendersFieldError(
+        String label, String slug, String orgName, String username, String password, String expectedFragment
+    ) throws Exception {
+        mockMvc.perform(post("/signup")
+                .param("slug", slug)
+                .param("organizationName", orgName)
+                .param("username", username)
+                .param("password", password)
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(expectedFragment)));
+    }
+
+    static java.util.stream.Stream<Arguments> invalidFormCases() {
+        String fortyNineChars  = "a".repeat(49);
+        String hundredOneChars = "u".repeat(101);
+        return java.util.stream.Stream.of(
+            Arguments.of("slug too short",          "ab",            "Acme", "alice", "secret123", "between 3 and 48"),
+            Arguments.of("slug too long",           fortyNineChars,  "Acme", "alice", "secret123", "between 3 and 48"),
+            Arguments.of("blank organization name", "acme-corp",     "",     "alice", "secret123", "Organization name is required"),
+            Arguments.of("blank username",          "acme-corp",     "Acme", "",      "secret123", "Username is required"),
+            Arguments.of("username too long",       "acme-corp",     "Acme", hundredOneChars, "secret123", "100 characters or fewer"),
+            Arguments.of("blank password",          "acme-corp",     "Acme", "alice", "",          "Password is required")
+        );
     }
 }
