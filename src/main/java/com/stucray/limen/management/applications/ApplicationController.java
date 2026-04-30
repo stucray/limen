@@ -61,7 +61,7 @@ public class ApplicationController {
         Model model
     ) {
         model.addAttribute("slug", slug);
-        model.addAttribute("application", applicationService.getApplication(appId, principal.tenantId()));
+        model.addAttribute("app", applicationService.getApplication(appId, principal.tenantId()));
         return "manage/applications/edit";
     }
 

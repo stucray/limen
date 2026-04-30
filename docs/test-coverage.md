@@ -71,10 +71,6 @@ Four small additions, all targeting security-adjacent oauth2 / signup branches t
 - `auth.TenantUserDetailsMixin` and `auth.TenantAuthTokenMixin` (0 %): abstract Jackson mixin classes. Their effects are observed indirectly via OAuth2 authorization (de)serialization round-trips.
 - `LimenApplication` (33 %): Spring Boot entry point.
 
-## Findings surfaced (not test-coverage gaps but worth noting)
-
-- **Bug: `GET /manage/t/{slug}/applications/{appId}/edit` is broken.** The controller passes `application` as a model attribute, but Thymeleaf reserves `application` for its `ApplicationAttributeMap` context object. The reserved name shadows the controller's attribute, so `${application.name()}` in `manage/applications/edit.html` fails with `EL1004E: Method name() cannot be found on type ...ApplicationAttributeMap`. Pre-existing — uncovered because no test (and presumably no user) hit the edit-form GET. Fix: rename the model attribute to `app` (matching the convention in `list.html`) and update the template references in `edit.html`. Out of scope for this coverage round.
-
 ## Re-running this report
 
 ```sh

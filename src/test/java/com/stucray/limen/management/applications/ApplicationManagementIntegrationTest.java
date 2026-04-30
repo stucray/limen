@@ -111,6 +111,22 @@ class ApplicationManagementIntegrationTest {
         assertThat(applicationRepository.findById(app.id()).orElseThrow().name()).isEqualTo("New Name");
     }
 
+    // Regression: the model attribute used to be named "application", which collides with
+    // Thymeleaf's reserved ApplicationAttributeMap context object. The expression
+    // ${application.name()} silently resolved to the reserved object, and the GET render
+    // failed with EL1004E. The previous edit test only exercised POST, so the bug shipped
+    // invisibly. Rendering must succeed and contain the existing application's name.
+    @Test
+    void editFormGetRendersExistingApplication() throws Exception {
+        Application app = applicationRepository.save(
+            new Application(null, tenantA.id(), "Acme Widgets", "widget catalogue", LocalDateTime.now()));
+
+        mockMvc.perform(get("/manage/t/corp-a/applications/" + app.id() + "/edit").session(sessionA))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Acme Widgets")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("widget catalogue")));
+    }
+
     @Test
     void ownerCanDeleteApplicationWithoutClients() throws Exception {
         Application app = applicationRepository.save(new Application(null, tenantA.id(), "App", null, LocalDateTime.now()));
