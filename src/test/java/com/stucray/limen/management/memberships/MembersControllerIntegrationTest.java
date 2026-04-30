@@ -139,6 +139,45 @@ class MembersControllerIntegrationTest {
     }
 
     @Test
+    void editFormSubmitWithUnknownRoleIdRedisplaysFormWithError() throws Exception {
+        ApplicationMembership m = membershipRepository.save(new ApplicationMembership(
+            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), java.util.Set.of()
+        ));
+
+        mockMvc.perform(post("/manage/t/members-corp-a/applications/" + appA.id() + "/members/" + m.id() + "/edit")
+                .session(sessionA).with(csrf())
+                .param("roleIds", "999999"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Role not found: 999999")));
+
+        // The persisted membership must remain unchanged (rejection happens before save).
+        assertThat(membershipRepository.findById(m.id()).orElseThrow().roleIds()).isEmpty();
+    }
+
+    @Test
+    void editFormGetRendersTemplateWithMembershipDetails() throws Exception {
+        ApplicationMembership m = membershipRepository.save(new ApplicationMembership(
+            null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), java.util.Set.of()
+        ));
+        roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
+
+        mockMvc.perform(get("/manage/t/members-corp-a/applications/" + appA.id() + "/members/" + m.id() + "/edit")
+                .session(sessionA))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("alice")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("viewer")));
+    }
+
+    @Test
+    void newFormGetRendersGrantableUsersExcludingExistingMembers() throws Exception {
+        // alice is grantable initially.
+        mockMvc.perform(get("/manage/t/members-corp-a/applications/" + appA.id() + "/members/new")
+                .session(sessionA))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("alice")));
+    }
+
+    @Test
     void editFormSubmitWithNoRoleIdsClearsAssignments() throws Exception {
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
         ApplicationMembership m = membershipRepository.save(new ApplicationMembership(

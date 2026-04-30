@@ -73,6 +73,25 @@ class ApplicationManagementIntegrationTest {
     }
 
     @Test
+    void createWithDuplicateNameRedisplaysFormWithError() throws Exception {
+        applicationRepository.save(new Application(null, tenantA.id(), "Existing", "desc", LocalDateTime.now()));
+
+        mockMvc.perform(post("/manage/t/corp-a/applications").session(sessionA).with(csrf())
+                .param("name", "Existing").param("description", "dup attempt"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("already exists")));
+
+        // Only the original survives; the duplicate must not have been persisted.
+        assertThat(applicationRepository.findAllByTenantId(tenantA.id())).hasSize(1);
+    }
+
+    @Test
+    void newFormGetRendersTemplate() throws Exception {
+        mockMvc.perform(get("/manage/t/corp-a/applications/new").session(sessionA))
+            .andExpect(status().isOk());
+    }
+
+    @Test
     void ownerCanListApplications() throws Exception {
         applicationRepository.save(new Application(null, tenantA.id(), "App 1", "desc", LocalDateTime.now()));
 

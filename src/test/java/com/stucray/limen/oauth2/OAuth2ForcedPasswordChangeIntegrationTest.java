@@ -201,6 +201,72 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
             .contains("/t/alpha-corp/oauth2/authorize");
     }
 
+    @Test
+    void blankNewPasswordRerendersFormAndDoesNotClearFlag() throws Exception {
+        User original = userRepository.save(new User(
+            null, tenant.id(), "alice",
+            passwordEncoder.encode("temp"),
+            true, true, false, LocalDateTime.now()));
+
+        MockHttpSession session = startAuthorize(newPkce().challenge());
+
+        mockMvc.perform(post("/t/alpha-corp/login")
+                .param("username", "alice").param("password", "temp")
+                .session(session).with(csrf()))
+            .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(post("/t/alpha-corp/change-password")
+                .param("newPassword", "   ").param("confirmPassword", "   ")
+                .session(session).with(csrf()))
+            .andExpect(status().isOk());
+
+        assertThat(userRepository.findById(original.id()).orElseThrow().mustChangePassword()).isTrue();
+    }
+
+    @Test
+    void changePasswordWithoutSavedRequestRedirectsToTenantHome() throws Exception {
+        // Direct visit to the change-password page (no prior /oauth2/authorize → no
+        // SavedRequest in the cache); after success the controller should fall back
+        // to redirect:/t/{slug}/.
+        User original = userRepository.save(new User(
+            null, tenant.id(), "alice",
+            passwordEncoder.encode("temp"),
+            true, true, false, LocalDateTime.now()));
+
+        MockHttpSession session = new MockHttpSession();
+        mockMvc.perform(post("/t/alpha-corp/login")
+                .param("username", "alice").param("password", "temp")
+                .session(session).with(csrf()))
+            .andExpect(status().is3xxRedirection());
+
+        MvcResult result = mockMvc.perform(post("/t/alpha-corp/change-password")
+                .param("newPassword", "newpass123")
+                .param("confirmPassword", "newpass123")
+                .session(session).with(csrf()))
+            .andExpect(status().is3xxRedirection())
+            .andReturn();
+
+        assertThat(result.getResponse().getHeader("Location")).isEqualTo("/t/alpha-corp/");
+        assertThat(userRepository.findById(original.id()).orElseThrow().mustChangePassword()).isFalse();
+    }
+
+    @Test
+    void changePasswordFormGetRendersChangePasswordView() throws Exception {
+        userRepository.save(new User(
+            null, tenant.id(), "alice",
+            passwordEncoder.encode("temp"),
+            true, true, false, LocalDateTime.now()));
+
+        MockHttpSession session = new MockHttpSession();
+        mockMvc.perform(post("/t/alpha-corp/login")
+                .param("username", "alice").param("password", "temp")
+                .session(session).with(csrf()))
+            .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(get("/t/alpha-corp/change-password").session(session))
+            .andExpect(status().isOk());
+    }
+
     private MockHttpSession startAuthorize(String codeChallenge) throws Exception {
         MockHttpSession session = new MockHttpSession();
         String authzUri = UriComponentsBuilder.fromPath("/t/alpha-corp/oauth2/authorize")
