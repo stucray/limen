@@ -7,6 +7,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -28,6 +29,7 @@ import static org.mockito.BDDMockito.given;
  * Avoids loading a Spring context — exercises pure logic only.
  */
 @ExtendWith(MockitoExtension.class)
+@DisplayName("Remember-me services: cookie encode/decode")
 class TenantPersistentTokenBasedRememberMeServicesUnitTest {
 
     @Mock TenantUserDetailsService userDetailsService;
@@ -60,6 +62,7 @@ class TenantPersistentTokenBasedRememberMeServicesUnitTest {
     }
 
     @Test
+    @DisplayName("Issued cookie encodes series:token:slug — slug is the third segment")
     void onLoginSuccessIssuesCookieWithSeriesTokenSlug() {
         TenantUserDetails principal = new TenantUserDetails(alice, alpha);
         UsernamePasswordAuthenticationToken auth = UsernamePasswordAuthenticationToken
@@ -80,6 +83,7 @@ class TenantPersistentTokenBasedRememberMeServicesUnitTest {
     }
 
     @Test
+    @DisplayName("Cookie carrying a different tenant's slug is rejected and cancelled")
     void processAutoLoginRejectsCookieWithMismatchedSlug() {
         // Build a base64-encoded `series:token:slug` cookie value where slug = beta
         String value = base64("ser-1:tok-1:beta");
@@ -97,6 +101,7 @@ class TenantPersistentTokenBasedRememberMeServicesUnitTest {
     }
 
     @Test
+    @DisplayName("Legacy 2-segment cookie (no slug) is rejected and cancelled")
     void processAutoLoginRejectsCookieWithWrongSegmentCount() {
         // Build a 2-segment cookie (legacy / pre-V2 format) — also rejected.
         String value = base64("ser-1:tok-1");
@@ -112,6 +117,7 @@ class TenantPersistentTokenBasedRememberMeServicesUnitTest {
     }
 
     @Test
+    @DisplayName("Cookie carrying a slug for a no-longer-existing tenant is rejected")
     void processAutoLoginRejectsUnknownSlug() {
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.empty());
 

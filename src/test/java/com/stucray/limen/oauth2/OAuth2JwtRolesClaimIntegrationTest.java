@@ -17,6 +17,7 @@ import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -62,6 +63,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("OAuth2 access-token roles claim: end-to-end PKCE auth-code flow surfaces client_membership roles in the JWT")
 class OAuth2JwtRolesClaimIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -111,6 +113,7 @@ class OAuth2JwtRolesClaimIntegrationTest {
     }
 
     @Test
+    @DisplayName("End-user with client_membership + roles receives an access token whose roles claim lists the granted role names and whose iss is the per-tenant issuer")
     void jwtCarriesClientMembershipRolesForEndUser() throws Exception {
         // 1. Define Roles and a public PKCE Client.
         Role viewer = roleRepository.save(new Role(null, app.id(), "viewer", null, LocalDateTime.now()));
@@ -137,6 +140,7 @@ class OAuth2JwtRolesClaimIntegrationTest {
     }
 
     @Test
+    @DisplayName("Membership without any role grants still passes the gate — token issued with an empty roles claim")
     void jwtCarriesEmptyRolesWhenMembershipHasNoRolesAssigned() throws Exception {
         // Membership presence (not Role count) is the gate — Membership without
         // Roles passes the gate and yields a JWT with roles: [].

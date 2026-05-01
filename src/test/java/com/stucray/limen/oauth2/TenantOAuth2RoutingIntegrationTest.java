@@ -24,6 +24,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -63,6 +64,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("Per-tenant OAuth2 routing under /t/{slug}/: discovery, token, JWKS, userinfo, plus cross-tenant client isolation")
 class TenantOAuth2RoutingIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -112,6 +114,7 @@ class TenantOAuth2RoutingIntegrationTest {
     }
 
     @Test
+    @DisplayName("/t/{slug}/.well-known/openid-configuration advertises tenant-prefixed issuer, token, jwks, and authorization endpoints")
     void discoveryDocumentHasTenantIssuer() throws Exception {
         mockMvc.perform(get("/t/alpha-corp/.well-known/openid-configuration"))
             .andExpect(status().isOk())
@@ -122,12 +125,14 @@ class TenantOAuth2RoutingIntegrationTest {
     }
 
     @Test
+    @DisplayName("Discovery on an unknown tenant slug returns 404")
     void unknownTenantSlugReturns404() throws Exception {
         mockMvc.perform(get("/t/no-such-tenant/.well-known/openid-configuration"))
             .andExpect(status().isNotFound());
     }
 
     @Test
+    @DisplayName("Discovery on a SUSPENDED tenant returns 403 — the tenant exists but is shut off")
     void suspendedTenantReturns403() throws Exception {
         tenantRepository.save(new Tenant(
             null, "suspended-co", "Suspended Co", TenantStatus.SUSPENDED, LocalDateTime.now()
@@ -138,6 +143,7 @@ class TenantOAuth2RoutingIntegrationTest {
     }
 
     @Test
+    @DisplayName("client_credentials token flow at /t/{slug}/oauth2/token succeeds for a client created under that tenant")
     void clientCredentialsTokenFlowSucceedsForTenantClient() throws Exception {
         ClientCreationResult result = clientManagementService.createClient(
             alphaApp.id(), alphaCorpTenant.id(),
@@ -169,6 +175,7 @@ class TenantOAuth2RoutingIntegrationTest {
     }
 
     @Test
+    @DisplayName("A client registered under tenant alpha cannot exchange credentials at tenant beta's /oauth2/token — the request is rejected as 401")
     void crossTenantClientRejected() throws Exception {
         // Register a client under alpha-corp
         ClientCreationResult result = clientManagementService.createClient(
@@ -196,6 +203,7 @@ class TenantOAuth2RoutingIntegrationTest {
     }
 
     @Test
+    @DisplayName("client_credentials access token carries tenant + iss claims and an empty roles array")
     void clientCredentialsTokenIncludesTenantAndRolesClaims() throws Exception {
         ClientCreationResult result = clientManagementService.createClient(
             alphaApp.id(), alphaCorpTenant.id(),
@@ -228,6 +236,7 @@ class TenantOAuth2RoutingIntegrationTest {
     }
 
     @Test
+    @DisplayName("Full authorization-code + PKCE flow under /t/{slug}/ yields a token with tenant + iss claims for the end user")
     void authorizationCodePkceFlowProducesTokenWithTenantClaims() throws Exception {
         User alice = userRepository.save(new User(
             null, alphaCorpTenant.id(), "alice",
@@ -328,6 +337,7 @@ class TenantOAuth2RoutingIntegrationTest {
     }
 
     @Test
+    @DisplayName("Each tenant's JWKS endpoint serves only its own signing keys — alpha's token verifies against alpha's JWKS but not beta's")
     void tenantJwksEndpointsServeIsolatedKeys() throws Exception {
         ClientCreationResult result = clientManagementService.createClient(
             alphaApp.id(), alphaCorpTenant.id(),
@@ -375,6 +385,7 @@ class TenantOAuth2RoutingIntegrationTest {
     }
 
     @Test
+    @DisplayName("/t/{slug}/userinfo accepts a Bearer token from the same tenant and returns the user's claims")
     void userinfoEndpointReturnsClaimsForTenantUser() throws Exception {
         User bob = userRepository.save(new User(
             null, alphaCorpTenant.id(), "bob",

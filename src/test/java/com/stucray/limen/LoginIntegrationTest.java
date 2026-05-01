@@ -4,6 +4,7 @@ import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("Landing page + bare-/login forwarder")
 class LoginIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -53,6 +55,7 @@ class LoginIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET /login with no slug redirects to the landing page")
     void bareLoginRedirectsToLanding() throws Exception {
         mockMvc.perform(get("/login"))
             .andExpect(status().is3xxRedirection())
@@ -60,6 +63,7 @@ class LoginIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET /login?slug=acme redirects to that tenant's management login")
     void loginWithSlugRedirectsToTenantLogin() throws Exception {
         mockMvc.perform(get("/login").param("slug", "acme"))
             .andExpect(status().is3xxRedirection())
@@ -67,6 +71,7 @@ class LoginIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET / renders the landing page with both sign-in and sign-up affordances")
     void rootRendersLandingPage() throws Exception {
         mockMvc.perform(get("/"))
             .andExpect(status().isOk())
@@ -75,6 +80,7 @@ class LoginIntegrationTest {
     }
 
     @Test
+    @DisplayName("System admin signs in at /manage/t/system/login and lands on /manage/t/system/")
     void systemAdminLoginAtSystemTenantSucceeds() throws Exception {
         mockMvc.perform(post("/manage/t/system/login")
                 .param("username", "testuser")

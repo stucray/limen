@@ -3,6 +3,7 @@ package com.stucray.limen.management;
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.tenant.TenantRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -23,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("Public /signup flow: tenant + owner creation")
 class SignupIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -36,6 +38,7 @@ class SignupIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET /signup renders the form (no auth required)")
     void signupFormRendersForUnauthenticatedRequest() throws Exception {
         mockMvc.perform(get("/signup"))
             .andExpect(status().isOk())
@@ -44,6 +47,7 @@ class SignupIntegrationTest {
     }
 
     @Test
+    @DisplayName("Successful POST /signup creates the tenant + owner user and redirects to the tenant login page")
     void successfulSignupCreatesTenantAndOwner() throws Exception {
         mockMvc.perform(post("/signup")
                 .param("organizationName", "Acme Corp")
@@ -62,6 +66,7 @@ class SignupIntegrationTest {
     }
 
     @Test
+    @DisplayName("Slug already taken: form re-renders with an 'already taken' message")
     void duplicateSlugReturnsError() throws Exception {
         jdbcTemplate.execute(
             "INSERT INTO tenants (slug, display_name, status) VALUES ('taken-slug', 'Taken', 'ACTIVE')");
@@ -77,6 +82,7 @@ class SignupIntegrationTest {
     }
 
     @Test
+    @DisplayName("Reserved slugs (system, admin, manage, api, …) are rejected with a 'reserved' message")
     void reservedSlugReturnsError() throws Exception {
         for (String reserved : new String[]{"system", "admin", "manage", "api", "www", "static", "health", "limen"}) {
             mockMvc.perform(post("/signup")
@@ -91,6 +97,7 @@ class SignupIntegrationTest {
     }
 
     @Test
+    @DisplayName("Slug containing uppercase letters is rejected with a character-set hint")
     void invalidSlugFormatReturnsError() throws Exception {
         mockMvc.perform(post("/signup")
                 .param("organizationName", "Test")
@@ -104,6 +111,7 @@ class SignupIntegrationTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("invalidFormCases")
+    @DisplayName("Invalid field re-renders form with field-level error")
     void invalidFormFieldRendersFieldError(
         String label, String slug, String orgName, String username, String password, String expectedFragment
     ) throws Exception {

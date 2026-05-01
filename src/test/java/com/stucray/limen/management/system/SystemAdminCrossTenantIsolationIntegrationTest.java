@@ -7,6 +7,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("System admin cannot cross into other tenants' management routes")
 class SystemAdminCrossTenantIsolationIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -75,6 +77,7 @@ class SystemAdminCrossTenantIsolationIntegrationTest {
     }
 
     @Test
+    @DisplayName("Sysadmin's session hitting /manage/t/acme/users is invalidated and redirected to /manage/t/acme/login")
     void systemAdminCannotReachAnotherTenantsManagementRoutes() throws Exception {
         mockMvc.perform(get("/manage/t/acme/users").session(sysadminSession))
             .andExpect(status().is3xxRedirection())

@@ -10,6 +10,7 @@ import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantScope;
 import com.stucray.limen.tenant.TenantStatus;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@DisplayName("TenantAwareOAuth2AuthorizationService: TenantScope-required save/findById/findByToken with cross-tenant isolation")
 class TenantAwareOAuth2AuthorizationServiceIntegrationTest {
 
     @Autowired OAuth2AuthorizationService authorizationService;
@@ -86,6 +88,7 @@ class TenantAwareOAuth2AuthorizationServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("save() without an active TenantScope throws IllegalStateException")
     void saveWithoutTenantScopeThrows() {
         OAuth2Authorization auth = buildAuthorizationWithAccessToken("alice", "tok-1");
 
@@ -95,6 +98,7 @@ class TenantAwareOAuth2AuthorizationServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("findById() without an active TenantScope throws IllegalStateException")
     void findByIdWithoutTenantScopeThrows() {
         assertThatThrownBy(() -> authorizationService.findById("any-id"))
             .isInstanceOf(IllegalStateException.class)
@@ -102,6 +106,7 @@ class TenantAwareOAuth2AuthorizationServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("findByToken() without an active TenantScope throws IllegalStateException")
     void findByTokenWithoutTenantScopeThrows() {
         assertThatThrownBy(() -> authorizationService.findByToken("any-token", OAuth2TokenType.ACCESS_TOKEN))
             .isInstanceOf(IllegalStateException.class)
@@ -109,6 +114,7 @@ class TenantAwareOAuth2AuthorizationServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("An authorization saved under tenant alpha is invisible to findById() running under tenant beta's scope")
     void crossTenantFindByIdReturnsNull() throws Exception {
         OAuth2Authorization saved = TenantScope.call(alpha.slug(), alpha.id(), () -> {
             OAuth2Authorization a = buildAuthorizationWithAccessToken("alice", "tok-alpha-1");
@@ -123,6 +129,7 @@ class TenantAwareOAuth2AuthorizationServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("A token issued under tenant alpha is resolvable by findByToken() under alpha but returns null under tenant beta's scope")
     void crossTenantFindByTokenReturnsNull() throws Exception {
         OAuth2Authorization saved = TenantScope.call(alpha.slug(), alpha.id(), () -> {
             OAuth2Authorization a = buildAuthorizationWithAccessToken("alice", "tok-alpha-2");
@@ -143,6 +150,7 @@ class TenantAwareOAuth2AuthorizationServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("save() under TenantScope persists the calling tenant's id into the oauth2_authorization.tenant_id column")
     void savePersistsTenantIdColumn() throws Exception {
         OAuth2Authorization saved = TenantScope.call(alpha.slug(), alpha.id(), () -> {
             OAuth2Authorization a = buildAuthorizationWithAccessToken("alice", "tok-alpha-3");

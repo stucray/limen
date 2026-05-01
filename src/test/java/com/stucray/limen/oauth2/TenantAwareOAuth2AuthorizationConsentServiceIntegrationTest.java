@@ -10,6 +10,7 @@ import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantScope;
 import com.stucray.limen.tenant.TenantStatus;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -31,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@DisplayName("TenantAwareOAuth2AuthorizationConsentService: TenantScope-required save/find/remove with cross-tenant isolation")
 class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
 
     @Autowired OAuth2AuthorizationConsentService consentService;
@@ -85,6 +87,7 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("save() without an active TenantScope throws IllegalStateException — refuses to write a tenantless row")
     void saveWithoutTenantScopeThrows() {
         OAuth2AuthorizationConsent consent = OAuth2AuthorizationConsent
             .withId(client.getId(), "alice")
@@ -97,6 +100,7 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("findById() without an active TenantScope throws IllegalStateException — refuses to read across tenants")
     void findByIdWithoutTenantScopeThrows() {
         assertThatThrownBy(() -> consentService.findById(client.getId(), "alice"))
             .isInstanceOf(IllegalStateException.class)
@@ -104,6 +108,7 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("remove() without an active TenantScope throws IllegalStateException — refuses to delete a tenantless row")
     void removeWithoutTenantScopeThrows() {
         OAuth2AuthorizationConsent consent = OAuth2AuthorizationConsent
             .withId(client.getId(), "alice")
@@ -116,6 +121,7 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("A consent saved under tenant alpha is invisible to a findById() call running under tenant beta's scope")
     void crossTenantFindByIdReturnsNull() {
         TenantScope.run(alpha.slug(), alpha.id(), () -> {
             OAuth2AuthorizationConsent consent = OAuth2AuthorizationConsent
@@ -132,6 +138,7 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("save() under TenantScope persists the calling tenant's id into the tenant_id column")
     void savePersistsTenantIdColumn() {
         TenantScope.run(alpha.slug(), alpha.id(), () -> {
             OAuth2AuthorizationConsent consent = OAuth2AuthorizationConsent
@@ -150,6 +157,7 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("save() with the same (clientId, principal) within a tenant overwrites authorities — exactly one row remains")
     void updateOverwritesAuthoritiesWithinTenant() {
         TenantScope.run(alpha.slug(), alpha.id(), () -> {
             consentService.save(OAuth2AuthorizationConsent
@@ -178,6 +186,7 @@ class TenantAwareOAuth2AuthorizationConsentServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("remove() under tenant alpha deletes only alpha's consent row — a manually-planted beta row with the same (clientId, principal) survives")
     void removeDeletesOnlyCallingTenantsRow() {
         OAuth2AuthorizationConsent alphaConsent = OAuth2AuthorizationConsent
             .withId(client.getId(), "alice")

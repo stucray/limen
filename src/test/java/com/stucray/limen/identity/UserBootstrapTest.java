@@ -7,6 +7,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -21,6 +22,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("Startup user-bootstrap runner")
 class UserBootstrapTest {
 
     @Mock TenantRepository tenantRepository;
@@ -39,6 +41,7 @@ class UserBootstrapTest {
     private static final BootstrapAdminProperties ADMIN = new BootstrapAdminProperties("admin", "pass");
 
     @Test
+    @DisplayName("Always looks up the system tenant on startup, even with no admin credentials configured")
     void alwaysBootstrapsSystemTenant() throws Exception {
         new UserBootstrap(NO_ADMIN, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
         verify(tenantRepository).findBySlug("system");
@@ -46,6 +49,7 @@ class UserBootstrapTest {
     }
 
     @Test
+    @DisplayName("Provisions the system tenant when it does not yet exist")
     void createsSystemTenantWhenAbsent() throws Exception {
         given(tenantRepository.findBySlug("system")).willReturn(Optional.empty());
         given(tenantProvisioningService.createTenant("system", "System")).willReturn(SYSTEM_TENANT);
@@ -56,12 +60,14 @@ class UserBootstrapTest {
     }
 
     @Test
+    @DisplayName("Skips user creation entirely when no bootstrap admin credentials are configured")
     void doesNothingWithUsersWhenCredentialsUnset() throws Exception {
         new UserBootstrap(NO_ADMIN, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
         verifyNoInteractions(userRepository, passwordEncoder);
     }
 
     @Test
+    @DisplayName("Creates the configured admin user in the system tenant with an encoded password")
     void createsAdminUserInSystemTenantWhenAbsent() throws Exception {
         given(userRepository.findByUsernameAndTenantId("admin", 1L)).willReturn(Optional.empty());
         given(passwordEncoder.encode("pass")).willReturn("hashed");
@@ -75,6 +81,7 @@ class UserBootstrapTest {
     }
 
     @Test
+    @DisplayName("Re-hashes and saves the admin password when the admin user already exists")
     void updatesPasswordHashWhenAdminUserExists() throws Exception {
         var existing = new User(10L, 1L, "admin", "oldhash", true, false, false, LocalDateTime.now());
         given(userRepository.findByUsernameAndTenantId("admin", 1L)).willReturn(Optional.of(existing));

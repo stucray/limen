@@ -14,6 +14,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@DisplayName("ClientMembershipService (per-client memberships derived from app memberships)")
 class ClientMembershipServiceIntegrationTest {
 
     @Autowired ClientMembershipService clientMembershipService;
@@ -94,6 +96,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("grant: persists row with granted_at, granted_by, and FK back to the app membership")
     void grantStoresRowWithGrantedAtGrantedByAndAppMembershipFk() {
         ApplicationMembership am = applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
 
@@ -111,6 +114,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Granting a client membership requires an existing application membership (gates downward)")
     void grantRequiresExistingApplicationMembership() {
         // alice has no App Membership for appA.
         assertThatThrownBy(() -> clientMembershipService.grant(
@@ -120,6 +124,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Granting a client membership for app A2 fails when the user is only a member of app A")
     void grantRejectedIfUserOnlyHasAppMembershipForDifferentApp() {
         // Cross-table invariant: alice has App Membership for appA only, but
         // tries to be granted Client Membership on a Client of appA2. The
@@ -135,6 +140,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Granting the same user to the same client twice is rejected with 'already a member'")
     void duplicateUserClientRejected() {
         applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
         clientMembershipService.grant(clientA.registeredClientId(), appA.id(), tenantA.id(), aliceA.id(), adminA.id());
@@ -146,6 +152,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Caller's tenantId mismatching the client's tenant: list/grant return 'Client not found'")
     void crossTenantClientAccessRejected() {
         // Caller claims tenantA but clientB belongs to tenantB.
         assertThatThrownBy(() -> clientMembershipService.listMemberships(clientB.registeredClientId(), appA.id(), tenantA.id()))
@@ -159,6 +166,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("URL mismatch (clientA2 listed under appA) is rejected even within the same tenant")
     void mismatchedClientApplicationPathRejected() {
         // URL claims clientA2 (which belongs to appA2) hangs off appA. Reject
         // even within the same tenant — the URL hierarchy must be honest.
@@ -168,6 +176,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Granting a user from a different tenant is rejected with 'User not found'")
     void grantingUserFromAnotherTenantRejected() {
         applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
 
@@ -178,6 +187,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Repository-level: (user_id, client_metadata_id) unique constraint surfaces as DataIntegrityViolation")
     void uniqueConstraintHonouredAtRepositoryLevel() {
         applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
         ApplicationMembership am = applicationMembershipRepository.findByUserIdAndApplicationId(aliceA.id(), appA.id()).orElseThrow();
@@ -189,6 +199,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("updateRoles: assigns a set of roles to an existing client membership")
     void updateRolesAssignsSet() {
         applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
         ClientMembership cm = clientMembershipService.grant(clientA.registeredClientId(), appA.id(), tenantA.id(), aliceA.id(), adminA.id());
@@ -202,6 +213,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("updateRoles: passing an empty set clears all role assignments")
     void updateRolesEmptyClearsSet() {
         applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
         ClientMembership cm = clientMembershipService.grant(clientA.registeredClientId(), appA.id(), tenantA.id(), aliceA.id(), adminA.id());
@@ -215,6 +227,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Roles from a sibling app (same tenant) cannot be assigned to a client membership")
     void cannotAssignRoleFromAnotherApplication() {
         applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
         ClientMembership cm = clientMembershipService.grant(clientA.registeredClientId(), appA.id(), tenantA.id(), aliceA.id(), adminA.id());
@@ -228,6 +241,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("revoke: deletes the membership and its role-assignment join rows; role itself survives")
     void revokeRemovesRowAndRoleAssignments() {
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
         applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
@@ -246,6 +260,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("A Role still assigned to a client membership cannot be deleted (RESTRICT)")
     void roleAssignedToClientMembershipCannotBeDeleted() {
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
         applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
@@ -257,6 +272,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Revoking an application membership cascades to all of its derived client memberships")
     void revokingApplicationMembershipCascadesClientMemberships() {
         // PRD #39 decision 4: hard FK + CASCADE from client_membership.application_membership_id
         // means revoking App Membership atomically revokes all derived Client Memberships.
@@ -272,6 +288,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Deleting a client cascades to its client memberships")
     void deletingClientCascadesClientMembership() {
         applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
         ClientMembership cm = clientMembershipService.grant(clientA.registeredClientId(), appA.id(), tenantA.id(), aliceA.id(), adminA.id());
@@ -282,6 +299,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Deleting a user cascades to all of their client memberships")
     void deletingUserCascadesClientMembership() {
         applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
         clientMembershipService.grant(clientA.registeredClientId(), appA.id(), tenantA.id(), aliceA.id(), adminA.id());
@@ -292,6 +310,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Deleting the granter (admin) nullifies granted_by on existing client memberships")
     void deletingGranterNullifiesGrantedBy() {
         applicationMembershipService.grant(appA.id(), tenantA.id(), bobA.id(), adminA.id());
         ClientMembership cm = clientMembershipService.grant(
@@ -305,6 +324,7 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("listGrantableUsers: includes only app members who don't yet have a client membership")
     void listGrantableUsersOnlyIncludesAppMembersWithoutClientMembership() {
         // alice & bob both have App Membership for appA; alice already has Client Membership.
         applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());

@@ -7,6 +7,7 @@ import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@DisplayName("JdbcSigningKeyStore (per-tenant RSA key storage)")
 class JdbcSigningKeyStoreIntegrationTest {
 
     @Autowired SigningKeyStore signingKeyStore;
@@ -37,6 +39,7 @@ class JdbcSigningKeyStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("Created key round-trips: getActiveSigningKey returns the key whose public JWK matches the stored row")
     void createThenGetReturnsKeyWithMatchingPublicJwk() throws Exception {
         signingKeyStore.createForTenant(tenant.id());
 
@@ -53,6 +56,7 @@ class JdbcSigningKeyStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("getJwkSet returns only public-key material — never the private exponent")
     void getJwkSetReturnsPublicKeysForTenant() throws Exception {
         signingKeyStore.createForTenant(tenant.id());
 
@@ -63,6 +67,7 @@ class JdbcSigningKeyStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("Stored private_key_ciphertext bytes contain no PEM, no JWK fields, and no PKCS#8 sequence header")
     void privateKeyCiphertextDoesNotContainPlaintextKeyMaterial() {
         signingKeyStore.createForTenant(tenant.id());
 
@@ -86,6 +91,7 @@ class JdbcSigningKeyStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("deleteForTenant removes all rows for the tenant (active and rotated)")
     void deleteForTenantRemovesAllRows() {
         signingKeyStore.createForTenant(tenant.id());
         assertThat(rowCount(tenant.id())).isEqualTo(1);
@@ -96,11 +102,13 @@ class JdbcSigningKeyStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("getActiveSigningKey returns null when no active row exists for the tenant")
     void getActiveSigningKeyReturnsNullWhenNoneExists() {
         assertThat(signingKeyStore.getActiveSigningKey(tenant.id())).isNull();
     }
 
     @Test
+    @DisplayName("Calling createForTenant twice violates the partial-unique index on (tenant_id, status='ACTIVE')")
     void createForTenantTwiceViolatesActiveUniqueConstraint() {
         signingKeyStore.createForTenant(tenant.id());
 

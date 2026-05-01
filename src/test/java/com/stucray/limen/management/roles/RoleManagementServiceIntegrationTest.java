@@ -7,6 +7,7 @@ import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@DisplayName("RoleManagementService (per-application role CRUD)")
 class RoleManagementServiceIntegrationTest {
 
     @Autowired RoleManagementService roleManagementService;
@@ -51,6 +53,7 @@ class RoleManagementServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("createRole: persists row scoped to the (application, tenant)")
     void createRoleStoresAndReturnsRow() {
         Role created = roleManagementService.createRole(appA.id(), tenantA.id(), "viewer", "Read-only access");
 
@@ -61,6 +64,7 @@ class RoleManagementServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Duplicate role name within the same application is rejected")
     void duplicateNameWithinSameApplicationIsRejected() {
         roleManagementService.createRole(appA.id(), tenantA.id(), "viewer", null);
 
@@ -70,6 +74,7 @@ class RoleManagementServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("The same role name is allowed across two applications — uniqueness is per-application")
     void sameNameAcrossDifferentApplicationsIsAllowed() {
         // Same tenant, different application — name reuse is fine because the
         // unique key is (application_id, name), not (tenant_id, name).
@@ -84,6 +89,7 @@ class RoleManagementServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("updateRole: renaming to a name already used by another role in the same app is rejected")
     void renameToExistingNameIsRejected() {
         roleManagementService.createRole(appA.id(), tenantA.id(), "viewer", null);
         Role editor = roleManagementService.createRole(appA.id(), tenantA.id(), "editor", null);
@@ -94,6 +100,7 @@ class RoleManagementServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("updateRole: changing the description while keeping the same name is allowed")
     void renamingToOwnNameIsAllowed() {
         Role role = roleManagementService.createRole(appA.id(), tenantA.id(), "viewer", "old desc");
 
@@ -104,6 +111,7 @@ class RoleManagementServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Caller's tenantId mismatching the application's tenant: list/create return 'Application not found'")
     void crossTenantAccessRejected() {
         // appA belongs to tenantA. Calling with tenantB's id must throw.
         assertThatThrownBy(() -> roleManagementService.listRoles(appA.id(), tenantB.id()))
@@ -116,6 +124,7 @@ class RoleManagementServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("A role created in app A cannot be addressed through app B")
     void crossApplicationGetRejected() {
         // A role created in appA must not be addressable through appB even by
         // its owning tenant.
@@ -126,6 +135,7 @@ class RoleManagementServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("deleteRole: removes the row")
     void deleteRemovesRow() {
         Role role = roleManagementService.createRole(appA.id(), tenantA.id(), "viewer", null);
 
@@ -135,6 +145,7 @@ class RoleManagementServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Deleting an application cascades to all of its roles")
     void deletingApplicationCascadesRoles() {
         Role role = roleManagementService.createRole(appA.id(), tenantA.id(), "viewer", null);
 

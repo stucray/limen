@@ -11,6 +11,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -51,6 +52,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("Management surface: forced password change + saved /authorize resume")
 class ManagementForcedPasswordChangeIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -102,6 +104,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("Login with must_change_password=true redirects to /manage/t/{slug}/change-password")
     void managementLoginRedirectsToChangePasswordWhenMustChangeFlagSet() throws Exception {
         userRepository.save(new User(
             null, tenant.id(), "alice",
@@ -119,6 +122,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("Login with a saved /oauth2/authorize redirects to the tenant-prefixed authorize URL, not the management home")
     void managementLoginResumesSavedOAuth2AuthorizeRequest() throws Exception {
         userRepository.save(new User(
             null, tenant.id(), "owner",
@@ -140,6 +144,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("Successful password change resumes the saved /oauth2/authorize flow and clears must_change_password")
     void changePasswordResumesOAuth2FlowAndClearsFlag() throws Exception {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice",
@@ -166,6 +171,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("Mismatched newPassword/confirmPassword re-renders the form; flag stays set")
     void mismatchedPasswordsRerendersFormAndDoesNotClearFlag() throws Exception {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice",
@@ -188,6 +194,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("Blank/whitespace newPassword re-renders the form; flag stays set")
     void blankNewPasswordRerendersFormAndDoesNotClearFlag() throws Exception {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice",
@@ -209,6 +216,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("Successful password change with no saved request redirects to /manage/t/{slug}/")
     void changePasswordWithoutSavedRequestRedirectsToManagementHome() throws Exception {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice",
@@ -233,6 +241,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET /manage/t/{slug}/change-password renders the change-password form")
     void changePasswordFormGetRendersChangePasswordView() throws Exception {
         userRepository.save(new User(
             null, tenant.id(), "alice",

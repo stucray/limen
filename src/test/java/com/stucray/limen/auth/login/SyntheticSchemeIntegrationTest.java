@@ -7,6 +7,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -46,6 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({TestcontainersConfiguration.class, SyntheticSchemeIntegrationTest.SyntheticSchemeConfig.class})
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("TenantUrlScheme bean discovery — synthetic third surface")
 class SyntheticSchemeIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -74,12 +76,14 @@ class SyntheticSchemeIntegrationTest {
     }
 
     @Test
+    @DisplayName("Application context exposes 3 TenantUrlScheme beans (default 2 + synthetic)")
     void threeSchemesAreRegistered() {
         // Pin discoverability: the synthetic scheme is visible alongside the two defaults.
         assertThat(applicationContext.getBeansOfType(TenantUrlScheme.class)).hasSize(3);
     }
 
     @Test
+    @DisplayName("Alpha session hitting /api/t/beta/... is force-logged-out and redirected to /api/t/beta/login")
     void crossTenantAccessOnSyntheticSurfaceForcesLogoutAndRedirects() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/manage/t/alpha/login")
                 .param("username", "owner")

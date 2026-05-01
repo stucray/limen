@@ -7,6 +7,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("Management surface: login + tenant access control")
 class ManagementLoginIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -61,6 +63,7 @@ class ManagementLoginIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET /manage/t/{slug}/login renders the login page with the tenant's display name")
     void loginFormRendersForTenant() throws Exception {
         mockMvc.perform(get("/manage/t/test-corp/login"))
             .andExpect(status().isOk())
@@ -69,6 +72,7 @@ class ManagementLoginIntegrationTest {
     }
 
     @Test
+    @DisplayName("Successful login redirects to /manage/t/{slug}/")
     void successfulLoginRedirectsToHome() throws Exception {
         mockMvc.perform(post("/manage/t/test-corp/login")
                 .param("username", "owner")
@@ -79,6 +83,7 @@ class ManagementLoginIntegrationTest {
     }
 
     @Test
+    @DisplayName("Bad password redirects back to /manage/t/{slug}/login?error")
     void failedLoginShowsError() throws Exception {
         mockMvc.perform(post("/manage/t/test-corp/login")
                 .param("username", "owner")
@@ -89,6 +94,7 @@ class ManagementLoginIntegrationTest {
     }
 
     @Test
+    @DisplayName("Unauthenticated access to /manage/t/{slug}/ is redirected to that tenant's login page")
     void unauthenticatedAccessToManagementPageRedirectsToLogin() throws Exception {
         mockMvc.perform(get("/manage/t/test-corp/"))
             .andExpect(status().is3xxRedirection())
@@ -96,6 +102,7 @@ class ManagementLoginIntegrationTest {
     }
 
     @Test
+    @DisplayName("Authenticated user can GET /manage/t/{slug}/ and sees their tenant's display name")
     void authenticatedUserCanAccessManagementHome() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/manage/t/test-corp/login")
                 .param("username", "owner")
@@ -111,6 +118,7 @@ class ManagementLoginIntegrationTest {
     }
 
     @Test
+    @DisplayName("System admin can sign in at /manage/t/system/login")
     void systemAdminCanLoginAtSystemSlug() throws Exception {
         Tenant systemTenant = tenantRepository.findBySlug("system").orElseThrow();
         userRepository.save(new User(
@@ -128,6 +136,7 @@ class ManagementLoginIntegrationTest {
     }
 
     @Test
+    @DisplayName("Cross-tenant access: TenantAccessFilter force-logs out and redirects to the URL slug's login page")
     void userCannotAccessAnotherTenantManagementPages() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/manage/t/test-corp/login")
                 .param("username", "owner")

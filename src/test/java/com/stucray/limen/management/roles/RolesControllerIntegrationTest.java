@@ -9,6 +9,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("RolesController (per-application role CRUD on the management UI)")
 class RolesControllerIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -70,6 +72,7 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Owner can list the application's roles")
     void ownerCanListRoles() throws Exception {
         roleRepository.save(new Role(null, appA.id(), "viewer", "read-only", LocalDateTime.now()));
 
@@ -79,6 +82,7 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Owner can create a role via POST /roles")
     void ownerCanCreateRole() throws Exception {
         mockMvc.perform(post("/manage/t/roles-corp-a/applications/" + appA.id() + "/roles")
                 .session(sessionA).with(csrf())
@@ -91,6 +95,7 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Creating a role with a name already used in the same app re-renders with 'already exists'")
     void duplicateNameRedisplaysFormWithError() throws Exception {
         roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
 
@@ -102,6 +107,7 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Owner can edit a role's name and description via POST /roles/{id}/edit")
     void ownerCanEditRole() throws Exception {
         Role role = roleRepository.save(new Role(null, appA.id(), "old", "old desc", LocalDateTime.now()));
 
@@ -116,6 +122,7 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Renaming a role to an existing name re-renders the form; row remains unchanged")
     void editWithDuplicateNameRedisplaysFormWithError() throws Exception {
         roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
         Role editor = roleRepository.save(new Role(null, appA.id(), "editor", null, LocalDateTime.now()));
@@ -131,6 +138,7 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Edit form GET renders the existing role")
     void editFormGetRendersTemplateWithRole() throws Exception {
         Role role = roleRepository.save(new Role(null, appA.id(), "viewer", "read-only", LocalDateTime.now()));
 
@@ -141,12 +149,14 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("New-role form GET renders the template")
     void newFormGetRendersTemplate() throws Exception {
         mockMvc.perform(get("/manage/t/roles-corp-a/applications/" + appA.id() + "/roles/new").session(sessionA))
             .andExpect(status().isOk());
     }
 
     @Test
+    @DisplayName("Deleting a role still assigned to a membership re-renders the list with 'Cannot delete'")
     void deleteOfRoleAssignedToMembershipRedisplaysListWithError() throws Exception {
         // Insert a role then directly attach it to an application_membership_role
         // row so the FK ON DELETE RESTRICT fires when the role is deleted. Using
@@ -171,6 +181,7 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Owner can delete an unassigned role via POST /roles/{id}/delete")
     void ownerCanDeleteRole() throws Exception {
         Role role = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
 
@@ -182,6 +193,7 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Tenant B session is force-redirected to tenant A's login when reaching tenant A's roles")
     void tenantBSessionCannotReachTenantARoles() throws Exception {
         userRepository.save(new User(null, tenantB.id(), "ownerB", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
         MvcResult loginB = mockMvc.perform(post("/manage/t/roles-corp-b/login")
@@ -197,6 +209,7 @@ class RolesControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Applications-list page links each row to its /roles page")
     void rolesLinkAppearsOnApplicationsList() throws Exception {
         mockMvc.perform(get("/manage/t/roles-corp-a/applications").session(sessionA))
             .andExpect(status().isOk())

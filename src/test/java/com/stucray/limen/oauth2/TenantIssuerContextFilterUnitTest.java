@@ -4,6 +4,7 @@ import com.stucray.limen.tenant.TenantScope;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -22,6 +23,7 @@ import static org.mockito.Mockito.verify;
  * the default-port branches in {@code buildBaseUrl}, which would silently
  * stamp wrong-issuer claims if broken.
  */
+@DisplayName("TenantIssuerContextFilter: branch coverage for no-tenant-scope short-circuit and buildBaseUrl default-port handling")
 class TenantIssuerContextFilterUnitTest {
 
     AuthorizationServerSettings baseSettings;
@@ -39,6 +41,7 @@ class TenantIssuerContextFilterUnitTest {
     }
 
     @Test
+    @DisplayName("With no TenantScope bound, the filter does not set an AuthorizationServerContext and just proceeds down the chain")
     void noTenantScopeLeavesContextUntouchedAndProceeds() throws Exception {
         MockHttpServletRequest req = new MockHttpServletRequest("GET", "/anything");
         MockHttpServletResponse res = new MockHttpServletResponse();
@@ -51,24 +54,28 @@ class TenantIssuerContextFilterUnitTest {
     }
 
     @Test
+    @DisplayName("http on the default port 80 produces an issuer URL with no explicit :80 segment")
     void httpOnPort80OmitsPortFromIssuer() throws Exception {
         String issuer = issuerFor("http", "auth.example.com", 80, "alpha");
         assertThat(issuer).isEqualTo("http://auth.example.com/t/alpha");
     }
 
     @Test
+    @DisplayName("https on the default port 443 produces an issuer URL with no explicit :443 segment")
     void httpsOnPort443OmitsPortFromIssuer() throws Exception {
         String issuer = issuerFor("https", "auth.example.com", 443, "alpha");
         assertThat(issuer).isEqualTo("https://auth.example.com/t/alpha");
     }
 
     @Test
+    @DisplayName("http on a non-default port (e.g. 8080) keeps the port in the issuer URL")
     void httpOnNonDefaultPortIncludesPortInIssuer() throws Exception {
         String issuer = issuerFor("http", "localhost", 8080, "alpha");
         assertThat(issuer).isEqualTo("http://localhost:8080/t/alpha");
     }
 
     @Test
+    @DisplayName("https on a non-default port (e.g. 8443) keeps the port in the issuer URL")
     void httpsOnNonDefaultPortIncludesPortInIssuer() throws Exception {
         String issuer = issuerFor("https", "auth.example.com", 8443, "alpha");
         assertThat(issuer).isEqualTo("https://auth.example.com:8443/t/alpha");

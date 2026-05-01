@@ -19,6 +19,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -46,6 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("User detail page: read-only view of a user's application + client memberships")
 class UserDetailControllerIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -97,6 +99,7 @@ class UserDetailControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Detail page lists each application membership with its roles, and nested client memberships with their roles, and links through to the per-app and per-client member pages")
     void detailPageRendersAppAndNestedClientMembershipsWithRoles() throws Exception {
         Role appAdmin = roleRepository.save(new Role(null, appA.id(), "app-admin", null, LocalDateTime.now()));
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
@@ -126,6 +129,7 @@ class UserDetailControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("A user with no memberships renders an empty-state message")
     void detailPageShowsEmptyStateWhenUserHasNoMemberships() throws Exception {
         mockMvc.perform(get("/manage/t/user-detail-a/users/" + aliceA.id()).session(sessionA))
             .andExpect(status().isOk())
@@ -133,6 +137,7 @@ class UserDetailControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Detail page is read-only — it has no edit/grant/delete buttons or membership-mutating forms")
     void detailPageHasNoEditOrGrantOrDeleteAffordances() throws Exception {
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
         ApplicationMembership am = appMembershipRepository.save(new ApplicationMembership(
@@ -155,6 +160,7 @@ class UserDetailControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("A session for tenant B cannot view a user-detail page in tenant A — redirects to tenant A's login")
     void crossTenantSessionCannotReachUserDetail() throws Exception {
         userRepository.save(new User(null, tenantB.id(), "ownerB", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
         MvcResult loginB = mockMvc.perform(post("/manage/t/user-detail-b/login")
@@ -168,6 +174,7 @@ class UserDetailControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("On the users list page, each username links to that user's detail page")
     void usernameOnListPageLinksToDetail() throws Exception {
         mockMvc.perform(get("/manage/t/user-detail-a/users").session(sessionA))
             .andExpect(status().isOk())
@@ -177,6 +184,7 @@ class UserDetailControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Empty-state still shows when other users in the same tenant have memberships but the target user does not")
     void detailPageRendersWhenMembershipsExistInOtherAppsButNotForThisUser() throws Exception {
         // Other user has memberships, target user does not — empty state still shows.
         User bob = userRepository.save(new User(null, tenantA.id(), "bob", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));

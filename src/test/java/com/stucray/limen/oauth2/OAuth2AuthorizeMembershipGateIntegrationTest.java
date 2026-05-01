@@ -17,6 +17,7 @@ import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -64,6 +65,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("/oauth2/authorize client-membership gate: deny unless (user, registered_client, tenant) has a membership row")
 class OAuth2AuthorizeMembershipGateIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -131,6 +133,7 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
     }
 
     @Test
+    @DisplayName("Authenticated user with no client_membership is rejected with access_denied (state preserved, no code issued)")
     void userWithoutClientMembershipIsDeniedAtAuthorize() throws Exception {
         TenantClient client = createPkceClient(alphaApp, alphaTenant, "no-membership-client");
 
@@ -145,6 +148,7 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
     }
 
     @Test
+    @DisplayName("Membership presence is the gate, not role count — a user with zero roles still gets a token (with an empty roles claim)")
     void userWithMembershipAndZeroRolesPassesGate() throws Exception {
         TenantClient client = createPkceClient(alphaApp, alphaTenant, "zero-roles-client");
         ClientMembershipTestFixture.grant(
@@ -162,6 +166,7 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
     }
 
     @Test
+    @DisplayName("A user with membership + roles gets an access token whose roles claim lists their granted role names")
     void userWithMembershipAndRolesGetsJwtWithRoles() throws Exception {
         TenantClient client = createPkceClient(alphaApp, alphaTenant, "with-roles-client");
         Role viewer = roleRepository.save(new Role(null, alphaApp.id(), "viewer", null, LocalDateTime.now()));
@@ -183,6 +188,7 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
     }
 
     @Test
+    @DisplayName("A user from tenant Beta logging into tenant Alpha's URL is rejected by TenantAccessFilter before the gate ever runs")
     void crossTenantUserIsRejectedBeforeReachingGate() throws Exception {
         // bob (Tenant Beta) attempting to login against Tenant Alpha's URL is
         // force-logged-out by TenantAccessFilter from v1 — login fails outright,

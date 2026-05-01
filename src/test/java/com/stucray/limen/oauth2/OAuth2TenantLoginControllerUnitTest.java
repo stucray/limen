@@ -3,6 +3,7 @@ package com.stucray.limen.oauth2;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -21,11 +22,13 @@ import static org.mockito.BDDMockito.given;
  * the unknown-slug redirect (previously uncovered) and the happy path.
  */
 @ExtendWith(MockitoExtension.class)
+@DisplayName("OAuth2TenantLoginController: branch coverage for the unknown-slug redirect and the happy path")
 class OAuth2TenantLoginControllerUnitTest {
 
     @Mock TenantRepository tenantRepository;
 
     @Test
+    @DisplayName("Unknown slug redirects to /manage/t/system/login and adds no tenant attributes to the model")
     void unknownSlugRedirectsToSystemLogin() {
         given(tenantRepository.findBySlug("does-not-exist")).willReturn(Optional.empty());
         OAuth2TenantLoginController controller = new OAuth2TenantLoginController(tenantRepository);
@@ -39,6 +42,7 @@ class OAuth2TenantLoginControllerUnitTest {
     }
 
     @Test
+    @DisplayName("Known slug renders the login view with tenantSlug and tenantName populated for the template")
     void knownSlugRendersLoginViewWithTenantAttributes() {
         Tenant alpha = new Tenant(1L, "alpha", "Alpha Corp", TenantStatus.ACTIVE, LocalDateTime.now());
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.of(alpha));

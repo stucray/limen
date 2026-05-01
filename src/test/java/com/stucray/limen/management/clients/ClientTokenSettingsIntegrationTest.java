@@ -14,6 +14,7 @@ import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -47,6 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("Per-client token settings flow through to issued tokens")
 class ClientTokenSettingsIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -95,6 +97,7 @@ class ClientTokenSettingsIntegrationTest {
     }
 
     @Test
+    @DisplayName("Configured access-token TTL: exp − iat on the issued JWT matches the configured minutes")
     void accessTokenTtlIsReflectedInIssuedToken() throws Exception {
         long ttlMinutes = 2;
         ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
@@ -127,6 +130,7 @@ class ClientTokenSettingsIntegrationTest {
     }
 
     @Test
+    @DisplayName("requirePkce=true: token exchange without code_verifier returns 400 Bad Request")
     void pkceRequiredClientRejectsTokenExchangeWithoutCodeVerifier() throws Exception {
         ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
             app.id(), tenant.id(), "pkce-client",
@@ -191,6 +195,7 @@ class ClientTokenSettingsIntegrationTest {
     }
 
     @Test
+    @DisplayName("reuseRefreshTokens=false (rotation): refresh issues a new token and the old one is rejected")
     void refreshTokenRotationIssuesNewTokenAndInvalidatesOld() throws Exception {
         ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
             app.id(), tenant.id(), "rotation-client",
@@ -230,6 +235,7 @@ class ClientTokenSettingsIntegrationTest {
     }
 
     @Test
+    @DisplayName("reuseRefreshTokens=true: the same refresh token works for repeated exchanges")
     void reuseRefreshTokensAllowsRepeatedUseOfSameToken() throws Exception {
         ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
             app.id(), tenant.id(), "reuse-client",
@@ -261,6 +267,7 @@ class ClientTokenSettingsIntegrationTest {
     }
 
     @Test
+    @DisplayName("Updating a client's TTL through the management UI shortens TTLs of subsequent tokens")
     void updatingTokenSettingsIsReflectedInSubsequentTokens() throws Exception {
         ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
             app.id(), tenant.id(), "update-client",

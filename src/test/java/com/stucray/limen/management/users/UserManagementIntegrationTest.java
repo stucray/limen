@@ -7,6 +7,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("Tenant user management: list / create / disable / delete / reset-password / grant-owner + change-password flow")
 class UserManagementIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -55,6 +57,7 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Tenant owner can GET /manage/t/{slug}/users and see the tenant's users")
     void ownerCanListUsers() throws Exception {
         mockMvc.perform(get("/manage/t/corp/users").session(ownerSession))
             .andExpect(status().isOk())
@@ -62,6 +65,7 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Creating a user persists them with mustChangePassword=true so they're forced to set a real password on first login")
     void ownerCanCreateUser() throws Exception {
         mockMvc.perform(post("/manage/t/corp/users").session(ownerSession).with(csrf())
                 .param("username", "alice").param("temporaryPassword", "temppass1"))
@@ -72,6 +76,7 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Tenant owner can disable a user and re-enable them, flipping the enabled flag in both directions")
     void ownerCanDisableAndEnableUser() throws Exception {
         User alice = userRepository.save(new User(null, tenant.id(), "alice", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
 
@@ -85,6 +90,7 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Tenant owner can delete a user — the row is removed from the users table")
     void ownerCanDeleteUser() throws Exception {
         User alice = userRepository.save(new User(null, tenant.id(), "alice", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
 
@@ -94,6 +100,7 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Reset-password sets a temporary password and flips mustChangePassword=true so the user must change it on next login")
     void ownerCanResetPassword() throws Exception {
         User alice = userRepository.save(new User(null, tenant.id(), "alice", passwordEncoder.encode("oldpass"), true, false, false, LocalDateTime.now()));
 
@@ -106,6 +113,7 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Tenant owner can grant the tenant-owner role to another user and revoke it again")
     void ownerCanGrantAndRevokeTenantOwnerRole() throws Exception {
         User alice = userRepository.save(new User(null, tenant.id(), "alice", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
 
@@ -119,6 +127,7 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("A user with mustChangePassword=true is redirected to the change-password page on every authenticated request")
     void userWithMustChangePasswordIsInterceptedToChangePasswordPage() throws Exception {
         userRepository.save(new User(null, tenant.id(), "newuser", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
 
@@ -133,6 +142,7 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("After successfully changing the password, mustChangePassword is cleared so the user can use the app normally")
     void mustChangePasswordClearedAfterChange() throws Exception {
         User newUser = userRepository.save(new User(null, tenant.id(), "newuser", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
 
@@ -149,6 +159,7 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Mismatched new/confirm passwords re-render the form with an error and leave mustChangePassword=true")
     void changePasswordRedisplaysFormWhenNewAndConfirmDoNotMatch() throws Exception {
         User newUser = userRepository.save(new User(null, tenant.id(), "newuser", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
 
@@ -167,6 +178,7 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Blank/whitespace new password re-renders the form with 'Password is required' and leaves mustChangePassword=true")
     void changePasswordRedisplaysFormWhenNewPasswordIsBlank() throws Exception {
         User newUser = userRepository.save(new User(null, tenant.id(), "newuser", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
 
@@ -185,6 +197,7 @@ class UserManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET /manage/t/{slug}/change-password renders the form template with the tenant slug in the model")
     void changePasswordFormGetRendersTemplateWithSlug() throws Exception {
         mockMvc.perform(get("/manage/t/corp/change-password").session(ownerSession))
             .andExpect(status().isOk())

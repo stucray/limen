@@ -13,6 +13,7 @@ import com.stucray.limen.tenant.TenantScope;
 import com.stucray.limen.tenant.TenantStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -37,6 +38,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
  * hit the issuer-with-slug → key happy path.
  */
 @ExtendWith(MockitoExtension.class)
+@DisplayName("TenantJwkSource: branch coverage for resolveTenantId() arms and the no-active-key error")
 class TenantJwkSourceUnitTest {
 
     @Mock TenantRepository tenantRepository;
@@ -59,6 +61,7 @@ class TenantJwkSourceUnitTest {
     }
 
     @Test
+    @DisplayName("Issuer URL containing /t/{slug} resolves the tenant via the repo and returns that tenant's active signing key")
     void issuerWithTenantSegmentResolvesViaRepositoryAndReturnsKey() throws Exception {
         setIssuer("https://auth.example.com/t/alpha");
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.of(alpha));
@@ -70,6 +73,7 @@ class TenantJwkSourceUnitTest {
     }
 
     @Test
+    @DisplayName("Issuer URL without a /t/{slug} segment falls back to the bound TenantScope and skips the repo lookup entirely")
     void issuerWithoutTenantSegmentFallsBackToTenantScope() throws Exception {
         setIssuer("https://auth.example.com");
         given(signingKeyStore.getActiveSigningKey(1L)).willReturn(alphaKey);
@@ -83,6 +87,7 @@ class TenantJwkSourceUnitTest {
     }
 
     @Test
+    @DisplayName("Issuer URL with an unknown slug falls back to the bound TenantScope rather than blowing up")
     void issuerWithUnknownSlugFallsBackToTenantScope() throws Exception {
         setIssuer("https://auth.example.com/t/ghost");
         given(tenantRepository.findBySlug("ghost")).willReturn(Optional.empty());
@@ -96,6 +101,7 @@ class TenantJwkSourceUnitTest {
     }
 
     @Test
+    @DisplayName("With neither AuthorizationServerContext nor TenantScope set, get() throws IllegalStateException and never touches the repo or key store")
     void noContextAndNoTenantScopeThrowsIllegalState() {
         assertThatThrownBy(() ->
             source.get(new JWKSelector(new com.nimbusds.jose.jwk.JWKMatcher.Builder().build()), null))
@@ -105,6 +111,7 @@ class TenantJwkSourceUnitTest {
     }
 
     @Test
+    @DisplayName("Tenant resolved but no active signing key — get() throws IllegalStateException naming the tenant id")
     void resolvedTenantWithNoActiveKeyThrowsIllegalState() {
         setIssuer("https://auth.example.com/t/alpha");
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.of(alpha));
