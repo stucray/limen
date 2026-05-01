@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command // empty' | { read -r cmd; blocked=false; case \"$cmd\" in *\"git commit\"*|*\"git push\"*) blocked=true;; esac; case \"$cmd\" in *\"--dry-run\"*) blocked=false;; esac; if $blocked; then branch=$(git -C /Users/scray/dev/projects/limen rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$branch\" = \"main\" ]; then echo \"Refusing to git commit/push on main — create a feature branch first: git checkout -b <name>\" >&2; exit 2; fi; fi; }"
+          }
+        ]
+      }
+    ]
+  }
+}
