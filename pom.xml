@@ -19,6 +19,13 @@
 		<maven.compiler.target>26</maven.compiler.target>
 		<error-prone.version>2.49.0</error-prone.version>
 		<nullaway.version>0.13.4</nullaway.version>
+		<maven-jxr-plugin.version>3.6.0</maven-jxr-plugin.version>
+		<maven-pmd-plugin.version>3.28.0</maven-pmd-plugin.version>
+		<!--
+			maven-pmd-plugin 3.28.0 bundles PMD 7.17, which doesn't support Java 26
+			classfiles (major version 70). Override to 7.21.0+ via plugin dependencies.
+		-->
+		<pmd.version>7.24.0</pmd.version>
 	</properties>
 
 	<dependencies>
@@ -192,6 +199,66 @@
 						</goals>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jxr-plugin</artifactId>
+				<version>${maven-jxr-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>jxr-source-xref</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>jxr</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-pmd-plugin</artifactId>
+				<version>${maven-pmd-plugin.version}</version>
+				<configuration>
+					<rulesets>
+						<ruleset>${project.basedir}/pmd-ruleset.xml</ruleset>
+					</rulesets>
+					<format>html</format>
+					<linkXRef>true</linkXRef>
+					<printFailingErrors>true</printFailingErrors>
+					<skipPmdError>true</skipPmdError>
+					<includeTests>false</includeTests>
+				</configuration>
+				<executions>
+					<execution>
+						<id>pmd-report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>pmd</goal>
+						</goals>
+					</execution>
+				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>net.sourceforge.pmd</groupId>
+						<artifactId>pmd-core</artifactId>
+						<version>${pmd.version}</version>
+					</dependency>
+					<dependency>
+						<groupId>net.sourceforge.pmd</groupId>
+						<artifactId>pmd-java</artifactId>
+						<version>${pmd.version}</version>
+					</dependency>
+					<dependency>
+						<groupId>net.sourceforge.pmd</groupId>
+						<artifactId>pmd-javascript</artifactId>
+						<version>${pmd.version}</version>
+					</dependency>
+					<dependency>
+						<groupId>net.sourceforge.pmd</groupId>
+						<artifactId>pmd-jsp</artifactId>
+						<version>${pmd.version}</version>
+					</dependency>
+				</dependencies>
 			</plugin>
 		</plugins>
 	</build>
