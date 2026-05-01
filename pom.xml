@@ -18,6 +18,7 @@
 		<maven.compiler.source>26</maven.compiler.source>
 		<maven.compiler.target>26</maven.compiler.target>
 		<error-prone.version>2.49.0</error-prone.version>
+		<nullaway.version>0.13.4</nullaway.version>
 	</properties>
 
 	<dependencies>
@@ -125,13 +126,19 @@
 					<compilerArgs>
 						<arg>-XDcompilePolicy=simple</arg>
 						<arg>--should-stop=ifError=FLOW</arg>
-						<arg>-Xplugin:ErrorProne -XepDisableWarningsInGeneratedCode</arg>
+						<arg>-XDaddTypeAnnotationsToSymbol=true</arg>
+						<arg>-Xplugin:ErrorProne -XepDisableWarningsInGeneratedCode -Xep:NullAway:WARN -XepOpt:NullAway:JSpecifyMode=true -XepOpt:NullAway:AnnotatedPackages=com.stucray.limen -XepOpt:NullAway:ExcludedFieldAnnotations=org.springframework.beans.factory.annotation.Autowired,org.mockito.Mock,org.mockito.InjectMocks</arg>
 					</compilerArgs>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>com.google.errorprone</groupId>
 							<artifactId>error_prone_core</artifactId>
 							<version>${error-prone.version}</version>
+						</path>
+						<path>
+							<groupId>com.uber.nullaway</groupId>
+							<artifactId>nullaway</artifactId>
+							<version>${nullaway.version}</version>
 						</path>
 					</annotationProcessorPaths>
 				</configuration>
