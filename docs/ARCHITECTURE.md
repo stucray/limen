@@ -31,6 +31,8 @@ Concretely, Limen provides:
 | Crypto | Spring Security Crypto (`Encryptors.stronger`), Nimbus JOSE+JWT |
 | Tests | Spring Boot Test + Testcontainers (Postgres) |
 | Build | Maven |
+| Static analysis | Error Prone (compile-time bug detection); NullAway in `ERROR` mode (JSpecify, production code only — disabled on test compile); PMD report-only (complexity rules in `pmd-ruleset.xml`); JaCoCo coverage; Maven JXR for source cross-references |
+| CI | GitHub Actions: a single `verify` job on push and PR to `main` runs `./mvnw -B -ntp verify` (compile + Error Prone + NullAway + Testcontainers tests + JaCoCo + PMD report). PMD HTML/XML + JXR uploaded as a 30-day artifact; JaCoCo HTML uploaded on failure |
 
 ## 3. Domain Model
 
@@ -276,22 +278,32 @@ Properties:
 
 ### 4.5 Authentication flows
 
-There are three login flows in the system: an OAuth2 end-user login at `/t/{slug}/login`, a management-console login at `/manage/t/{slug}/login`, and a forced-password-change interception that overlays both.
+There are two tenant-scoped login surfaces — an OAuth2 end-user login at `/t/{slug}/login` and a management-console login at `/manage/t/{slug}/login` — plus a forced-password-change overlay that fires on both. They share one auth backend and one login pipeline.
 
-**Unified tenant-aware backend.** Both login URLs go through the same `TenantAuthProvider` (in `com.stucray.limen.auth`), against a `TenantAuthToken` whose slug is captured from the URL path before authentication runs. The provider loads the User by `(tenant_id, username)` and returns a `TenantUserDetails` whose `tenantSlug()`/`tenantId()` are used downstream. Two filter subclasses of `AbstractTenantAuthFilter` differ only in URL pattern and slug-extractor: `OAuth2TenantAuthFilter` for `/t/{slug}/login`, `ManagementTenantAuthFilter` for `/manage/t/{slug}/login`. There is no silent fallback to the System Tenant — a missing-or-mismatched slug fails the request loudly.
+**Unified tenant-aware backend.** Both login URLs go through the same `TenantAuthProvider` (in `com.stucray.limen.auth`), against a `TenantAuthToken` whose slug is captured from the URL path before authentication runs. The provider loads the User by `(tenant_id, username)` and returns a `TenantUserDetails` whose `tenantSlug()`/`tenantId()` are used downstream. There is no silent fallback to the System Tenant — a missing-or-mismatched slug fails the request loudly.
 
-**Defence in depth.** A `TenantAccessFilter` runs in both UI chains: any authenticated request whose URL slug differs from the principal's tenant slug is force-logged-out and redirected to the URL slug's login. Bare `/login` 302s to `/manage/t/system/login` (matching `/`).
+**One login deep module, two surfaces.** Form-filter wiring, success dispatch, remember-me, and cross-tenant defence all live in one immutable bean — `TenantLogin` (in `com.stucray.limen.auth.login`). Each surface is described by a `TenantUrlScheme` record (login pattern + slug regex + login/home/change-password URL templates); two scheme beans are registered out of the box (`oauth2UrlScheme`, `managementUrlScheme`). Each security chain wires its surface in one line: `login.applyTo(http, scheme)`. The form-login filter itself is a private inner class parameterised by the scheme — there is no `AbstractTenantAuthFilter` hierarchy any more.
 
-**Tenant-scoped remember-me.** `TenantPersistentTokenBasedRememberMeServices` encodes the slug as a third segment in the cookie value (`series:token:slug`) and rejects mismatched slugs at decode. Storage is keyed by `(tenant_id, series)` via `TenantPersistentTokenRepository`. Both filter chains share the same repository bean; management gained remember-me as part of this work (it had none previously).
+**Defence in depth.** A `TenantAccessFilter` runs in both UI chains (wired automatically by `applyTo`): any authenticated request whose URL slug differs from the principal's tenant slug is force-logged-out and redirected to the URL slug's login. The root `/` renders a public landing template; bare `/login` is a slug-aware forwarder (`?slug=X` → `/manage/t/X/login`, otherwise → `/`).
 
-**Forced password change on the OAuth2 path:**
+**Tenant-scoped remember-me.** `TenantPersistentTokenBasedRememberMeServices` encodes the slug as a third segment in the cookie value (`series:token:slug`) and rejects mismatched slugs at decode. Storage is keyed by `(tenant_id, series)` via `TenantPersistentTokenRepository`. Both filter chains share the same repository bean.
+
+**Post-login dispatch.** The old hard-coded success handler is replaced by an ordered chain of `PostLoginIntent` beans. Each intent inspects the just-authenticated principal and returns either a redirect URL or `null` (fall through). The default chain (in `PostLoginIntents`, terminal-last) is:
+
+1. `passwordChangeRequired()` — redirects to the surface's change-password URL when `must_change_password` is set.
+2. `resumeOAuth2Authorize()` — replays a saved `/oauth2/authorize` request, tenant-prefixing the URL under `/t/{slug}/`.
+3. `tenantHome()` — terminal default: redirect to the surface's home.
+
+Order matters: the password-change check fires **before** OAuth2-resume so a User with an expired password cannot complete an authorize flow before updating it. New policies are added by registering an `@Bean PostLoginIntent` with an `@Order` value; user-supplied intents are prepended to the defaults via `ObjectProvider#orderedStream()`.
+
+**Forced password change.** Two trigger paths share one orchestrator. On a fresh login, the `passwordChangeRequired()` intent (above) catches a User whose `must_change_password` flag is set and redirects them to the surface's change-password URL. Inside the management console — for example, after an admin clicks **Reset password** mid-session — `PasswordChangeRequiredInterceptor` (in `management.users`) catches subsequent requests and does the same redirect. Both change-password controllers (`oauth2.EndUserPasswordChangeController` and `management.users.PasswordChangeController`) delegate to a shared `TenantPasswordChangeFlow` (in `auth.login`) for validation, persistence, and OAuth2-authorize-resume. The resume target is always tenant-prefixed under `/t/{slug}/oauth2/authorize` regardless of which surface the User changed their password on, because the authorize endpoint only lives on the OAuth2 surface.
 
 ```mermaid
 sequenceDiagram
     participant U as End User
     participant SAS as SAS authorize
     participant L as /t/{slug}/login
-    participant H as TenantLoginSuccessHandler
+    participant IC as PostLoginIntent chain
     participant CP as /t/{slug}/change-password
     participant SR as SavedRequest
 
@@ -299,15 +311,13 @@ sequenceDiagram
     SAS->>SR: save request
     SAS->>L: redirect, unauthenticated
     U->>L: POST credentials
-    L->>H: success
-    H->>H: load User, must_change_password = true?
-    H->>CP: redirect to change-password form
+    L->>IC: success
+    IC->>IC: passwordChangeRequired? → URL or null
+    IC->>CP: redirect to change-password form
     U->>CP: POST new password
     CP->>SR: replay saved /oauth2/authorize
     SR-->>U: continue OAuth2 flow
 ```
-
-The same pattern applies to the management console at `/manage/t/{slug}/...`, with `PasswordChangeRequiredInterceptor` doing the interception instead of the success handler.
 
 ### 4.6 Authorization — Roles, Memberships, and the JWT `roles` claim
 
@@ -398,31 +408,45 @@ Future migrations must be **additive** (`ALTER TABLE ADD COLUMN ... NULL` → ba
 
 | Surface | Pattern | Notes |
 |---|---|---|
+| Public | `GET /` | Public landing page (sign-in by slug, sign-up CTA) |
+| Public | `GET /login` | Slug-aware forwarder: `?slug=X` → `/manage/t/X/login`; otherwise → `/`. There is no bare `POST /login` — every login submission is tenant-scoped under `/t/{slug}/login` or `/manage/t/{slug}/login` |
 | Public | `GET /signup`, `POST /signup` | Self-service Tenant creation |
-| Public | `GET /login` | 302 to `/manage/t/system/login`, matching `/`. There is no bare `POST /login` — every login surface is tenant-scoped under `/t/{slug}/login` or `/manage/t/{slug}/login`. |
 | OAuth2 | `GET /t/{slug}/.well-known/openid-configuration` | Per-tenant discovery |
 | OAuth2 | `GET /t/{slug}/.well-known/jwks.json` | Per-tenant JWKS |
 | OAuth2 | `GET /t/{slug}/oauth2/authorize` | Authorization endpoint |
 | OAuth2 | `POST /t/{slug}/oauth2/token` | Token endpoint |
 | OAuth2 | `POST /t/{slug}/oauth2/introspect`, `POST /t/{slug}/oauth2/revoke` | Introspection and revocation |
 | OAuth2 | `GET /t/{slug}/userinfo` | OIDC UserInfo |
-| OAuth2 | `GET /t/{slug}/login`, `POST /t/{slug}/login` | End-user login |
+| OAuth2 | `GET /t/{slug}/login`, `POST /t/{slug}/login` | End-User Login |
 | OAuth2 | `GET /t/{slug}/change-password`, `POST /t/{slug}/change-password` | End-user forced password change, with SavedRequest resume |
 | Management | `GET /manage/t/{slug}/login`, `POST /manage/t/{slug}/login` | Tenant Owner / System Admin login |
 | Management | `GET /manage/t/{slug}/` | Dashboard |
-| Management | `/manage/t/{slug}/applications/**` | Application + Client CRUD |
+| Management | `GET /manage/t/{slug}/settings`, `POST /manage/t/{slug}/settings/display-name` | Tenant Owner edits Display Name |
+| Management | `/manage/t/{slug}/applications/**` | Application CRUD |
 | Management | `/manage/t/{slug}/applications/{appId}/roles/**` | Role catalogue CRUD |
 | Management | `/manage/t/{slug}/applications/{appId}/members/**` | Application Membership + App Role assignment |
-| Management | `/manage/t/{slug}/applications/{appId}/clients/{clientId}/members/**` | Client Membership + Client Role assignment |
-| Management | `/manage/t/{slug}/users/**` | User CRUD; `GET /users/{userId}` shows the User's read-only Membership portfolio |
+| Management | `/manage/t/{slug}/applications/{appId}/clients/**` | Client CRUD; `POST .../clients/{registeredClientId}/rotate-secret` rotates the secret |
+| Management | `/manage/t/{slug}/applications/{appId}/clients/{registeredClientId}/members/**` | Client Membership + Client Role assignment |
+| Management | `/manage/t/{slug}/users/**` | User CRUD plus per-User actions: `enable`, `disable`, `reset-password`, `grant-owner`, `revoke-owner`, `delete`. `GET /users/{userId}` shows the User's read-only Membership portfolio |
 | Management | `/manage/t/{slug}/change-password` | In-console forced password change |
-| System | `/manage/t/system/...` | System Admin operations: suspend / unsuspend / delete Tenants |
+| System | `/manage/system/tenants`, `POST /manage/system/tenants/{tenantId}/{suspend\|unsuspend\|delete}` | System Admin cross-tenant operations. System Admins log in via the standard management surface at `/manage/t/system/login` (the System Tenant slug is `system`) |
 
 ### 4.9 Tests
 
-The suite is integration-heavy and runs against real Postgres via Testcontainers. The OAuth2 storage decorators each have a tenant-isolation contract test that proves a row written under Tenant A is invisible to Tenant B. The end-to-end OAuth2 flow has an integration test that exercises the full per-tenant issuer / JWKS / authorize / token chain. The v2 Membership work adds an end-to-end test that drives the full Membership-to-JWT path (`OAuth2JwtRolesClaimIntegrationTest`) and a gate test that asserts `access_denied` for an authenticated User without a Client Membership (`OAuth2AuthorizeMembershipGateIntegrationTest`).
+The suite is integration-heavy and runs against real Postgres via Testcontainers. The OAuth2 storage decorators each have a tenant-isolation contract test that proves a row written under Tenant A is invisible to Tenant B. The end-to-end OAuth2 flow has an integration test that exercises the full per-tenant issuer / JWKS / authorize / token chain. The v2 Membership work added an end-to-end test that drives the full Membership-to-JWT path (`OAuth2JwtRolesClaimIntegrationTest`) and a gate test that asserts `access_denied` for an authenticated User without a Client Membership (`OAuth2AuthorizeMembershipGateIntegrationTest`). Cross-tenant isolation is pinned by explicit tests on both the login backend (`CrossTenantLoginIsolationIntegrationTest`) and the System Admin console (`SystemAdminCrossTenantIsolationIntegrationTest`).
 
-There is currently no separation between unit and integration tests — the fast path is `mvn test`, which boots Testcontainers for everything.
+The login deep module (`auth.login`) is exercised by both unit tests (`TenantLoginUnitTest`, `PostLoginIntentsUnitTest`, `TenantUrlSchemeUnitTest`) and a synthetic-scheme integration test that registers a third `TenantUrlScheme` to prove `applyTo` is surface-agnostic.
+
+There is currently no separation between unit and integration tests — the fast path is `mvn test`, which boots Testcontainers for everything. Test method names follow `@DisplayName` conventions established in PR #75.
+
+### 4.10 Static analysis & CI
+
+Static analysis runs in two postures:
+
+- **Blocking, on every compile.** Error Prone runs as a `javac` plugin (`-Xplugin:ErrorProne`) and fails the build on any of its checks. NullAway runs as an Error Prone check elevated to `ERROR` severity, in JSpecify mode, on the annotated package `com.stucray.limen`. NullAway is **disabled on the test compile** (`-Xep:NullAway:OFF`) — tests construct fixtures with the `new Entity(null, ...)` Spring Data convention and the noise was not buying meaningful safety. The Spring `@Autowired` and Mockito `@Mock`/`@InjectMocks` annotations are also excluded from NullAway's "uninitialised field" check.
+- **Report-only, on `verify`.** PMD runs against `pmd-ruleset.xml` (a complexity-only ruleset: cognitive / cyclomatic / NPath complexity, NCSS, parameter list, God class, too-many-fields/methods/public). The build does **not** fail on PMD findings — the report is uploaded as a CI artifact (`pmd.xml`, `pmd.html`, JXR cross-reference) for review. JaCoCo measures coverage during the same `verify` phase and its HTML report is uploaded only on failure.
+
+CI is a single GitHub Actions workflow (`.github/workflows/ci.yml`) with one `verify` job on push and PR to `main`. The job sets up JDK 26 (Temurin, with Maven cache), runs `./mvnw -B -ntp verify`, and uploads the PMD bundle (30-day retention) and — on failure — the JaCoCo HTML report (14-day retention). The `LIMEN_SECURITY_KEK` is supplied as a GitHub Actions secret.
 
 ## 5. Current Gaps and Shortcomings
 

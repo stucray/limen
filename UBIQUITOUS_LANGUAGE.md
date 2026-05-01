@@ -74,6 +74,7 @@
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
+| **Landing Page** | The public page served at `/`. Carries a sign-in form (slug input that forwards to the matching **Management Login**) and a sign-up call-to-action. Is **not** a login surface itself — there is no bare `POST /login` | Home page, root |
 | **Management Login** | The login surface at `/manage/t/{slug}/login` used by Tenant Owners and System Admins to access the management console | Console login, admin login |
 | **End-User Login** | The login surface at `/t/{slug}/login` used by OAuth2 end-users during the authorization code flow | OAuth2 login, app login |
 | **Forced Password Change** | The state, signalled by the `must_change_password` flag on a User, requiring a new password to be set before any other authenticated action proceeds | Password reset, mandatory change |
@@ -101,6 +102,7 @@
 - Each **Tenant** has a unique **Slug** and an independent **Display Name**
 - **Tenant Isolation** applies across credentials, **Sessions**, **Persistent Logins**, OAuth2 **Authorizations**, and **Authorization Consents** — none of these may cross **Tenant** boundaries
 - A **User** belongs to exactly one **Tenant** (including the **System Tenant**)
+- The **Landing Page** at `/` is the only public, non-tenant-scoped surface other than `/signup`. Bare `/login` is a slug-aware forwarder, not a login surface: with `?slug=X` it 302s to `/manage/t/X/login`, otherwise to the **Landing Page**
 - **Management Login** and **End-User Login** both validate against the **User** pool of the named **Tenant** — the same **Username** in two **Tenants** authenticates two different **Users**
 - A **Persistent Login** is bound to one **Tenant**; presenting its cookie at another **Tenant**'s URL is rejected
 - A **User** with **Forced Password Change** set must complete it before any **Session** or **Authorization** proceeds
