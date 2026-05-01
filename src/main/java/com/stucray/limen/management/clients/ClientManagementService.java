@@ -1,5 +1,6 @@
 package com.stucray.limen.management.clients;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
@@ -41,7 +42,7 @@ public class ClientManagementService {
     public static final long DEFAULT_REFRESH_TOKEN_TTL_DAYS = 30;
     public static final boolean DEFAULT_REUSE_REFRESH_TOKENS = false;
 
-    public record ClientCreationResult(TenantClient client, String rawSecret) {}
+    public record ClientCreationResult(TenantClient client, @Nullable String rawSecret) {}
 
     public record ClientWithSettings(
         TenantClient tenantClient,
@@ -51,6 +52,7 @@ public class ClientManagementService {
         boolean requirePkce
     ) {}
 
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     public ClientCreationResult createClient(
         Long applicationId, Long tenantId,
         String clientName,

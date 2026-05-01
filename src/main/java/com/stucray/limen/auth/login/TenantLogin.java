@@ -24,6 +24,7 @@ import org.springframework.security.web.context.SecurityContextHolderFilter;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -128,9 +129,9 @@ public final class TenantLogin {
 
     private static AuthenticationFailureHandler failureHandler(TenantUrlScheme scheme) {
         return (req, res, ex) -> {
-            String slug = scheme.slugFrom(req);
             // slug is non-null here because the failure handler only fires on a request
             // that already matched scheme.loginMatcher().
+            String slug = Objects.requireNonNull(scheme.slugFrom(req));
             res.sendRedirect(req.getContextPath() + scheme.loginUrl(slug) + "?error");
         };
     }
@@ -145,7 +146,9 @@ public final class TenantLogin {
 
         @Override
         public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) {
-            String slug = scheme.slugFrom(request);
+            // slug is non-null here because attemptAuthentication only fires on a request
+            // that already matched scheme.loginMatcher().
+            String slug = Objects.requireNonNull(scheme.slugFrom(request));
             String username = request.getParameter("username");
             String password = request.getParameter("password");
             return getAuthenticationManager().authenticate(new TenantAuthToken(slug, username, password));
@@ -166,7 +169,7 @@ public final class TenantLogin {
         public void onAuthenticationSuccess(
             HttpServletRequest request, HttpServletResponse response, Authentication auth
         ) throws IOException {
-            TenantUserDetails principal = (TenantUserDetails) auth.getPrincipal();
+            TenantUserDetails principal = (TenantUserDetails) Objects.requireNonNull(auth.getPrincipal());
             for (PostLoginIntent intent : intents) {
                 String url = intent.resolve(request, response, principal, scheme);
                 if (url != null) {

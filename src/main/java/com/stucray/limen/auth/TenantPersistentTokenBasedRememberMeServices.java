@@ -5,6 +5,7 @@ import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.RememberMeServices;
@@ -18,6 +19,7 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Tenant-scoped remember-me. Cookie value is encoded as
@@ -61,7 +63,7 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
     protected void onLoginSuccess(
         HttpServletRequest request, HttpServletResponse response, Authentication auth
     ) {
-        TenantUserDetails principal = (TenantUserDetails) auth.getPrincipal();
+        TenantUserDetails principal = (TenantUserDetails) Objects.requireNonNull(auth.getPrincipal());
         String username = principal.displayUsername();
         String slug = principal.tenantSlug();
         Long tenantId = principal.tenantId();
@@ -130,14 +132,14 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
     }
 
     @Override
-    public void logout(HttpServletRequest request, HttpServletResponse response, Authentication auth) {
+    public void logout(HttpServletRequest request, HttpServletResponse response, @Nullable Authentication auth) {
         super.logout(request, response, auth);
         if (auth != null && auth.getPrincipal() instanceof TenantUserDetails details) {
             tokenRepository.removeUserTokens(details.displayUsername(), details.tenantId());
         }
     }
 
-    private String extractUrlSlug(String uri) {
+    private @Nullable String extractUrlSlug(String uri) {
         for (TenantUrlScheme scheme : schemes) {
             String slug = scheme.slugFrom(uri);
             if (slug != null) return slug;

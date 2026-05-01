@@ -1,6 +1,7 @@
 package com.stucray.limen.oauth2;
 
 import com.stucray.limen.tenant.TenantScope;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
@@ -59,7 +60,7 @@ public class TenantAwareOAuth2AuthorizationService implements OAuth2Authorizatio
     }
 
     @Override
-    public OAuth2Authorization findById(String id) {
+    public @Nullable OAuth2Authorization findById(String id) {
         Assert.hasText(id, "id cannot be empty");
         Long tenantId = requireTenantId();
         List<OAuth2Authorization> result = jdbcTemplate.query(
@@ -70,7 +71,7 @@ public class TenantAwareOAuth2AuthorizationService implements OAuth2Authorizatio
     }
 
     @Override
-    public OAuth2Authorization findByToken(String token, OAuth2TokenType tokenType) {
+    public @Nullable OAuth2Authorization findByToken(String token, @Nullable OAuth2TokenType tokenType) {
         Assert.hasText(token, "token cannot be empty");
         Long tenantId = requireTenantId();
         String sql;
@@ -90,7 +91,7 @@ public class TenantAwareOAuth2AuthorizationService implements OAuth2Authorizatio
         return ids.isEmpty() ? null : findById(ids.get(0));
     }
 
-    private static String tokenColumn(OAuth2TokenType tokenType) {
+    private static @Nullable String tokenColumn(@Nullable OAuth2TokenType tokenType) {
         if (tokenType == null) return null;
         return switch (tokenType.getValue()) {
             case "state" -> "state";

@@ -1,5 +1,7 @@
 package com.stucray.limen.tenant;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * ScopedValue-based per-request tenant carrier: same `(slug, tenantId)` pair,
  * null-when-unbound semantics, Loom-friendly (automatic teardown, no
@@ -13,11 +15,11 @@ public final class TenantScope {
 
     private TenantScope() {}
 
-    public static String slug() {
+    public static @Nullable String slug() {
         return SCOPE.isBound() ? SCOPE.get().slug() : null;
     }
 
-    public static Long tenantId() {
+    public static @Nullable Long tenantId() {
         return SCOPE.isBound() ? SCOPE.get().tenantId() : null;
     }
 

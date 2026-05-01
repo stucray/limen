@@ -4,6 +4,7 @@ import com.stucray.limen.auth.TenantUserDetails;
 import com.stucray.limen.management.users.UserManagementService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.stereotype.Component;
@@ -31,7 +32,7 @@ public class TenantPasswordChangeFlow {
     }
 
     /** Returns an error message if validation fails, else null. */
-    public String validate(String newPassword, String confirmPassword) {
+    public @Nullable String validate(String newPassword, String confirmPassword) {
         if (!newPassword.equals(confirmPassword)) return "Passwords do not match";
         if (newPassword.isBlank()) return "Password is required";
         return null;

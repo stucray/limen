@@ -2,6 +2,7 @@ package com.stucray.limen.oauth2;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Strips the leading /t/{slug} segment from the request URI so that Spring Authorization Server
@@ -36,7 +37,7 @@ public class TenantOAuth2RequestWrapper extends HttpServletRequestWrapper {
     }
 
     @Override
-    public String getPathInfo() {
+    public @Nullable String getPathInfo() {
         return null;
     }
 }

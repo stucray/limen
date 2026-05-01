@@ -127,7 +127,7 @@
 						<arg>-XDcompilePolicy=simple</arg>
 						<arg>--should-stop=ifError=FLOW</arg>
 						<arg>-XDaddTypeAnnotationsToSymbol=true</arg>
-						<arg>-Xplugin:ErrorProne -XepDisableWarningsInGeneratedCode -Xep:NullAway:WARN -XepOpt:NullAway:JSpecifyMode=true -XepOpt:NullAway:AnnotatedPackages=com.stucray.limen -XepOpt:NullAway:ExcludedFieldAnnotations=org.springframework.beans.factory.annotation.Autowired,org.mockito.Mock,org.mockito.InjectMocks</arg>
+						<arg>-Xplugin:ErrorProne -XepDisableWarningsInGeneratedCode -Xep:NullAway:ERROR -XepOpt:NullAway:JSpecifyMode=true -XepOpt:NullAway:AnnotatedPackages=com.stucray.limen -XepOpt:NullAway:ExcludedFieldAnnotations=org.springframework.beans.factory.annotation.Autowired,org.mockito.Mock,org.mockito.InjectMocks</arg>
 					</compilerArgs>
 					<annotationProcessorPaths>
 						<path>
@@ -142,6 +142,27 @@
 						</path>
 					</annotationProcessorPaths>
 				</configuration>
+				<executions>
+					<execution>
+						<id>default-testCompile</id>
+						<configuration>
+							<!--
+								NullAway off on test compile: tests construct fixtures with the
+								`new Entity(null, ...)` Spring Data convention, wrap encoder
+								calls casually, and dereference findById results in arrange-act-assert
+								blocks where a null would already trip the assertion. Enforcing
+								null-safety on test code adds boilerplate without reducing
+								production-NPE risk. Error Prone still runs.
+							-->
+							<compilerArgs>
+								<arg>-XDcompilePolicy=simple</arg>
+								<arg>--should-stop=ifError=FLOW</arg>
+								<arg>-XDaddTypeAnnotationsToSymbol=true</arg>
+								<arg>-Xplugin:ErrorProne -XepDisableWarningsInGeneratedCode -Xep:NullAway:OFF -XepOpt:NullAway:AnnotatedPackages=com.stucray.limen</arg>
+							</compilerArgs>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

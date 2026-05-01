@@ -4,6 +4,7 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.encrypt.BytesEncryptor;
 import org.springframework.security.crypto.encrypt.Encryptors;
@@ -73,7 +74,7 @@ public class JdbcSigningKeyStore implements SigningKeyStore {
     }
 
     @Override
-    public RSAKey getActiveSigningKey(long tenantId) {
+    public @Nullable RSAKey getActiveSigningKey(long tenantId) {
         return jdbcTemplate.query(
             "SELECT private_key_ciphertext, iv FROM tenant_signing_key " +
                 "WHERE tenant_id = ? AND status = 'ACTIVE'",

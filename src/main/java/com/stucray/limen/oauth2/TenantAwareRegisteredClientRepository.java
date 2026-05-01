@@ -2,6 +2,7 @@ package com.stucray.limen.oauth2;
 
 import com.stucray.limen.management.clients.TenantClientRepository;
 import com.stucray.limen.tenant.TenantScope;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 
@@ -28,18 +29,18 @@ public class TenantAwareRegisteredClientRepository implements RegisteredClientRe
     }
 
     @Override
-    public RegisteredClient findById(String id) {
+    public @Nullable RegisteredClient findById(String id) {
         RegisteredClient rc = delegate.findById(id);
         return checkTenantOwnership(rc);
     }
 
     @Override
-    public RegisteredClient findByClientId(String clientId) {
+    public @Nullable RegisteredClient findByClientId(String clientId) {
         RegisteredClient rc = delegate.findByClientId(clientId);
         return checkTenantOwnership(rc);
     }
 
-    private RegisteredClient checkTenantOwnership(RegisteredClient rc) {
+    private @Nullable RegisteredClient checkTenantOwnership(@Nullable RegisteredClient rc) {
         if (rc == null) return null;
         Long currentTenantId = TenantScope.tenantId();
         if (currentTenantId == null) return rc; // non-tenant context (e.g. management console)

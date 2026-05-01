@@ -26,6 +26,7 @@ public class ApplicationService {
             .orElseThrow(() -> new IllegalArgumentException("Application not found"));
     }
 
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     public Application createApplication(Long tenantId, String name, String description) {
         if (applicationRepository.existsByNameAndTenantId(name, tenantId)) {
             throw new IllegalArgumentException("An application named '" + name + "' already exists in this tenant");

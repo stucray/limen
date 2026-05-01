@@ -35,6 +35,7 @@ public class RoleManagementService {
             .orElseThrow(() -> new IllegalArgumentException("Role not found"));
     }
 
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     public Role createRole(Long applicationId, Long tenantId, String name, String description) {
         requireApplication(applicationId, tenantId);
         if (roleRepository.existsByNameAndApplicationId(name, applicationId)) {
