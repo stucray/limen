@@ -1,6 +1,7 @@
 package com.stucray.limen.auth.login;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -31,11 +32,11 @@ public record TenantUrlScheme(
     }
 
     /** Extract the slug from a request URI, or {@code null} if the URI does not match this scheme. */
-    public String slugFrom(HttpServletRequest request) {
+    public @Nullable String slugFrom(@Nullable HttpServletRequest request) {
         return request == null ? null : slugFrom(request.getRequestURI());
     }
 
-    public String slugFrom(String uri) {
+    public @Nullable String slugFrom(@Nullable String uri) {
         if (uri == null) return null;
         Matcher m = slugPattern.matcher(uri);
         return m.matches() ? m.group(1) : null;

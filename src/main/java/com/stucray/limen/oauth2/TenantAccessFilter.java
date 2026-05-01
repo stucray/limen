@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -41,26 +42,24 @@ public final class TenantAccessFilter extends OncePerRequestFilter {
         HttpServletRequest request, HttpServletResponse response, FilterChain chain
     ) throws ServletException, IOException {
         String uri = request.getRequestURI();
-        TenantUrlScheme matched = null;
-        String urlSlug = null;
+        SchemeMatch match = null;
         for (TenantUrlScheme scheme : schemes) {
             String slug = scheme.slugFrom(uri);
             if (slug != null) {
-                matched = scheme;
-                urlSlug = slug;
+                match = new SchemeMatch(scheme, slug);
                 break;
             }
         }
-        if (matched == null) {
+        if (match == null) {
             chain.doFilter(request, response);
             return;
         }
 
-        String loginPath = matched.loginUrl(urlSlug);
+        String loginPath = match.scheme().loginUrl(match.slug());
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated()
             && auth.getPrincipal() instanceof TenantUserDetails details
-            && !urlSlug.equals(details.tenantSlug())
+            && !match.slug().equals(details.tenantSlug())
             // Skip the login endpoints themselves so a stale session can re-authenticate at the URL slug
             && !uri.equals(loginPath)) {
             SecurityContextHolder.clearContext();
@@ -72,4 +71,6 @@ public final class TenantAccessFilter extends OncePerRequestFilter {
 
         chain.doFilter(request, response);
     }
+
+    private record SchemeMatch(TenantUrlScheme scheme, String slug) {}
 }

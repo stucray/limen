@@ -21,6 +21,7 @@ public class TenantProvisioningService {
         this.signingKeyStore = signingKeyStore;
     }
 
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     public Tenant createTenant(String slug, String displayName) {
         Tenant tenant = tenantRepository.save(
             new Tenant(null, slug, displayName, TenantStatus.ACTIVE, LocalDateTime.now())

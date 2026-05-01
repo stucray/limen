@@ -54,6 +54,7 @@ public class ApplicationMembershipService {
             .orElseThrow(() -> new IllegalArgumentException("Membership not found"));
     }
 
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     public ApplicationMembership grant(Long applicationId, Long tenantId, Long userId, Long grantedByUserId) {
         Application app = requireApplication(applicationId, tenantId);
         User user = userRepository.findByIdAndTenantId(userId, tenantId)

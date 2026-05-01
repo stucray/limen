@@ -36,6 +36,9 @@ public class TenantAuthProvider implements AuthenticationProvider {
         String slug = token.getTenantSlug();
         String username = (String) token.getPrincipal();
         String rawPassword = (String) token.getCredentials();
+        if (username == null) {
+            throw new BadCredentialsException("Invalid credentials");
+        }
 
         Tenant tenant = tenantRepository.findBySlug(slug)
             .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));

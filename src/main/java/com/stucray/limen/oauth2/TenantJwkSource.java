@@ -11,6 +11,7 @@ import com.stucray.limen.security.SigningKeyStore;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantScope;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.oauth2.server.authorization.context.AuthorizationServerContext;
 import org.springframework.security.oauth2.server.authorization.context.AuthorizationServerContextHolder;
 
@@ -43,7 +44,7 @@ public class TenantJwkSource implements JWKSource<SecurityContext> {
         return selector.select(new JWKSet(activeKey));
     }
 
-    private Long resolveTenantId() {
+    private @Nullable Long resolveTenantId() {
         AuthorizationServerContext context = AuthorizationServerContextHolder.getContext();
         if (context != null) {
             String issuer = context.getIssuer();

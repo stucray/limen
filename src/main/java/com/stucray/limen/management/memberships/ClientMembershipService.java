@@ -67,6 +67,7 @@ public class ClientMembershipService {
             .orElseThrow(() -> new IllegalArgumentException("Client membership not found"));
     }
 
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     public ClientMembership grant(
         String registeredClientId, Long applicationId, Long tenantId,
         Long userId, Long grantedByUserId

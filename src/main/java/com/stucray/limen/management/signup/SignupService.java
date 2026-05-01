@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -44,6 +45,7 @@ public class SignupService {
     }
 
     @Transactional
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     public SignupResult signup(SignupForm form) {
         String slug = form.slug() == null ? "" : form.slug().trim();
 
@@ -80,7 +82,7 @@ public class SignupService {
         Tenant tenant = tenantProvisioningService.createTenant(slug, orgName);
         userRepository.save(new User(
             null, tenant.id(), username,
-            passwordEncoder.encode(form.password()),
+            Objects.requireNonNull(passwordEncoder.encode(form.password())),
             true, false, true, LocalDateTime.now()
         ));
 

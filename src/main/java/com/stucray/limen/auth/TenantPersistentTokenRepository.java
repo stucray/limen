@@ -1,5 +1,6 @@
 package com.stucray.limen.auth;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.web.authentication.rememberme.PersistentRememberMeToken;
@@ -50,7 +51,7 @@ public class TenantPersistentTokenRepository {
     }
 
     /** Returns the token row scoped to the given tenant, or null when absent. */
-    public TenantPersistentRememberMeToken getTokenForSeries(String series, Long tenantId) {
+    public @Nullable TenantPersistentRememberMeToken getTokenForSeries(String series, Long tenantId) {
         try {
             return jdbcTemplate.queryForObject(SELECT_SQL, (rs, rowNum) ->
                 new TenantPersistentRememberMeToken(

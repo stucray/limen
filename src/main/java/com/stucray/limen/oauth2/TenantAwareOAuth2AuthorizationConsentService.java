@@ -1,6 +1,7 @@
 package com.stucray.limen.oauth2;
 
 import com.stucray.limen.tenant.TenantScope;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
@@ -98,7 +99,7 @@ public class TenantAwareOAuth2AuthorizationConsentService implements OAuth2Autho
     }
 
     @Override
-    public OAuth2AuthorizationConsent findById(String registeredClientId, String principalName) {
+    public @Nullable OAuth2AuthorizationConsent findById(String registeredClientId, String principalName) {
         Assert.hasText(registeredClientId, "registeredClientId cannot be empty");
         Assert.hasText(principalName, "principalName cannot be empty");
         Long tenantId = requireTenantId();

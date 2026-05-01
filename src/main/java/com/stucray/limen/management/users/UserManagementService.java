@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class UserManagementService {
@@ -23,13 +24,14 @@ public class UserManagementService {
         return userRepository.findAllByTenantId(tenantId);
     }
 
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     public void createUser(Long tenantId, String username, String temporaryPassword) {
         if (userRepository.existsByUsernameAndTenantId(username, tenantId)) {
             throw new IllegalArgumentException("Username already exists in this tenant");
         }
         userRepository.save(new User(
             null, tenantId, username,
-            passwordEncoder.encode(temporaryPassword),
+            Objects.requireNonNull(passwordEncoder.encode(temporaryPassword)),
             true, true, false, LocalDateTime.now()
         ));
     }
@@ -52,13 +54,14 @@ public class UserManagementService {
 
     public void resetPassword(Long userId, Long tenantId, String temporaryPassword) {
         User user = getUser(userId, tenantId);
-        userRepository.save(user.withPasswordHash(passwordEncoder.encode(temporaryPassword)));
+        userRepository.save(user.withPasswordHash(
+            Objects.requireNonNull(passwordEncoder.encode(temporaryPassword))));
     }
 
     public void changePassword(Long userId, Long tenantId, String newPassword) {
         User user = getUser(userId, tenantId);
         userRepository.save(user
-            .withPasswordHash(passwordEncoder.encode(newPassword))
+            .withPasswordHash(Objects.requireNonNull(passwordEncoder.encode(newPassword)))
             .withMustChangePassword(false)
         );
     }

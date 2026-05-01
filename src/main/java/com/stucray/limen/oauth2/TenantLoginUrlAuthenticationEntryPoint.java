@@ -3,6 +3,7 @@ package com.stucray.limen.oauth2;
 import com.stucray.limen.tenant.TenantScope;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 
@@ -23,9 +24,9 @@ public class TenantLoginUrlAuthenticationEntryPoint extends LoginUrlAuthenticati
 
     private static final Pattern SLUG_PATTERN = Pattern.compile("^/t/([^/]+)/.*");
 
-    private final Function<HttpServletRequest, String> slugResolver;
+    private final Function<HttpServletRequest, @Nullable String> slugResolver;
 
-    public TenantLoginUrlAuthenticationEntryPoint(Function<HttpServletRequest, String> slugResolver) {
+    public TenantLoginUrlAuthenticationEntryPoint(Function<HttpServletRequest, @Nullable String> slugResolver) {
         super("/manage/t/system/login");
         this.slugResolver = slugResolver;
     }

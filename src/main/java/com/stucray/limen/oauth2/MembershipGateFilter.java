@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -132,7 +133,7 @@ public final class MembershipGateFilter extends OncePerRequestFilter {
         redirectStrategy.sendRedirect(request, response, builder.build(true).toUriString());
     }
 
-    private static String resolveRedirectUri(HttpServletRequest request, RegisteredClient registeredClient) {
+    private static @Nullable String resolveRedirectUri(HttpServletRequest request, RegisteredClient registeredClient) {
         String requested = request.getParameter(OAuth2ParameterNames.REDIRECT_URI);
         if (StringUtils.hasText(requested) && registeredClient.getRedirectUris().contains(requested)) {
             return requested;

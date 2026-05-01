@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Component
 public class UserBootstrap implements CommandLineRunner {
@@ -40,13 +41,14 @@ public class UserBootstrap implements CommandLineRunner {
 
     @Override
     @Transactional
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     public void run(String... args) {
         Tenant systemTenant = tenantRepository.findBySlug(SYSTEM_SLUG)
             .orElseGet(() -> tenantProvisioningService.createTenant(SYSTEM_SLUG, SYSTEM_DISPLAY_NAME));
 
         if (!adminProperties.isConfigured()) return;
 
-        String hash = passwordEncoder.encode(adminProperties.password());
+        String hash = Objects.requireNonNull(passwordEncoder.encode(adminProperties.password()));
         userRepository.findByUsernameAndTenantId(adminProperties.username(), systemTenant.id())
             .ifPresentOrElse(
                 existing -> userRepository.save(existing.withPasswordHash(hash).withMustChangePassword(false)),
