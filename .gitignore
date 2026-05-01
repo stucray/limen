@@ -35,3 +35,7 @@ build/
 .vscode/
 .envrc
 /scripts/install-direnv-hook.sh
+
+### Claude Code ###
+.claude/scheduled_tasks.lock
+.claude/settings.local.json
