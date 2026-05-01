@@ -8,6 +8,7 @@ import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -39,6 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("Remember-me end-to-end (cookie + persisted row)")
 class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -66,6 +68,7 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
     }
 
     @Test
+    @DisplayName("OAuth2 login: persisted persistent_logins row carries the user's tenant_id")
     void rememberMeRowOnOAuth2LoginCarriesTenantId() throws Exception {
         mockMvc.perform(post("/t/alpha-rm/login")
                 .param("username", "alice")
@@ -88,6 +91,7 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
     }
 
     @Test
+    @DisplayName("Management login: persisted persistent_logins row carries the user's tenant_id")
     void rememberMeOnManagementLoginCarriesTenantId() throws Exception {
         mockMvc.perform(post("/manage/t/alpha-rm/login")
                 .param("username", "alice")
@@ -104,6 +108,7 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
     }
 
     @Test
+    @DisplayName("Issued cookie value (base64-decoded) is series:token:slug")
     void cookieValueIncludesSlugAsThirdSegment() throws Exception {
         MvcResult result = mockMvc.perform(post("/t/alpha-rm/login")
                 .param("username", "alice")
@@ -124,6 +129,7 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
     }
 
     @Test
+    @DisplayName("Tampered cookie token triggers CookieTheftException and removes all of the user's tokens")
     void tamperedCookieTokenInvalidatesAllOfUsersTokens() throws Exception {
         Cookie rememberMeCookie = loginAndGetRememberMeCookie("/manage/t/alpha-rm/login", "alpha-pwd");
         assertThat(rememberMeCookie).isNotNull();
@@ -146,6 +152,7 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
     }
 
     @Test
+    @DisplayName("Expired persistent token is rejected, but the row is preserved (only theft removes it)")
     void expiredCookieIsRejected() throws Exception {
         Cookie rememberMeCookie = loginAndGetRememberMeCookie("/manage/t/alpha-rm/login", "alpha-pwd");
         assertThat(rememberMeCookie).isNotNull();
@@ -165,6 +172,7 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
     }
 
     @Test
+    @DisplayName("Logout deletes the persistent_logins row and redirects back to the tenant's login page")
     void logoutRemovesPersistentTokenAndRedirectsToTenantLogin() throws Exception {
         MvcResult login = mockMvc.perform(post("/manage/t/alpha-rm/login")
                 .param("username", "alice")

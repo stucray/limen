@@ -7,6 +7,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("Cross-tenant credential isolation")
 class CrossTenantLoginIsolationIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -63,6 +65,7 @@ class CrossTenantLoginIsolationIntegrationTest {
     }
 
     @Test
+    @DisplayName("OAuth2 surface: alice@alpha cannot sign in with beta's password")
     void oauth2LoginRejectsOtherTenantsPassword() throws Exception {
         mockMvc.perform(post("/t/alpha/login")
                 .param("username", "alice")
@@ -73,6 +76,7 @@ class CrossTenantLoginIsolationIntegrationTest {
     }
 
     @Test
+    @DisplayName("Management surface: alice@alpha cannot sign in with beta's password")
     void managementLoginRejectsOtherTenantsPassword() throws Exception {
         mockMvc.perform(post("/manage/t/alpha/login")
                 .param("username", "alice")
@@ -83,6 +87,7 @@ class CrossTenantLoginIsolationIntegrationTest {
     }
 
     @Test
+    @DisplayName("OAuth2 surface: alice@alpha signs in successfully with alpha's password")
     void oauth2LoginAcceptsOwnTenantsPassword() throws Exception {
         mockMvc.perform(post("/t/alpha/login")
                 .param("username", "alice")

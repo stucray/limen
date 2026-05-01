@@ -2,6 +2,7 @@ package com.stucray.limen.auth.login;
 
 import com.stucray.limen.auth.TenantPersistentTokenBasedRememberMeServices;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -16,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("TenantLogin (immutable wither chain + intent ordering)")
 class TenantLoginUnitTest {
 
     @Mock AuthenticationManager authManager;
@@ -35,6 +37,7 @@ class TenantLoginUnitTest {
     }
 
     @Test
+    @DisplayName("withIntents() returns a new instance and leaves the original's intent list intact")
     void withIntentsReturnsNewInstanceWithoutMutatingOriginal() {
         TenantLogin replaced = original.withIntents(List.of(intentC));
 
@@ -44,6 +47,7 @@ class TenantLoginUnitTest {
     }
 
     @Test
+    @DisplayName("withRememberMe() returns a new instance and leaves the original's flag intact")
     void withRememberMeReturnsNewInstanceWithoutMutatingOriginal() {
         TenantLogin disabled = original.withRememberMe(false);
 
@@ -53,6 +57,7 @@ class TenantLoginUnitTest {
     }
 
     @Test
+    @DisplayName("withRememberMe() and withIntents() can be chained and compose without mutating the original")
     void withMethodsAreChainable() {
         TenantLogin chained = original.withRememberMe(false).withIntents(List.of(intentC));
 
@@ -63,6 +68,7 @@ class TenantLoginUnitTest {
     }
 
     @Test
+    @DisplayName("Two intents with the same explicit @Order value blow up at startup")
     void verifyOrderUniquenessRejectsDuplicateExplicitOrders() throws Exception {
         @Order(50) class IntentX implements PostLoginIntent {
             public String resolve(jakarta.servlet.http.HttpServletRequest req,
@@ -94,6 +100,7 @@ class TenantLoginUnitTest {
     }
 
     @Test
+    @DisplayName("Distinct explicit @Order values are accepted")
     void verifyOrderUniquenessAllowsDistinctExplicitOrders() throws Exception {
         @Order(10) class IntentX implements PostLoginIntent {
             public String resolve(jakarta.servlet.http.HttpServletRequest req,
@@ -116,6 +123,7 @@ class TenantLoginUnitTest {
     }
 
     @Test
+    @DisplayName("Intents without an explicit @Order are not subject to the uniqueness check")
     void verifyOrderUniquenessIgnoresIntentsWithoutOrder() throws Exception {
         // Two lambda intents have no @Order annotation; default chain mixes them with no collision.
         TenantLogin login = new TenantLogin(authManager, rememberMe, "key",

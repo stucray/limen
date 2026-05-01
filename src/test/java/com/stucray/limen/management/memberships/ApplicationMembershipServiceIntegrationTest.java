@@ -11,6 +11,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@DisplayName("ApplicationMembershipService (grant/revoke + role assignments)")
 class ApplicationMembershipServiceIntegrationTest {
 
     @Autowired ApplicationMembershipService membershipService;
@@ -69,6 +71,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("grant: persists membership with granted_at, granted_by, and an empty role set")
     void grantStoresRowWithGrantedAtAndGrantedBy() {
         ApplicationMembership m = membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
 
@@ -81,6 +84,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Granting the same user to the same application twice is rejected with 'already a member'")
     void duplicateUserApplicationRejected() {
         membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
 
@@ -90,6 +94,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Caller's tenantId mismatching the application's tenant: list/grant return 'Application not found'")
     void crossTenantApplicationAccessRejected() {
         // Caller claims tenantA but appB belongs to tenantB.
         assertThatThrownBy(() -> membershipService.listMemberships(appB.id(), tenantA.id()))
@@ -102,6 +107,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Granting a user that lives in a different tenant is rejected with 'User not found'")
     void grantingUserFromAnotherTenantRejected() {
         // carolB is in tenantB; appA is in tenantA. Even though the caller
         // legitimately controls tenantA, granting a foreign User must fail.
@@ -111,6 +117,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Repository-level: (user_id, application_id) unique constraint surfaces as DataIntegrityViolation")
     void uniqueConstraintHonouredAtRepositoryLevel() {
         membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
 
@@ -120,6 +127,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("updateRoles: assigns a set of roles to an existing membership")
     void updateRolesAssignsSet() {
         ApplicationMembership m = membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
@@ -132,6 +140,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("updateRoles: replaces (not unions) the existing role set")
     void updateRolesReplacesExistingSet() {
         ApplicationMembership m = membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
@@ -145,6 +154,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("updateRoles: passing an empty set clears all role assignments on the membership")
     void updateRolesEmptyClearsSet() {
         ApplicationMembership m = membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
@@ -156,6 +166,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Roles defined on a different application (different tenant) cannot be assigned")
     void cannotAssignRoleFromAnotherApplication() {
         ApplicationMembership m = membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
         // Role belongs to a *different* tenant's application — clearly not assignable.
@@ -167,6 +178,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Roles defined on a sibling application in the same tenant cannot be assigned")
     void cannotAssignRoleFromAnotherAppInSameTenant() {
         // Same tenant, different app — still must be rejected.
         Application appA2 = applicationRepository.save(new Application(null, tenantA.id(), "App A2", null, LocalDateTime.now()));
@@ -179,6 +191,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("revoke: deletes the membership row and all of its role-assignment join rows; role itself survives")
     void revokeRemovesRowAndRoleAssignments() {
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
         ApplicationMembership m = membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
@@ -197,6 +210,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Deleting a Role still assigned to a membership trips ON DELETE RESTRICT (DataIntegrityViolation)")
     void roleAssignedToMembershipCannotBeDeleted() {
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
         ApplicationMembership m = membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
@@ -210,6 +224,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Deleting an Application cascades to its memberships when no roles are assigned")
     void deletingApplicationCascadesMembershipWithoutRoleAssignments() {
         ApplicationMembership m = membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
 
@@ -219,6 +234,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Deleting an Application whose Roles are still assigned fails RESTRICT (admin must clear first)")
     void deletingApplicationWithAssignedRolesFailsRestrict() {
         // The PRD #39 RESTRICT on application_membership_role.role_id protects
         // against silent role-assignment loss. As a side effect, an Application
@@ -236,6 +252,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Deleting a User cascades to all of their memberships")
     void deletingUserCascadesMembership() {
         membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
 
@@ -245,6 +262,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Deleting the granter (admin) nullifies granted_by on existing memberships (audit history preserved)")
     void deletingGranterNullifiesGrantedBy() {
         ApplicationMembership m = membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
 
@@ -255,6 +273,7 @@ class ApplicationMembershipServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("listGrantableUsers: excludes users that are already members of the application")
     void listGrantableUsersExcludesExistingMembers() {
         membershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
 

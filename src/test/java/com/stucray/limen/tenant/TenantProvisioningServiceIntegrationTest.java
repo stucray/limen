@@ -2,6 +2,7 @@ package com.stucray.limen.tenant;
 
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.security.SigningKeyStore;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,6 +17,7 @@ import static org.mockito.Mockito.doThrow;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@DisplayName("TenantProvisioningService (transactional create + delete)")
 class TenantProvisioningServiceIntegrationTest {
 
     @Autowired TenantProvisioningService service;
@@ -24,6 +26,7 @@ class TenantProvisioningServiceIntegrationTest {
     @MockitoSpyBean SigningKeyStore signingKeyStore;
 
     @Test
+    @DisplayName("createTenant inserts the tenant row AND provisions an active signing key in one transaction")
     void createTenantPersistsTenantAndActiveSigningKey() {
         String slug = "acme-" + System.nanoTime();
 
@@ -43,6 +46,7 @@ class TenantProvisioningServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("createTenant skips signing-key provisioning for the system tenant (no OAuth2 surface)")
     void createTenantSkipsSigningKeyForSystemSlug() {
         tenantRepository.findBySlug("system").ifPresent(t -> tenantRepository.deleteById(t.id()));
 
@@ -58,6 +62,7 @@ class TenantProvisioningServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("Signing-key failure rolls back the tenant insert — no orphaned tenant row")
     void signingKeyFailureRollsBackTenantInsert() {
         doThrow(new IllegalStateException("simulated key store failure"))
             .when(signingKeyStore).createForTenant(anyLong());
@@ -71,6 +76,7 @@ class TenantProvisioningServiceIntegrationTest {
     }
 
     @Test
+    @DisplayName("deleteTenant removes the tenant row and cascades to all of its signing keys")
     void deleteTenantCascadesToSigningKeys() {
         String slug = "deleteme-" + System.nanoTime();
         Tenant tenant = service.createTenant(slug, "Delete Me");

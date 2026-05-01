@@ -5,6 +5,7 @@ import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@DisplayName("TenantPersistentTokenRepository: tenant-scoped CRUD")
 class TenantPersistentTokenRepositoryIntegrationTest {
 
     @Autowired TenantPersistentTokenRepository repo;
@@ -37,6 +39,7 @@ class TenantPersistentTokenRepositoryIntegrationTest {
     }
 
     @Test
+    @DisplayName("getTokenForSeries returns the row only when called with the matching tenant_id")
     void createAndGetIsTenantScoped() {
         repo.createNewToken(new PersistentRememberMeToken("alice", "series-1", "tok-1", new Date()), alpha.id());
         repo.createNewToken(new PersistentRememberMeToken("alice", "series-2", "tok-2", new Date()), beta.id());
@@ -51,6 +54,7 @@ class TenantPersistentTokenRepositoryIntegrationTest {
     }
 
     @Test
+    @DisplayName("updateToken under the wrong tenant_id is a no-op; under the right one it replaces the token")
     void updateIsTenantScoped() {
         repo.createNewToken(new PersistentRememberMeToken("alice", "series-3", "old-tok", new Date()), alpha.id());
 
@@ -64,6 +68,7 @@ class TenantPersistentTokenRepositoryIntegrationTest {
     }
 
     @Test
+    @DisplayName("removeUserTokens deletes only the rows belonging to the named tenant")
     void removeUserTokensIsTenantScoped() {
         repo.createNewToken(new PersistentRememberMeToken("alice", "series-4", "tok-a", new Date()), alpha.id());
         repo.createNewToken(new PersistentRememberMeToken("alice", "series-5", "tok-b", new Date()), beta.id());
@@ -76,6 +81,7 @@ class TenantPersistentTokenRepositoryIntegrationTest {
     }
 
     @Test
+    @DisplayName("Two tenants can store rows for the same series — (tenant_id, series) is the composite PK")
     void sameSeriesAcrossTenantsCoexist() {
         // (tenant_id, series) is the PK so both rows can persist with the same series.
         repo.createNewToken(new PersistentRememberMeToken("alice", "shared", "tok-a", new Date()), alpha.id());

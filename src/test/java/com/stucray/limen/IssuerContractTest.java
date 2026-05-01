@@ -4,6 +4,7 @@ import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("OIDC issuer contract")
 class IssuerContractTest {
 
     private static final String CLIENT_ID = "bff-client";
@@ -67,6 +69,7 @@ class IssuerContractTest {
     }
 
     @Test
+    @DisplayName("/.well-known/openid-configuration advertises issuer, JWKS, authorize, and token endpoints")
     void openidConfigurationHasCorrectEndpoints() throws Exception {
         mockMvc.perform(get("/.well-known/openid-configuration"))
             .andExpect(status().isOk())

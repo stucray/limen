@@ -11,6 +11,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("MembersController (per-application member CRUD on the management UI)")
 class MembersControllerIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -80,6 +82,7 @@ class MembersControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Owner can list an application's members")
     void ownerCanListMembers() throws Exception {
         membershipRepository.save(new ApplicationMembership(
             null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), java.util.Set.of()
@@ -91,6 +94,7 @@ class MembersControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Owner can grant an application membership; granted_by is the authenticated owner")
     void ownerCanGrantMembership() throws Exception {
         mockMvc.perform(post("/manage/t/members-corp-a/applications/" + appA.id() + "/members")
                 .session(sessionA).with(csrf())
@@ -108,6 +112,7 @@ class MembersControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Granting an existing member again re-renders the form with 'already a member'")
     void duplicateGrantRedisplaysFormWithError() throws Exception {
         membershipRepository.save(new ApplicationMembership(
             null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), java.util.Set.of()
@@ -121,6 +126,7 @@ class MembersControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Owner can assign multiple roles to an application membership via the edit form")
     void ownerCanAssignRolesViaEditForm() throws Exception {
         ApplicationMembership m = membershipRepository.save(new ApplicationMembership(
             null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), java.util.Set.of()
@@ -139,6 +145,7 @@ class MembersControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Submitting edit with an unknown roleId re-renders with a 'Role not found' error; row unchanged")
     void editFormSubmitWithUnknownRoleIdRedisplaysFormWithError() throws Exception {
         ApplicationMembership m = membershipRepository.save(new ApplicationMembership(
             null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), java.util.Set.of()
@@ -155,6 +162,7 @@ class MembersControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Edit form GET renders the existing application membership and the available roles")
     void editFormGetRendersTemplateWithMembershipDetails() throws Exception {
         ApplicationMembership m = membershipRepository.save(new ApplicationMembership(
             null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), java.util.Set.of()
@@ -169,6 +177,7 @@ class MembersControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("New-grant form GET lists grantable users (excludes existing members)")
     void newFormGetRendersGrantableUsersExcludingExistingMembers() throws Exception {
         // alice is grantable initially.
         mockMvc.perform(get("/manage/t/members-corp-a/applications/" + appA.id() + "/members/new")
@@ -178,6 +187,7 @@ class MembersControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Submitting edit with no roleIds clears all role assignments on the membership")
     void editFormSubmitWithNoRoleIdsClearsAssignments() throws Exception {
         Role viewer = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
         ApplicationMembership m = membershipRepository.save(new ApplicationMembership(
@@ -193,6 +203,7 @@ class MembersControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Owner can revoke an application membership via POST /members/{id}/delete")
     void ownerCanRevokeMembership() throws Exception {
         ApplicationMembership m = membershipRepository.save(new ApplicationMembership(
             null, aliceA.id(), appA.id(), LocalDateTime.now(), ownerA.id(), java.util.Set.of()
@@ -206,6 +217,7 @@ class MembersControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Tenant B session is force-redirected to tenant A's login when reaching tenant A's members")
     void tenantBSessionCannotReachTenantAMembers() throws Exception {
         userRepository.save(new User(null, tenantB.id(), "ownerB", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
         MvcResult loginB = mockMvc.perform(post("/manage/t/members-corp-b/login")
@@ -221,6 +233,7 @@ class MembersControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Applications-list page links each row to its /members page")
     void membersLinkAppearsOnApplicationsList() throws Exception {
         mockMvc.perform(get("/manage/t/members-corp-a/applications").session(sessionA))
             .andExpect(status().isOk())

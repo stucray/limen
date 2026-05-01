@@ -14,6 +14,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -49,6 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("OAuth2 forced-password-change: mustChangePassword=true intercepts the authorize flow until the password is reset")
 class OAuth2ForcedPasswordChangeIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -102,6 +104,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("During an /oauth2/authorize flow, a user with mustChangePassword=true is redirected to the tenant change-password page after login")
     void userWithMustChangePasswordRedirectedToChangePasswordPage() throws Exception {
         userRepository.save(new User(
             null, tenant.id(), "alice",
@@ -121,6 +124,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("Successful change-password clears mustChangePassword and resumes the saved /oauth2/authorize request, ultimately yielding an authorization code")
     void changePasswordResumesOAuth2FlowAndClearsFlag() throws Exception {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice",
@@ -160,6 +164,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("Mismatched new/confirm re-renders the form and leaves mustChangePassword=true so the user remains gated")
     void mismatchedPasswordsRerendersFormAndDoesNotClearFlag() throws Exception {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice",
@@ -183,6 +188,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("A user without mustChangePassword goes straight from login back to /oauth2/authorize without the change-password detour")
     void userWithoutMustChangePasswordCompletesNormally() throws Exception {
         userRepository.save(new User(
             null, tenant.id(), "bob",
@@ -202,6 +208,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("Blank/whitespace new password re-renders the form and leaves mustChangePassword=true")
     void blankNewPasswordRerendersFormAndDoesNotClearFlag() throws Exception {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice",
@@ -224,6 +231,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("Direct change-password (no SavedRequest in cache) succeeds and falls back to the tenant home /t/{slug}/")
     void changePasswordWithoutSavedRequestRedirectsToTenantHome() throws Exception {
         // Direct visit to the change-password page (no prior /oauth2/authorize → no
         // SavedRequest in the cache); after success the controller should fall back
@@ -251,6 +259,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET /t/{slug}/change-password renders the change-password view for an authenticated mustChangePassword user")
     void changePasswordFormGetRendersChangePasswordView() throws Exception {
         userRepository.save(new User(
             null, tenant.id(), "alice",

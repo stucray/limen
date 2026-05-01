@@ -6,6 +6,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -21,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("TenantUserDetailsService")
 class TenantUserDetailsServiceUnitTest {
 
     @Mock TenantRepository tenantRepository;
@@ -39,6 +41,7 @@ class TenantUserDetailsServiceUnitTest {
     }
 
     @Test
+    @DisplayName("Returns TenantUserDetails carrying both username and tenant slug for a known user")
     void loadByUsernameAndSlugReturnsTenantUserDetailsForKnownUser() {
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.of(alpha));
         given(userRepository.findByUsernameAndTenantId("alice", 1L)).willReturn(Optional.of(alice));
@@ -53,6 +56,7 @@ class TenantUserDetailsServiceUnitTest {
     }
 
     @Test
+    @DisplayName("Throws UsernameNotFoundException when the slug does not resolve to a tenant")
     void loadByUsernameAndSlugThrowsWhenTenantSlugUnknown() {
         given(tenantRepository.findBySlug("ghost")).willReturn(Optional.empty());
 
@@ -62,6 +66,7 @@ class TenantUserDetailsServiceUnitTest {
     }
 
     @Test
+    @DisplayName("Throws UsernameNotFoundException when the user is unknown within the resolved tenant")
     void loadByUsernameAndSlugThrowsWhenUserUnknownInTenant() {
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.of(alpha));
         given(userRepository.findByUsernameAndTenantId("nobody", 1L)).willReturn(Optional.empty());
@@ -72,6 +77,7 @@ class TenantUserDetailsServiceUnitTest {
     }
 
     @Test
+    @DisplayName("loadUserByUsername (the slugless API) always throws — slug is required")
     void loadUserByUsernameAlwaysThrowsBecauseSlugIsRequired() {
         assertThatThrownBy(() -> service.loadUserByUsername("alice"))
             .isInstanceOf(UnsupportedOperationException.class)

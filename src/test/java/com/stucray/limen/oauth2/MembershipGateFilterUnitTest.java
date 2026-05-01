@@ -9,6 +9,7 @@ import com.stucray.limen.user.User;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -41,6 +42,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
  * exercise through the full SAS flow.
  */
 @ExtendWith(MockitoExtension.class)
+@DisplayName("MembershipGateFilter: branch coverage for /oauth2/authorize parameter shapes and redirect_uri fallback")
 class MembershipGateFilterUnitTest {
 
     @Mock RegisteredClientRepository registeredClientRepository;
@@ -68,6 +70,7 @@ class MembershipGateFilterUnitTest {
     }
 
     @Test
+    @DisplayName("Requests outside /oauth2/authorize pass straight through without consulting the registered-client or membership repos")
     void nonAuthorizeRequestPassesThroughWithoutLookup() throws Exception {
         MockHttpServletRequest req = new MockHttpServletRequest("GET", "/somewhere/else");
         MockHttpServletResponse res = new MockHttpServletResponse();
@@ -80,6 +83,7 @@ class MembershipGateFilterUnitTest {
     }
 
     @Test
+    @DisplayName("Unauthenticated /oauth2/authorize requests pass through (Spring Security will redirect to login)")
     void unauthenticatedRequestPassesThroughWithoutLookup() throws Exception {
         SecurityContextHolder.clearContext();
         MockHttpServletRequest req = newAuthorizeRequest();
@@ -93,6 +97,7 @@ class MembershipGateFilterUnitTest {
     }
 
     @Test
+    @DisplayName("Missing client_id parameter passes through — let Spring Authorization Server return invalid_request")
     void missingClientIdPassesThroughForSasToHandle() throws Exception {
         MockHttpServletRequest req = newAuthorizeRequest();
         // No client_id parameter set.
@@ -112,6 +117,7 @@ class MembershipGateFilterUnitTest {
     }
 
     @Test
+    @DisplayName("Unknown client_id passes through — let Spring Authorization Server return invalid_client")
     void unknownClientIdPassesThroughForSasToReportInvalidClient() throws Exception {
         MockHttpServletRequest req = newAuthorizeRequest();
         req.setParameter("client_id", "ghost-client");
@@ -132,6 +138,7 @@ class MembershipGateFilterUnitTest {
     }
 
     @Test
+    @DisplayName("With multiple registered redirect_uris and none in the request, the filter refuses to guess and returns 403 access_denied instead of redirecting")
     void multipleRegisteredRedirectsAndNoRequestedYields403() throws Exception {
         RegisteredClient client = pkceClientBuilder("multi-redirect-client")
             .redirectUri("http://localhost/cb1")
@@ -161,6 +168,7 @@ class MembershipGateFilterUnitTest {
     }
 
     @Test
+    @DisplayName("With exactly one registered redirect_uri and none in the request, the filter uses the registered one for the access_denied redirect")
     void singleRegisteredRedirectIsUsedAsFallbackWhenRequestOmitsIt() throws Exception {
         RegisteredClient client = pkceClientBuilder("single-redirect-client")
             .redirectUri("http://localhost/only-callback")
@@ -190,6 +198,7 @@ class MembershipGateFilterUnitTest {
     }
 
     @Test
+    @DisplayName("With no TenantScope bound, the membership check short-circuits and the filter denies access without ever calling the membership repo")
     void unboundTenantScopeFallsThroughToAccessDenied() throws Exception {
         RegisteredClient client = pkceClientBuilder("scoped-client")
             .redirectUri("http://localhost/callback")

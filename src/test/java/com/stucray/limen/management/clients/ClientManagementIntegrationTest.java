@@ -9,6 +9,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("OAuth clients: CRUD on the management surface")
 class ClientManagementIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -92,6 +94,7 @@ class ClientManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Owner can list the application's OAuth clients")
     void ownerCanListClients() throws Exception {
         createConfidentialClient("Visible Client");
 
@@ -101,12 +104,14 @@ class ClientManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Owner can GET the new-client form")
     void ownerCanGetNewClientForm() throws Exception {
         mockMvc.perform(get(clientsUrl() + "/new").session(sessionA))
             .andExpect(status().isOk());
     }
 
     @Test
+    @DisplayName("Creating a confidential client flashes the one-time clientSecret + clientId for the owner to copy")
     void ownerCanCreateConfidentialClient() throws Exception {
         mockMvc.perform(post(clientsUrl()).session(sessionA).with(csrf())
                 .param("displayName", "Created Client")
@@ -129,6 +134,7 @@ class ClientManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Public-client creation does not flash a clientSecret (PKCE-only flow has no secret)")
     void publicClientCreationDoesNotProduceSecretFlash() throws Exception {
         mockMvc.perform(post(clientsUrl()).session(sessionA).with(csrf())
                 .param("displayName", "Public Client")
@@ -145,6 +151,7 @@ class ClientManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Owner can GET the edit-client form prefilled with the existing client's display name")
     void ownerCanGetEditClientForm() throws Exception {
         TenantClient created = createConfidentialClient("Editable Client");
 
@@ -154,6 +161,7 @@ class ClientManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("POST /{clientId}/edit updates token TTLs, refresh-reuse, and PKCE flag on the registered client")
     void ownerCanUpdateClientSettings() throws Exception {
         TenantClient created = createConfidentialClient("Updatable Client");
 
@@ -174,6 +182,7 @@ class ClientManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("POST /{clientId}/rotate-secret replaces the stored hash and flashes the new secret once")
     void ownerCanRotateClientSecret() throws Exception {
         TenantClient created = createConfidentialClient("Rotating Client");
         String oldHash = registeredClientRepository.findById(created.registeredClientId()).getClientSecret();
@@ -190,6 +199,7 @@ class ClientManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("POST /{clientId}/delete removes both the tenant_client row and the registered_client row")
     void ownerCanDeleteClient() throws Exception {
         TenantClient created = createConfidentialClient("Deletable Client");
 
@@ -203,6 +213,7 @@ class ClientManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("Tenant A's clients list is not visible to a tenant B session — TenantAccessFilter forces logout")
     void tenantAClientsNotVisibleToTenantBSession() throws Exception {
         createConfidentialClient("Tenant A Client");
         userRepository.save(new User(null, tenantB.id(), "ownerB", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));

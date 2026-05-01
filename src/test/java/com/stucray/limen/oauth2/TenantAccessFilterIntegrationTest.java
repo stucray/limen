@@ -7,6 +7,7 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,6 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@DisplayName("TenantAccessFilter: a session whose principal belongs to a different tenant than the URL slug is force-logged-out")
 class TenantAccessFilterIntegrationTest {
 
     @Autowired MockMvc mockMvc;
@@ -64,6 +66,7 @@ class TenantAccessFilterIntegrationTest {
     }
 
     @Test
+    @DisplayName("Alpha-tenant session presented at /manage/t/beta/ is invalidated, redirected to beta's login, and is no longer authenticated for alpha either")
     void crossTenantManagementAccessForcesLogoutAndRedirect() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/manage/t/alpha/login")
                 .param("username", "owner")
