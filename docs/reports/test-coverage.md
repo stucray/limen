@@ -1,6 +1,6 @@
 # Test Coverage Snapshot
 
-**Generated:** 2026-05-02 from commit `9602810` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `docs/test-coverage-history.jsonl`.
+**Generated:** 2026-05-02 from commit `9602810` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
 
 **Run:** `./mvnw clean test` — 287 tests, all passing. JaCoCo analyzes 92 production classes.
 
@@ -17,7 +17,7 @@ Detailed HTML drill-down: `target/site/jacoco/index.html` (gitignored — regene
 
 ## Per-package summary
 
-Sorted by line coverage, weakest first. Δ Line (base) compares each package against the PR #59 baseline; Δ Line (prev) compares against the previous snapshot in docs/test-coverage-history.jsonl.
+Sorted by line coverage, weakest first. Δ Line (base) compares each package against the PR #59 baseline; Δ Line (prev) compares against the previous snapshot in test-coverage-history.jsonl.
 
 | Package | Line % | Δ Line (base) | Δ Line (prev) | Branch % | Method % | Missed lines |
 |---------|-------:|--------------:|--------------:|---------:|---------:|-------------:|
@@ -81,6 +81,6 @@ scripts/coverage-report.sh                   # emit the two markdown tables
                                              # above (with Δ vs baseline + prev)
 ```
 
-`scripts/coverage-report.sh` reads `target/site/jacoco/jacoco.csv`, computes deltas against the hardcoded PR #59 baseline and the most recent snapshot in `docs/test-coverage-history.jsonl`, and prints the **Headline numbers** + **Per-package summary** tables in the format used here (right-aligned percentages with 🟢 / 🔴 / ⚪ indicators; `—` in the prev column when there is no prior run, or for a package that didn't exist in the prior snapshot). Pipe it into the doc by replacing the two table sections.
+`scripts/coverage-report.sh` reads `target/site/jacoco/jacoco.csv`, computes deltas against the hardcoded PR #59 baseline and the most recent snapshot in `test-coverage-history.jsonl`, and prints the **Headline numbers** + **Per-package summary** tables in the format used here (right-aligned percentages with 🟢 / 🔴 / ⚪ indicators; `—` in the prev column when there is no prior run, or for a package that didn't exist in the prior snapshot). Pipe it into the doc by replacing the two table sections.
 
 If/when a CI pipeline is added, the JaCoCo XML at `target/site/jacoco/jacoco.xml` is the standard upload format for Codecov / Coveralls / Sonar.

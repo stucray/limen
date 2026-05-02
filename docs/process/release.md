@@ -132,7 +132,7 @@ git pull
 # 0.0.2-SNAPSHOT
 ```
 
-To pull the new image (see also `docs/CONTAINER.md`):
+To pull the new image (see also `container.md`):
 
 ```sh
 echo "$GHCR_PAT" | docker login ghcr.io -u stucray --password-stdin
