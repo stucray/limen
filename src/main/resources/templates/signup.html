@@ -37,7 +37,7 @@
                 <span class="form-error" th:if="${errorField == 'password'}" th:text="${errorMessage}"></span>
             </label>
 
-            <button type="submit" class="btn--block">Create account</button>
+            <button type="submit" class="btn--block" data-test-action="signup-submit">Create account</button>
         </form>
     </article>
 </main>

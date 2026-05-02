@@ -19,6 +19,8 @@
 		<maven.compiler.target>26</maven.compiler.target>
 		<error-prone.version>2.49.0</error-prone.version>
 		<nullaway.version>0.13.4</nullaway.version>
+		<playwright.version>1.50.0</playwright.version>
+		<maven-failsafe-plugin.version>3.5.4</maven-failsafe-plugin.version>
 		<maven-jxr-plugin.version>3.6.0</maven-jxr-plugin.version>
 		<maven-pmd-plugin.version>3.28.0</maven-pmd-plugin.version>
 		<!--
@@ -113,6 +115,12 @@
 			<artifactId>testcontainers-postgresql</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.microsoft.playwright</groupId>
+			<artifactId>playwright</artifactId>
+			<version>${playwright.version}</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -179,6 +187,27 @@
 						<LIMEN_SECURITY_KEK>dGVzdC1rZWstdGVzdC1rZWstdGVzdC1rZWstdGVzdC0=</LIMEN_SECURITY_KEK>
 					</environmentVariables>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<version>${maven-failsafe-plugin.version}</version>
+				<configuration>
+					<includes>
+						<include>**/*UiIT.java</include>
+					</includes>
+					<environmentVariables>
+						<LIMEN_SECURITY_KEK>dGVzdC1rZWstdGVzdC1rZWstdGVzdC1rZWstdGVzdC0=</LIMEN_SECURITY_KEK>
+					</environmentVariables>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>
