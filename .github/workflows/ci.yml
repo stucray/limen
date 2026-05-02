@@ -44,9 +44,23 @@ jobs:
           java-version: '26'
           cache: maven
 
+      # Cache the Playwright browser binaries (~150 MB Chromium) downloaded by
+      # Playwright on first `Playwright.create()`. Keyed on pom.xml so a bump
+      # of the Playwright version invalidates the cache; restore-keys lets us
+      # fall back to any prior cache for the same OS to avoid a full miss when
+      # unrelated deps change.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pom.xml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
       # Single Maven phase that does everything: compile, Error Prone +
-      # NullAway (errors fail the build), unit + integration tests, JaCoCo
-      # coverage check, and the PMD complexity report.
+      # NullAway (errors fail the build), unit + integration tests
+      # (Surefire + Failsafe-driven Playwright UI tests), JaCoCo coverage
+      # check, and the PMD complexity report.
       - name: Verify (compile + Error Prone + NullAway + tests + JaCoCo + PMD report)
         run: ./mvnw -B -ntp verify
 
@@ -72,5 +86,18 @@ jobs:
         with:
           name: jacoco-report
           path: target/site/jacoco
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # Playwright traces (zipped, replayable in the trace viewer) and final-
+      # state screenshots are written under target/playwright-artifacts/ ONLY
+      # when a UI test fails. Uploaded on failure so reviewers can replay the
+      # test step-by-step against full DOM snapshots.
+      - name: Upload Playwright traces and screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-artifacts
+          path: target/playwright-artifacts/
           if-no-files-found: ignore
           retention-days: 14
