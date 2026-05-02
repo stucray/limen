@@ -8,20 +8,20 @@ description: Regenerate the JaCoCo test-coverage snapshot in docs/test-coverage.
 Refresh `docs/test-coverage.md` from a fresh JaCoCo run. Two helpers do the heavy lifting:
 
 - **JaCoCo plugin** (already configured in `pom.xml`) — running `./mvnw clean test` produces `target/site/jacoco/{index.html,jacoco.csv,jacoco.xml}`.
-- **`scripts/coverage-report.sh`** — reads `target/site/jacoco/jacoco.csv`, compares totals + per-package line coverage against the hardcoded PR #59 baseline (commit `e2fcdb0`), and emits the **Headline numbers** + **Per-package summary** markdown tables in the canonical format (right-aligned percentages, 🟢 / 🔴 / ⚪ indicators after the `%`). It also appends a JSON Lines snapshot to `docs/test-coverage-history.jsonl` and emits a trailing **Δ from last run** block on stdout (chat-summary only — see step 3 below).
+- **`scripts/coverage-report.sh`** — reads `target/site/jacoco/jacoco.csv`, compares totals + per-package line coverage against both the hardcoded PR #59 baseline (commit `e2fcdb0`) and the most recent snapshot in `docs/test-coverage-history.jsonl`, and emits the **Headline numbers** + **Per-package summary** markdown tables in the canonical format (right-aligned percentages, 🟢 / 🔴 / ⚪ indicators after the `%`; `—` in the prev column when there's no prior run). It also appends a new JSON Lines snapshot to the history file.
 
 ## Steps
 
 1. **Regenerate JaCoCo data.** Run `./mvnw clean test` from the project root. Docker must be running (Testcontainers spins up Postgres). All tests must pass — if any fail, surface that to the user before proceeding.
 
-2. **Generate the markdown tables.** Run `scripts/coverage-report.sh --tests N` (where `N` comes from grepping the maven output for `Tests run: N`) and capture stdout. Verify it produced all three sections (`## Headline numbers`, `## Per-package summary`, and `## Δ from last run`). The script also appends a snapshot row to `docs/test-coverage-history.jsonl` as a side effect.
+2. **Generate the markdown tables.** Run `scripts/coverage-report.sh --tests N` (where `N` comes from grepping the maven output for `Tests run: N`) and capture stdout. Verify it produced both sections (`## Headline numbers` and `## Per-package summary`) and that each table includes `Δ from baseline` / `Δ Line (base)` *and* `Δ from prev` / `Δ Line (prev)` columns. The script also appends a snapshot row to `docs/test-coverage-history.jsonl` as a side effect.
 
-3. **Update `docs/test-coverage.md`.** Replace the two existing tables with the script's `## Headline numbers` and `## Per-package summary` sections. **Do NOT paste the `## Δ from last run` block into the doc** — it's only for the chat summary in step 4. Also update:
+3. **Update `docs/test-coverage.md`.** Replace the two existing tables with the script's `## Headline numbers` and `## Per-package summary` sections. Also update:
    - The **Generated:** line at the top — bump the date and the commit SHA (`git rev-parse --short HEAD`).
    - The **Run:** line — update the test count to match `--tests N`.
    - The "Closed in this round" / "Remaining gaps" sections only if the user is doing a *substantive* coverage push. For a routine refresh, leave them alone.
 
-4. **Show the user a short summary.** Headline numbers, the deltas from the PR #59 baseline, *and* the Δ-from-last-run values from the script's trailing block. Don't paste the whole per-package table — they can read the doc.
+4. **Show the user a short summary.** Headline numbers, plus both deltas (baseline + prev) for each metric. Don't paste the whole per-package table — they can read the doc.
 
 5. **Stage both files for commit.** `docs/test-coverage.md` and `docs/test-coverage-history.jsonl` should be committed together as part of the same refresh.
 
@@ -39,9 +39,9 @@ Refresh `docs/test-coverage.md` from a fresh JaCoCo run. Two helpers do the heav
 The doc currently uses:
 
 ```
-| Metric       | Coverage | Δ from baseline | Covered / Total |
-|--------------|---------:|----------------:|----------------:|
-| Lines        | 94.6 % | +8.5 % 🟢 | 1,465 / 1,549 |
+| Metric       | Coverage | Δ from baseline | Δ from prev | Covered / Total |
+|--------------|---------:|----------------:|------------:|----------------:|
+| Lines        | 95.6 % | +9.5 % 🟢 | +0.0 % ⚪ | 1,513 / 1,583 |
 ```
 
-Right-aligned columns, emoji *after* the `%` so number-width changes don't shift the indicator. ⚪ for zero deltas (within ±0.05 pp) so the emoji column stays uniform. Don't tweak the format without asking — the user iterated to land on this specifically.
+Right-aligned columns, emoji *after* the `%` so number-width changes don't shift the indicator. ⚪ for zero deltas (within ±0.05 pp) so the emoji column stays uniform. `—` in the `Δ from prev` cell when there's no prior run, or for a per-package row whose package didn't exist in the prior snapshot. Don't tweak the format without asking — the user iterated to land on this specifically.

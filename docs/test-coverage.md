@@ -1,44 +1,44 @@
 # Test Coverage Snapshot
 
-**Generated:** 2026-04-30 from commit `c331f86` (current `main`, including Slice 3 of the login-pipeline refactor — `TenantAccessFilter` and `TenantPersistentTokenBasedRememberMeServices` now derive their slug regexes from registered `TenantUrlScheme` beans; `SyntheticSchemeIntegrationTest` registers a third surface and proves bean discovery). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`).
+**Generated:** 2026-05-02 from commit `9602810` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `docs/test-coverage-history.jsonl`.
 
-**Run:** `./mvnw clean test` — 287 tests, all passing. JaCoCo analyzes 91 production classes.
+**Run:** `./mvnw clean test` — 287 tests, all passing. JaCoCo analyzes 92 production classes.
 
 ## Headline numbers
 
-| Metric       | Coverage | Δ from baseline | Covered / Total |
-|--------------|---------:|----------------:|----------------:|
-| Instructions | 94.6 % | +10.6 % 🟢 | 7,299 / 7,719 |
-| Branches     | 80.0 % | +10.0 % 🟢 | 341 / 426 |
-| Lines        | 95.6 % | +9.5 % 🟢 | 1,512 / 1,581 |
-| Methods      | 94.2 % | +5.1 % 🟢 | 391 / 415 |
+| Metric       | Coverage | Δ from baseline | Δ from prev | Covered / Total |
+|--------------|---------:|----------------:|------------:|----------------:|
+| Instructions | 94.5 % | +10.5 % 🟢 | -0.1 % 🔴 | 7,329 / 7,754 |
+| Branches     | 79.9 % | +9.9 % 🟢 | -0.1 % 🔴 | 342 / 428 |
+| Lines        | 95.6 % | +9.5 % 🟢 | +0.0 % ⚪ | 1,513 / 1,583 |
+| Methods      | 94.2 % | +5.1 % 🟢 | +0.0 % ⚪ | 392 / 416 |
 
 Detailed HTML drill-down: `target/site/jacoco/index.html` (gitignored — regenerate with `./mvnw clean test`). Per-class CSV: `target/site/jacoco/jacoco.csv`.
 
 ## Per-package summary
 
-Sorted by line coverage, weakest first. Δ Line column compares each package against the PR #59 baseline.
+Sorted by line coverage, weakest first. Δ Line (base) compares each package against the PR #59 baseline; Δ Line (prev) compares against the previous snapshot in docs/test-coverage-history.jsonl.
 
-| Package | Line % | Δ Line | Branch % | Method % | Missed lines |
-|---------|-------:|-------:|---------:|---------:|-------------:|
-| com.stucray.limen | 33.3 % | +0.0 % ⚪ | n/a | 50.0 % | 2 |
-| com.stucray.limen.auth | 86.8 % | +0.2 % 🟢 | 75.0 % | 88.0 % | 22 |
-| com.stucray.limen.management.users | 87.5 % | +8.4 % 🟢 | 75.0 % | 89.3 % | 11 |
-| com.stucray.limen.security | 92.5 % | +0.0 % ⚪ | 66.7 % | 100.0 % | 8 |
-| com.stucray.limen.oauth2 | 94.4 % | +6.6 % 🟢 | 83.1 % | 96.7 % | 18 |
-| com.stucray.limen.management.web | 95.2 % | +0.0 % ⚪ | 75.0 % | 100.0 % | 1 |
-| com.stucray.limen.management.memberships | 98.2 % | +20.9 % 🟢 | 85.4 % | 91.5 % | 6 |
-| com.stucray.limen.auth.login | 99.2 % | +99.2 % 🟢 | 83.3 % | 100.0 % | 1 |
-| com.stucray.limen.web | 100.0 % | +0.0 % ⚪ | 75.0 % | 100.0 % | 0 |
-| com.stucray.limen.identity | 100.0 % | +0.0 % ⚪ | 60.0 % | 100.0 % | 0 |
-| com.stucray.limen.user | 100.0 % | +0.0 % ⚪ | n/a | 100.0 % | 0 |
-| com.stucray.limen.management.system | 100.0 % | +0.0 % ⚪ | 100.0 % | 72.7 % | 0 |
-| com.stucray.limen.management.roles | 100.0 % | +31.5 % 🟢 | 100.0 % | 100.0 % | 0 |
-| com.stucray.limen.management.auth | 100.0 % | +0.0 % ⚪ | 50.0 % | 100.0 % | 0 |
-| com.stucray.limen.management.signup | 100.0 % | +10.0 % 🟢 | 85.7 % | 100.0 % | 0 |
-| com.stucray.limen.management.applications | 100.0 % | +23.5 % 🟢 | 83.3 % | 94.1 % | 0 |
-| com.stucray.limen.management.clients | 100.0 % | +0.0 % ⚪ | 69.4 % | 92.6 % | 0 |
-| com.stucray.limen.tenant | 100.0 % | +0.0 % ⚪ | 100.0 % | 100.0 % | 0 |
+| Package | Line % | Δ Line (base) | Δ Line (prev) | Branch % | Method % | Missed lines |
+|---------|-------:|--------------:|--------------:|---------:|---------:|-------------:|
+| com.stucray.limen | 33.3 % | +0.0 % ⚪ | +0.0 % ⚪ | n/a | 50.0 % | 2 |
+| com.stucray.limen.auth | 86.4 % | -0.2 % 🔴 | -0.4 % 🔴 | 73.5 % | 88.0 % | 23 |
+| com.stucray.limen.management.users | 87.6 % | +8.5 % 🟢 | +0.1 % 🟢 | 75.0 % | 89.3 % | 11 |
+| com.stucray.limen.security | 92.5 % | +0.0 % ⚪ | +0.0 % ⚪ | 66.7 % | 100.0 % | 8 |
+| com.stucray.limen.oauth2 | 94.3 % | +6.5 % 🟢 | -0.1 % 🔴 | 83.1 % | 96.7 % | 18 |
+| com.stucray.limen.management.web | 95.2 % | +0.0 % ⚪ | +0.0 % ⚪ | 75.0 % | 100.0 % | 1 |
+| com.stucray.limen.management.memberships | 98.2 % | +20.9 % 🟢 | +0.0 % ⚪ | 85.4 % | 91.5 % | 6 |
+| com.stucray.limen.auth.login | 99.2 % | +99.2 % 🟢 | +0.0 % ⚪ | 83.3 % | 100.0 % | 1 |
+| com.stucray.limen.web | 100.0 % | +0.0 % ⚪ | +0.0 % ⚪ | 75.0 % | 100.0 % | 0 |
+| com.stucray.limen.identity | 100.0 % | +0.0 % ⚪ | +0.0 % ⚪ | 60.0 % | 100.0 % | 0 |
+| com.stucray.limen.user | 100.0 % | +0.0 % ⚪ | +0.0 % ⚪ | n/a | 100.0 % | 0 |
+| com.stucray.limen.management.system | 100.0 % | +0.0 % ⚪ | +0.0 % ⚪ | 100.0 % | 72.7 % | 0 |
+| com.stucray.limen.management.roles | 100.0 % | +31.5 % 🟢 | +0.0 % ⚪ | 100.0 % | 100.0 % | 0 |
+| com.stucray.limen.management.auth | 100.0 % | +0.0 % ⚪ | +0.0 % ⚪ | 50.0 % | 100.0 % | 0 |
+| com.stucray.limen.management.signup | 100.0 % | +10.0 % 🟢 | +0.0 % ⚪ | 85.7 % | 100.0 % | 0 |
+| com.stucray.limen.management.applications | 100.0 % | +23.5 % 🟢 | +0.0 % ⚪ | 83.3 % | 94.1 % | 0 |
+| com.stucray.limen.management.clients | 100.0 % | +0.0 % ⚪ | +0.0 % ⚪ | 69.4 % | 92.6 % | 0 |
+| com.stucray.limen.tenant | 100.0 % | +0.0 % ⚪ | +0.0 % ⚪ | 100.0 % | 100.0 % | 0 |
 
 ## Closed in this round
 
@@ -78,9 +78,9 @@ Four small additions, all targeting security-adjacent oauth2 / signup branches t
 ./mvnw clean test                            # regenerate target/site/jacoco/
 open target/site/jacoco/index.html           # browse the HTML report (optional)
 scripts/coverage-report.sh                   # emit the two markdown tables
-                                             # above (with Δ vs PR #59 baseline)
+                                             # above (with Δ vs baseline + prev)
 ```
 
-`scripts/coverage-report.sh` reads `target/site/jacoco/jacoco.csv`, computes deltas against the hardcoded PR #59 baseline, and prints the **Headline numbers** + **Per-package summary** tables in the format used here (right-aligned percentages with 🟢 / 🔴 / ⚪ indicators). Pipe it into the doc by replacing the two table sections.
+`scripts/coverage-report.sh` reads `target/site/jacoco/jacoco.csv`, computes deltas against the hardcoded PR #59 baseline and the most recent snapshot in `docs/test-coverage-history.jsonl`, and prints the **Headline numbers** + **Per-package summary** tables in the format used here (right-aligned percentages with 🟢 / 🔴 / ⚪ indicators; `—` in the prev column when there is no prior run, or for a package that didn't exist in the prior snapshot). Pipe it into the doc by replacing the two table sections.
 
 If/when a CI pipeline is added, the JaCoCo XML at `target/site/jacoco/jacoco.xml` is the standard upload format for Codecov / Coveralls / Sonar.
