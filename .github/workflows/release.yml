@@ -1,0 +1,125 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (default: strip -SNAPSHOT from current pom)'
+        required: false
+      next_version:
+        description: 'Next development version (default: bump patch + -SNAPSHOT)'
+        required: false
+      dry_run:
+        description: 'Dry run (no push, no Release)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: cut release
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      # --- PROJECT-SPECIFIC: test-time env vars ---
+      # Add any secrets your `mvn verify` needs. Leave the block empty if none.
+      LIMEN_SECURITY_KEK: ${{ secrets.LIMEN_SECURITY_KEK_TEST }}
+    steps:
+      - name: Checkout main with PAT
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          token: ${{ secrets.RELEASE_TOKEN }}
+          fetch-depth: 0
+
+      - name: Read Java version from pom
+        id: jv
+        run: |
+          set -euo pipefail
+          v=$(grep -m1 '<java.version>' pom.xml | sed 's/.*>\(.*\)<.*/\1/')
+          [ -n "$v" ] || { echo "::error::Could not find <java.version> property in pom.xml"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK (Temurin)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ steps.jv.outputs.version }}
+          cache: maven
+
+      - name: Configure git identity
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: Compute versions and guards
+        id: vers
+        run: |
+          set -euo pipefail
+          CURRENT=$(./mvnw -B -ntp help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "Current pom version: $CURRENT"
+          [[ "$CURRENT" == *-SNAPSHOT ]] || { echo "::error::Current version $CURRENT is not a -SNAPSHOT; refusing to release."; exit 1; }
+          REL="${{ inputs.release_version }}"
+          [ -z "$REL" ] && REL="${CURRENT%-SNAPSHOT}"
+          NEXT="${{ inputs.next_version }}"
+          if [ -z "$NEXT" ]; then
+            IFS=. read -r MA MI PA <<<"$REL"
+            NEXT="${MA}.${MI}.$((PA+1))-SNAPSHOT"
+          fi
+          [[ "$NEXT" == *-SNAPSHOT ]] || { echo "::error::next_version $NEXT must end in -SNAPSHOT."; exit 1; }
+          if git ls-remote --tags origin "refs/tags/v$REL" | grep -q .; then
+            echo "::error::Tag v$REL already exists on origin."
+            exit 1
+          fi
+          echo "release=$REL" >> "$GITHUB_OUTPUT"
+          echo "next=$NEXT"   >> "$GITHUB_OUTPUT"
+          {
+            echo "## Plan"
+            echo "- Current: \`$CURRENT\`"
+            echo "- Release: \`$REL\`  (tag \`v$REL\`)"
+            echo "- Next:    \`$NEXT\`"
+            echo "- Dry run: \`${{ inputs.dry_run }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set release version
+        run: ./mvnw -B -ntp org.codehaus.mojo:versions-maven-plugin:2.16.2:set -DnewVersion=${{ steps.vers.outputs.release }} -DgenerateBackupPoms=false -DprocessAllModules=true
+
+      - name: Verify release build
+        run: ./mvnw -B -ntp verify
+
+      - name: Commit and tag release
+        run: |
+          git add pom.xml
+          git commit -m "Release ${{ steps.vers.outputs.release }}"
+          git tag -a "v${{ steps.vers.outputs.release }}" -m "Release ${{ steps.vers.outputs.release }}"
+
+      - name: Set next snapshot version
+        run: ./mvnw -B -ntp org.codehaus.mojo:versions-maven-plugin:2.16.2:set -DnewVersion=${{ steps.vers.outputs.next }} -DgenerateBackupPoms=false -DprocessAllModules=true
+
+      - name: Commit next snapshot
+        run: |
+          git add pom.xml
+          git commit -m "Prepare for next development iteration: ${{ steps.vers.outputs.next }}"
+
+      - name: Push (atomic)
+        if: ${{ !inputs.dry_run }}
+        run: git push --atomic origin main "v${{ steps.vers.outputs.release }}"
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        run: gh release create "v${{ steps.vers.outputs.release }}" --generate-notes --title "v${{ steps.vers.outputs.release }}"
+
+      - name: Dry-run summary
+        if: ${{ inputs.dry_run }}
+        run: |
+          {
+            echo "## Dry run complete — no push, no Release"
+            echo "Tag and commits exist locally only and will be discarded with the runner."
+          } >> "$GITHUB_STEP_SUMMARY"
