@@ -1,3 +1,7 @@
+# Builds the application container image with Paketo buildpacks and pushes it
+# to GitHub Container Registry. Triggered by every push to `main` (rolling
+# image), every release tag `v*.*.*` (versioned + `:latest`), or manually.
+
 name: Publish image
 
 on:
@@ -6,10 +10,13 @@ on:
     tags: ['v*.*.*']
   workflow_dispatch:
 
+# Needs `packages: write` to push to ghcr.io; everything else stays read-only.
 permissions:
   contents: read
   packages: write
 
+# Serialise pushes per ref: don't cancel an in-flight publish — letting it
+# finish avoids leaving the registry in a half-tagged state.
 concurrency:
   group: publish-image-${{ github.ref }}
   cancel-in-progress: false
@@ -20,9 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
+      # Fetch the commit / tag being published.
       - name: Checkout
         uses: actions/checkout@v6
 
+      # Java 26 is required by the Paketo build (BP_JVM_VERSION=26 below).
       - name: Set up JDK 26 (Temurin)
         uses: actions/setup-java@v5
         with:
@@ -30,6 +39,8 @@ jobs:
           java-version: '26'
           cache: maven
 
+      # Derive the set of image tags to push: branch name, short SHA, and on
+      # release tags also `X.Y.Z`, `X.Y`, and `latest`.
       - name: Compute image tags
         id: meta
         uses: docker/metadata-action@v5
@@ -42,6 +53,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
+      # Authenticate Docker against GHCR using the workflow's own token.
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -49,6 +61,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Build a single image with Paketo buildpacks (no Dockerfile). Tests are
+      # skipped here — CI already ran them; this step is purely packaging.
       - name: Build image with Paketo buildpacks
         run: |
           ./mvnw -B -ntp spring-boot:build-image \
@@ -56,6 +70,8 @@ jobs:
             -Dspring-boot.build-image.imageName=ghcr.io/${{ github.repository }}:build \
             -Dspring-boot.build-image.env.BP_JVM_VERSION=26
 
+      # Re-tag the freshly built `:build` image with each computed tag and
+      # push them all to GHCR.
       - name: Tag and push
         run: |
           set -euo pipefail
