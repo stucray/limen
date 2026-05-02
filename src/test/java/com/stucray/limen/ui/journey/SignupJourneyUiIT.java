@@ -27,10 +27,6 @@ class SignupJourneyUiIT extends BaseUiIT {
             .submit(slug)
             .assertOnLoginForTenant(orgName)
             .assertJustRegisteredBannerVisible();
-
-        // INTENTIONAL FAILURE — verifying Playwright trace + screenshot artifact
-        // upload on the CI failure path. Reverted in the next commit.
-        throw new AssertionError("intentional failure to exercise CI artifact upload");
     }
 
     private static String uniqueSuffix() {
