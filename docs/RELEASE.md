@@ -100,11 +100,23 @@ In ~6-8 minutes you'll have:
 
 ### Overriding the versions
 
-The defaults bump patch (`0.0.1` → `0.0.2-SNAPSHOT`). For a minor or major
-bump, fill the inputs:
+The defaults strip `-SNAPSHOT` from the current pom for the release version,
+then patch-bump that release for the next snapshot — e.g. current
+`0.0.1-SNAPSHOT` → release `0.0.1`, next `0.0.2-SNAPSHOT`.
 
-- **Release version**: `0.1.0`
-- **Next development version**: `0.2.0-SNAPSHOT`
+For a minor or major bump, fill **only** `release_version` and let
+`next_version` default. The patch-bump rule is applied to whatever release
+version you supply:
+
+| Release version | Default next snapshot |
+|---|---|
+| `0.1.0` | `0.1.1-SNAPSHOT` |
+| `1.0.0` | `1.0.1-SNAPSHOT` |
+| `2.4.7` | `2.4.8-SNAPSHOT` |
+
+If you want the next development line to track a different segment (say,
+`0.1.0` → `0.2.0-SNAPSHOT` to signal that minor work is starting), fill in
+**both** inputs explicitly.
 
 Validation: `next_version` must end in `-SNAPSHOT`; the tag must not already
 exist; the current pom version must end in `-SNAPSHOT`. If any fail, the run
