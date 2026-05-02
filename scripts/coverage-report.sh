@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # Emit the "Headline numbers" + "Per-package summary" markdown tables for
-# docs/test-coverage.md from a JaCoCo CSV. Δ columns compare against the
-# PR #59 baseline (commit e2fcdb0).
+# docs/test-coverage.md from a JaCoCo CSV. Each table shows two Δ columns:
+# one against the PR #59 baseline (commit e2fcdb0) and one against the
+# previous run recorded in docs/test-coverage-history.jsonl.
 #
 # Side effect: appends a JSON Lines snapshot to docs/test-coverage-history.jsonl
-# (resolved relative to this script). The trailing "## Δ from last run" block
-# on stdout is for the chat summary only — do NOT paste it into
-# docs/test-coverage.md.
+# (resolved relative to this script).
 #
 # Usage:
 #   ./mvnw clean test                                    # regenerate target/site/jacoco/jacoco.csv
@@ -58,7 +57,7 @@ if [[ -f "$HISTORY_FILE" && -s "$HISTORY_FILE" ]] && command -v jq >/dev/null 2>
     fi
 fi
 
-# Read prior run's headline totals (if any) for the Δ-from-last-run block.
+# Read prior run's headline totals (if any) for the "Δ from prev" column.
 # Tolerate missing/empty file. Extraction is regex-based on a known shape.
 PREV_INSTR=""; PREV_BRANCH=""; PREV_LINE=""; PREV_METHOD=""
 if [[ -f "$HISTORY_FILE" && -s "$HISTORY_FILE" ]]; then
@@ -70,7 +69,17 @@ if [[ -f "$HISTORY_FILE" && -s "$HISTORY_FILE" ]]; then
 fi
 
 TMP_JSON="$(mktemp)"
-trap 'rm -f "$TMP_JSON"' EXIT
+PREV_PKG_FILE="$(mktemp)"
+trap 'rm -f "$TMP_JSON" "$PREV_PKG_FILE"' EXIT
+
+# Dump prior run's per-package line coverage as `<pkg> <line%>` lines.
+# Tolerate missing/empty history; the new package map will simply be empty
+# and the per-package "Δ from prev" column will render as "—" everywhere.
+if [[ -f "$HISTORY_FILE" && -s "$HISTORY_FILE" ]] && command -v jq >/dev/null 2>&1; then
+    tail -n 1 "$HISTORY_FILE" \
+        | jq -r '.packages | to_entries[] | "\(.key) \(.value.line)"' \
+        > "$PREV_PKG_FILE" 2>/dev/null || true
+fi
 
 awk -F, \
     -v date_utc="$DATE_UTC" \
@@ -80,6 +89,7 @@ awk -F, \
     -v prev_branch="$PREV_BRANCH" \
     -v prev_line_v="$PREV_LINE" \
     -v prev_method="$PREV_METHOD" \
+    -v prev_pkg_file="$PREV_PKG_FILE" \
     -v jsonpath="$TMP_JSON" \
     '
 BEGIN {
@@ -88,6 +98,15 @@ BEGIN {
     base_branch = 70.0
     base_line   = 86.1
     base_method = 89.1
+
+    # Per-package line % from the previous run (empty on first run).
+    if (prev_pkg_file != "") {
+        while ((getline pl < prev_pkg_file) > 0) {
+            n2 = split(pl, a, " ")
+            if (n2 == 2) prev_line[a[1]] = a[2]
+        }
+        close(prev_pkg_file)
+    }
 
     base["com.stucray.limen"]                          = 33.3
     base["com.stucray.limen.auth"]                     = 86.6
@@ -123,6 +142,13 @@ function delta(d) {
 # user sees (93.0 → 93.0 reads as +0.0, not -0.0 from float drift).
 function round1(x) { return sprintf("%.1f", x) + 0 }
 
+# Δ-from-prev cell: blank-prev (first run, or new package) renders as "—",
+# otherwise the diff of the rounded values to match what the user sees.
+function delta_or_dash(curr, prev_str) {
+    if (prev_str == "") return "—"
+    return delta(round1(curr) - prev_str)
+}
+
 function comma(n,   s, len, out, i) {
     s = sprintf("%d", n); len = length(s); out = ""
     for (i = 1; i <= len; i++) {
@@ -154,18 +180,18 @@ END {
     mp = 100 * mc / (mm + mc)
 
     print "## Headline numbers"; print ""
-    print "| Metric       | Coverage | Δ from baseline | Covered / Total |"
-    print "|--------------|---------:|----------------:|----------------:|"
-    printf "| Instructions | %.1f %% | %s | %s / %s |\n", ip, delta(ip - base_instr), comma(ic), comma(im + ic)
-    printf "| Branches     | %.1f %% | %s | %s / %s |\n", bp, delta(bp - base_branch), comma(bc), comma(bm + bc)
-    printf "| Lines        | %.1f %% | %s | %s / %s |\n", lp, delta(lp - base_line),   comma(lc), comma(lm + lc)
-    printf "| Methods      | %.1f %% | %s | %s / %s |\n", mp, delta(mp - base_method), comma(mc), comma(mm + mc)
+    print "| Metric       | Coverage | Δ from baseline | Δ from prev | Covered / Total |"
+    print "|--------------|---------:|----------------:|------------:|----------------:|"
+    printf "| Instructions | %.1f %% | %s | %s | %s / %s |\n", ip, delta(ip - base_instr),  delta_or_dash(ip, prev_instr),  comma(ic), comma(im + ic)
+    printf "| Branches     | %.1f %% | %s | %s | %s / %s |\n", bp, delta(bp - base_branch), delta_or_dash(bp, prev_branch), comma(bc), comma(bm + bc)
+    printf "| Lines        | %.1f %% | %s | %s | %s / %s |\n", lp, delta(lp - base_line),   delta_or_dash(lp, prev_line_v), comma(lc), comma(lm + lc)
+    printf "| Methods      | %.1f %% | %s | %s | %s / %s |\n", mp, delta(mp - base_method), delta_or_dash(mp, prev_method), comma(mc), comma(mm + mc)
 
     print ""; print "## Per-package summary"; print ""
-    print "Sorted by line coverage, weakest first. Δ Line column compares each package against the PR #59 baseline."
+    print "Sorted by line coverage, weakest first. Δ Line (base) compares each package against the PR #59 baseline; Δ Line (prev) compares against the previous snapshot in docs/test-coverage-history.jsonl."
     print ""
-    print "| Package | Line % | Δ Line | Branch % | Method % | Missed lines |"
-    print "|---------|-------:|-------:|---------:|---------:|-------------:|"
+    print "| Package | Line % | Δ Line (base) | Δ Line (prev) | Branch % | Method % | Missed lines |"
+    print "|---------|-------:|--------------:|--------------:|---------:|---------:|-------------:|"
 
     n = 0
     for (p in lm_p) pkgs[++n] = p
@@ -187,8 +213,9 @@ END {
         bp_pkg = (bm_p[p] + bc_p[p] > 0) ? sprintf("%.1f %%", 100 * bc_p[p] / (bm_p[p] + bc_p[p])) : "n/a"
         mp_pkg = 100 * mc_p[p] / (mm_p[p] + mc_p[p])
         bv = (p in base) ? base[p] : 0
-        printf "| %s | %.1f %% | %s | %s | %.1f %% | %d |\n",
-            p, lp_pkg, delta(lp_pkg - bv), bp_pkg, mp_pkg, lm_p[p]
+        prev_v = (p in prev_line) ? prev_line[p] : ""
+        printf "| %s | %.1f %% | %s | %s | %s | %.1f %% | %d |\n",
+            p, lp_pkg, delta(lp_pkg - bv), delta_or_dash(lp_pkg, prev_v), bp_pkg, mp_pkg, lm_p[p]
     }
 
     # Build the JSON Lines entry and write it to a temp path. The shell
@@ -214,21 +241,6 @@ END {
     }
     json = json "}}"
     print json > jsonpath
-
-    # Δ-from-last-run block. Chat-summary only — do not paste into the doc.
-    print ""
-    print "## Δ from last run"
-    print ""
-    if (prev_instr == "") {
-        print "_First snapshot — no prior run to compare against._"
-    } else {
-        print "| Metric       | Coverage | Δ from last run |"
-        print "|--------------|---------:|----------------:|"
-        printf "| Instructions | %.1f %% | %s |\n", ip, delta(round1(ip) - prev_instr)
-        printf "| Branches     | %.1f %% | %s |\n", bp, delta(round1(bp) - prev_branch)
-        printf "| Lines        | %.1f %% | %s |\n", lp, delta(round1(lp) - prev_line_v)
-        printf "| Methods      | %.1f %% | %s |\n", mp, delta(round1(mp) - prev_method)
-    }
 }
 ' "$CSV"
 
