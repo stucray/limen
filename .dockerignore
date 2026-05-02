@@ -1,0 +1,17 @@
+target/
+.git/
+.github/
+.idea/
+.vscode/
+.run/
+*.iml
+.claude/
+docs/
+research/
+scripts/
+*.md
+LICENSE
+docker-compose.yml
+.env
+.envrc
+pmd-ruleset.xml
