@@ -2,6 +2,7 @@ package com.stucray.limen.ui.support;
 
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantProvisioningService;
+import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,15 +29,18 @@ public class TestTenantFactory {
     private static final String SHARED_TEST_PASSWORD = "secret123";
 
     private final TenantProvisioningService tenantProvisioningService;
+    private final TenantRepository tenantRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     public TestTenantFactory(
         TenantProvisioningService tenantProvisioningService,
+        TenantRepository tenantRepository,
         UserRepository userRepository,
         PasswordEncoder passwordEncoder
     ) {
         this.tenantProvisioningService = tenantProvisioningService;
+        this.tenantRepository = tenantRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -62,6 +66,18 @@ public class TestTenantFactory {
             endUserUsername, SHARED_TEST_PASSWORD);
     }
 
+    @Transactional
+    public SeededSystemAdmin createSystemAdmin() {
+        String suffix = uniqueSuffix();
+        String username = "sysadmin-" + suffix;
+        Tenant systemTenant = tenantRepository.findBySlug("system")
+            .orElseThrow(() -> new IllegalStateException("system tenant not bootstrapped"));
+        String hash = passwordEncoder.encode(SHARED_TEST_PASSWORD);
+        userRepository.save(new User(
+            null, systemTenant.id(), username, hash, true, false, false, LocalDateTime.now()));
+        return new SeededSystemAdmin(username, SHARED_TEST_PASSWORD);
+    }
+
     private static String uniqueSuffix() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 8);
     }
@@ -75,4 +91,6 @@ public class TestTenantFactory {
         String endUserUsername,
         String endUserPassword
     ) {}
+
+    public record SeededSystemAdmin(String username, String password) {}
 }
