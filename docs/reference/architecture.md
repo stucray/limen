@@ -1,6 +1,6 @@
 # Limen — Architecture
 
-> A companion to `UBIQUITOUS_LANGUAGE.md`. That file defines *what we call things*; this file describes *how the system is built*.
+> A companion to `ubiquitous-language.md`. That file defines *what we call things*; this file describes *how the system is built*.
 
 ## 1. Purpose
 
@@ -36,7 +36,7 @@ Concretely, Limen provides:
 
 ## 3. Domain Model
 
-The canonical definitions live in `UBIQUITOUS_LANGUAGE.md`. The diagram below shows how those concepts map to persisted entities as of v2.
+The canonical definitions live in `ubiquitous-language.md`. The diagram below shows how those concepts map to persisted entities as of v2.
 
 ```mermaid
 erDiagram

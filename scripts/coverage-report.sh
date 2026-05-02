@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Emit the "Headline numbers" + "Per-package summary" markdown tables for
-# docs/test-coverage.md from a JaCoCo CSV. Each table shows two Δ columns:
+# docs/reports/test-coverage.md from a JaCoCo CSV. Each table shows two Δ columns:
 # one against the PR #59 baseline (commit e2fcdb0) and one against the
-# previous run recorded in docs/test-coverage-history.jsonl.
+# previous run recorded in docs/reports/test-coverage-history.jsonl.
 #
-# Side effect: appends a JSON Lines snapshot to docs/test-coverage-history.jsonl
+# Side effect: appends a JSON Lines snapshot to docs/reports/test-coverage-history.jsonl
 # (resolved relative to this script).
 #
 # Usage:
@@ -39,7 +39,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-HISTORY_FILE="$REPO_ROOT/docs/test-coverage-history.jsonl"
+HISTORY_FILE="$REPO_ROOT/docs/reports/test-coverage-history.jsonl"
 
 DATE_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 SHA="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
@@ -188,7 +188,7 @@ END {
     printf "| Methods      | %.1f %% | %s | %s | %s / %s |\n", mp, delta(mp - base_method), delta_or_dash(mp, prev_method), comma(mc), comma(mm + mc)
 
     print ""; print "## Per-package summary"; print ""
-    print "Sorted by line coverage, weakest first. Δ Line (base) compares each package against the PR #59 baseline; Δ Line (prev) compares against the previous snapshot in docs/test-coverage-history.jsonl."
+    print "Sorted by line coverage, weakest first. Δ Line (base) compares each package against the PR #59 baseline; Δ Line (prev) compares against the previous snapshot in docs/reports/test-coverage-history.jsonl."
     print ""
     print "| Package | Line % | Δ Line (base) | Δ Line (prev) | Branch % | Method % | Missed lines |"
     print "|---------|-------:|--------------:|--------------:|---------:|---------:|-------------:|"
