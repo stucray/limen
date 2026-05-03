@@ -10,6 +10,13 @@ limen:
     # infrastructure. Set to `smtp` (and configure spring.mail.*) in any
     # deployment that should actually deliver mail.
     driver: logging
+  lockout:
+    # Consecutive failed-login attempts before the account is locked. Small
+    # enough to defeat credential stuffing, large enough to absorb fat-finger.
+    threshold: 5
+    # How long the lock holds; admins can short-circuit via the user-detail
+    # "Unlock account" button on /manage/t/{slug}/users/{userId}.
+    window: 15m
 spring:
   application:
     name: limen

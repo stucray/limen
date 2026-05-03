@@ -124,6 +124,16 @@ public class UserManagementController {
         return "redirect:/manage/t/" + slug + "/users";
     }
 
+    @PostMapping("/{userId}/unlock")
+    public String unlock(
+        @PathVariable String slug,
+        @PathVariable Long userId,
+        @AuthenticationPrincipal TenantUserDetails principal
+    ) {
+        userManagementService.unlockAccount(userId, principal.tenantId(), principal.userId());
+        return "redirect:/manage/t/" + slug + "/users/" + userId;
+    }
+
     @PostMapping("/{userId}/grant-owner")
     public String grantOwner(
         @PathVariable String slug,
