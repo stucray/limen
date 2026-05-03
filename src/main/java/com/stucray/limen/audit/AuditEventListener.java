@@ -7,6 +7,7 @@ import com.stucray.limen.audit.events.EmailVerifiedEvent;
 import com.stucray.limen.audit.events.PasswordChangedEvent;
 import com.stucray.limen.audit.events.PasswordResetCompletedEvent;
 import com.stucray.limen.audit.events.PasswordResetOttIssuedEvent;
+import com.stucray.limen.audit.events.RateLimitHitEvent;
 import com.stucray.limen.audit.events.TenantCreatedEvent;
 import com.stucray.limen.audit.events.TenantDeletedEvent;
 import com.stucray.limen.audit.events.TenantSuspendedEvent;
@@ -252,6 +253,25 @@ public class AuditEventListener {
             currentIp(), currentUserAgent(),
             LocalDateTime.now(ZoneId.systemDefault()),
             Map.of()));
+    }
+
+    @EventListener
+    public void onRateLimitHit(RateLimitHitEvent event) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("ruleId", event.ruleId());
+        if (event.key() != null) {
+            details.put("key", event.key());
+        }
+        details.put("path", event.path());
+        details.put("method", event.method());
+        details.put("retryAfterSeconds", event.retryAfterSeconds());
+        safeWrite(new AuditEvent(
+            null, null, null,
+            "rate_limit_hit",
+            null, null,
+            event.ip(), currentUserAgent(),
+            LocalDateTime.now(ZoneId.systemDefault()),
+            details));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

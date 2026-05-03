@@ -78,6 +78,19 @@
 			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
 
+		<!--
+			In-memory token-bucket rate limiting for pre-auth endpoints
+			(/oauth2/token, /signup, /forgot-password). Pure bucket4j-core only
+			— not the spring-boot-starter (we wire the filter ourselves) and not
+			bucket4j-postgresql (state lives in a per-process ConcurrentHashMap;
+			a Postgres-backed swap is the v3.5 horizontal-scale story).
+		-->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j-core</artifactId>
+			<version>8.10.1</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
@@ -190,6 +203,16 @@
 					<environmentVariables>
 						<LIMEN_SECURITY_KEK>dGVzdC1rZWstdGVzdC1rZWstdGVzdC1rZWstdGVzdC0=</LIMEN_SECURITY_KEK>
 					</environmentVariables>
+					<!--
+						Default-off: every unit/integration test shares the
+						127.0.0.1 client IP, so production-shaped buckets
+						(capacity 10/hour for /signup) would 429-out other
+						tests. RateLimitFilterIntegrationTest re-enables via
+						@TestPropertySource with shrunken limits.
+					-->
+					<systemPropertyVariables>
+						<limen.rate-limit.enabled>false</limen.rate-limit.enabled>
+					</systemPropertyVariables>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -203,6 +226,10 @@
 					<environmentVariables>
 						<LIMEN_SECURITY_KEK>dGVzdC1rZWstdGVzdC1rZWstdGVzdC1rZWstdGVzdC0=</LIMEN_SECURITY_KEK>
 					</environmentVariables>
+					<!-- Same rationale as surefire above. -->
+					<systemPropertyVariables>
+						<limen.rate-limit.enabled>false</limen.rate-limit.enabled>
+					</systemPropertyVariables>
 				</configuration>
 				<executions>
 					<execution>
