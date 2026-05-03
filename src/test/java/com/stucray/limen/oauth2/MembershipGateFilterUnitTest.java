@@ -58,7 +58,7 @@ class MembershipGateFilterUnitTest {
     void setUp() {
         filter = new MembershipGateFilter(registeredClientRepository, clientMembershipQuery);
         alpha = new Tenant(1L, "alpha", "Alpha", TenantStatus.ACTIVE, LocalDateTime.now());
-        alice = new User(10L, 1L, "alice", "hash", true, false, false, LocalDateTime.now());
+        alice = new User(10L, 1L, "alice", "hash", true, false, false, true, LocalDateTime.now());
         principal = new TenantUserDetails(alice, alpha);
         SecurityContextHolder.getContext().setAuthentication(
             UsernamePasswordAuthenticationToken.authenticated(principal, null, principal.getAuthorities()));

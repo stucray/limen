@@ -58,7 +58,7 @@ class TenantPersistentTokenBasedRememberMeServicesUnitTest {
         services.setTokenValiditySeconds(3600);
 
         alpha = new Tenant(1L, "alpha", "Alpha", TenantStatus.ACTIVE, LocalDateTime.now());
-        alice = new User(10L, 1L, "alice@example.test", "hash", true, false, false, LocalDateTime.now());
+        alice = new User(10L, 1L, "alice@example.test", "hash", true, false, false, true, LocalDateTime.now());
     }
 
     @Test

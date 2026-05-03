@@ -47,7 +47,7 @@ class SignupIntegrationTest {
     }
 
     @Test
-    @DisplayName("Successful POST /signup creates the tenant + owner user and redirects to the tenant login page")
+    @DisplayName("Successful POST /signup creates the tenant + owner user (email_verified=false) and redirects to the tenant check-inbox page")
     void successfulSignupCreatesTenantAndOwner() throws Exception {
         mockMvc.perform(post("/signup")
                 .param("organizationName", "Acme Corp")
@@ -56,13 +56,17 @@ class SignupIntegrationTest {
                 .param("password", "secret123")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/manage/t/acme-corp/login?registered"));
+            .andExpect(redirectedUrl("/t/acme-corp/check-inbox?email=alice@example.test"));
 
         assertThat(tenantRepository.findBySlug("acme-corp")).isPresent();
         Integer userCount = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM users u JOIN tenants t ON u.tenant_id = t.id WHERE t.slug = 'acme-corp'",
             Integer.class);
         assertThat(userCount).isEqualTo(1);
+        Boolean verified = jdbcTemplate.queryForObject(
+            "SELECT email_verified FROM users WHERE email = 'alice@example.test'",
+            Boolean.class);
+        assertThat(verified).isFalse();
     }
 
     @Test

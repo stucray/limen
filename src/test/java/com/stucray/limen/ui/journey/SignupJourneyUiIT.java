@@ -12,7 +12,7 @@ import java.util.UUID;
 class SignupJourneyUiIT extends BaseUiIT {
 
     @Test
-    @DisplayName("happy path: lands on /, follows Sign up, submits the form, redirects to the new tenant's login page with a registered banner")
+    @DisplayName("happy path: lands on /, follows Sign up, submits the form, redirects to the new tenant's check-inbox page with the email shown")
     void happyPath(Page page) {
         String suffix = uniqueSuffix();
         String slug = "t-" + suffix;
@@ -25,8 +25,8 @@ class SignupJourneyUiIT extends BaseUiIT {
             .clickSignUp()
             .fillForm(orgName, slug, email, password)
             .submit(slug)
-            .assertOnLoginForTenant(orgName)
-            .assertJustRegisteredBannerVisible();
+            .assertHeading()
+            .assertEmailShown(email);
     }
 
     private static String uniqueSuffix() {

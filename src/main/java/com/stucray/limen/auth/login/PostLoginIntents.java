@@ -7,11 +7,15 @@ import org.springframework.security.web.savedrequest.SavedRequest;
 import java.net.URI;
 
 /**
- * Static factories for the three default {@link PostLoginIntent}s wired by
+ * Static factories for the default {@link PostLoginIntent}s wired by
  * {@link TenantLoginAutoConfig}. Each is independently testable.
  *
  * Default chain order (terminal-last):
  * <ol>
+ *   <li>{@link #emailVerificationRequired()} — redirect to check-inbox when the
+ *       just-authenticated user has not yet verified their email. Sits ahead of
+ *       OAuth2-resume so an unverified principal cannot complete an authorize
+ *       flow before clicking the magic link.</li>
  *   <li>{@link #passwordChangeRequired()} — redirect when {@code mustChangePassword} is set.</li>
  *   <li>{@link #resumeOAuth2Authorize()} — consume a saved {@code /oauth2/authorize} request.</li>
  *   <li>{@link #tenantHome()} — terminal default; always returns the tenant home URL.</li>
@@ -23,6 +27,19 @@ import java.net.URI;
 public final class PostLoginIntents {
 
     private PostLoginIntents() {}
+
+    /**
+     * If the principal has {@code email_verified=false}, redirect to the
+     * tenant's check-inbox page so a fresh verification email can be requested.
+     * The OTT consume path itself flips the flag to {@code true} via
+     * {@code EmailVerificationService}, so a successful verify-email login
+     * falls through to the next intent in the chain.
+     */
+    public static PostLoginIntent emailVerificationRequired() {
+        return (req, res, principal, scheme) -> principal.user().emailVerified()
+            ? null
+            : "/t/" + principal.tenantSlug() + "/check-inbox";
+    }
 
     public static PostLoginIntent passwordChangeRequired() {
         return (req, res, principal, scheme) -> principal.mustChangePassword()

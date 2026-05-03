@@ -103,12 +103,12 @@ class OAuth2JwtRolesClaimIntegrationTest {
         alice = userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("password"),
-            true, false, false, LocalDateTime.now()
+            true, false, false, true, LocalDateTime.now()
         ));
         admin = userRepository.save(new User(
             null, tenant.id(), "admin@example.test",
             passwordEncoder.encode("password"),
-            true, false, true, LocalDateTime.now()
+            true, false, true, true, LocalDateTime.now()
         ));
     }
 

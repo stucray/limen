@@ -55,12 +55,12 @@ class CrossTenantLoginIsolationIntegrationTest {
         userRepository.save(new User(
             null, alpha.id(), "alice@example.test",
             passwordEncoder.encode("alpha-pwd"),
-            true, false, false, LocalDateTime.now()
+            true, false, false, true, LocalDateTime.now()
         ));
         userRepository.save(new User(
             null, beta.id(), "alice@example.test",
             passwordEncoder.encode("beta-pwd"),
-            true, false, false, LocalDateTime.now()
+            true, false, false, true, LocalDateTime.now()
         ));
     }
 

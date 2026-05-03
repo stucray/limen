@@ -113,22 +113,22 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
         aliceAlpha = userRepository.save(new User(
             null, alphaTenant.id(), "alice@example.test",
             passwordEncoder.encode("password"),
-            true, false, false, LocalDateTime.now()
+            true, false, false, true, LocalDateTime.now()
         ));
         adminAlpha = userRepository.save(new User(
             null, alphaTenant.id(), "alpha-admin@example.test",
             passwordEncoder.encode("password"),
-            true, false, true, LocalDateTime.now()
+            true, false, true, true, LocalDateTime.now()
         ));
         bobBeta = userRepository.save(new User(
             null, betaTenant.id(), "bob@example.test",
             passwordEncoder.encode("password"),
-            true, false, false, LocalDateTime.now()
+            true, false, false, true, LocalDateTime.now()
         ));
         adminBeta = userRepository.save(new User(
             null, betaTenant.id(), "beta-admin@example.test",
             passwordEncoder.encode("password"),
-            true, false, true, LocalDateTime.now()
+            true, false, true, true, LocalDateTime.now()
         ));
     }
 

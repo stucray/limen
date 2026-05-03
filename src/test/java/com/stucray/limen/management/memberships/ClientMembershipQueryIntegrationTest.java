@@ -68,10 +68,10 @@ class ClientMembershipQueryIntegrationTest {
         tenantB = tenantRepository.save(new Tenant(null, "cmq-b", "CMQ B", TenantStatus.ACTIVE, LocalDateTime.now()));
         appA = applicationRepository.save(new Application(null, tenantA.id(), "App A", null, LocalDateTime.now()));
         appB = applicationRepository.save(new Application(null, tenantB.id(), "App B", null, LocalDateTime.now()));
-        aliceA = userRepository.save(new User(null, tenantA.id(), "alice", "x", true, false, false, LocalDateTime.now()));
-        adminA = userRepository.save(new User(null, tenantA.id(), "admin", "x", true, false, true,  LocalDateTime.now()));
-        carolB = userRepository.save(new User(null, tenantB.id(), "carol", "x", true, false, false, LocalDateTime.now()));
-        adminB = userRepository.save(new User(null, tenantB.id(), "admin-b", "x", true, false, true, LocalDateTime.now()));
+        aliceA = userRepository.save(new User(null, tenantA.id(), "alice", "x", true, false, false, true, LocalDateTime.now()));
+        adminA = userRepository.save(new User(null, tenantA.id(), "admin", "x", true, false, true, true,  LocalDateTime.now()));
+        carolB = userRepository.save(new User(null, tenantB.id(), "carol", "x", true, false, false, true, LocalDateTime.now()));
+        adminB = userRepository.save(new User(null, tenantB.id(), "admin-b", "x", true, false, true, true, LocalDateTime.now()));
 
         clientA = createClient(appA.id(), tenantA.id(), "client-a");
         clientB = createClient(appB.id(), tenantB.id(), "client-b");

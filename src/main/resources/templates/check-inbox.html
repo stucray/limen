@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout(~{::title}, ~{::main})}">
+<head><title>Check your inbox — Limen</title></head>
+<body>
+<main>
+    <article class="card card--auth">
+        <hgroup>
+            <h1>Check your inbox</h1>
+            <p th:if="${tenantName}" th:text="${tenantName}">Tenant</p>
+        </hgroup>
+        <p>
+            We've sent a verification link
+            <span th:if="${email != null and !email.isEmpty()}">
+                to <strong th:text="${email}" data-test-action="verification-email">you@example.com</strong>
+            </span>.
+            Click the link in the email to activate your account.
+        </p>
+        <p class="muted">The link is single-use and expires in 60 minutes.</p>
+        <hr/>
+        <p>
+            Didn't receive the email?
+            <a th:href="@{/t/{slug}/resend-verification(slug=${slug}, email=${email})}"
+               data-test-action="resend-verification-link">Resend it</a>.
+        </p>
+        <p>
+            <a th:href="@{/t/{slug}/login(slug=${slug})}" data-test-action="back-to-login">Back to sign in</a>
+        </p>
+    </article>
+</main>
+</body>
+</html>

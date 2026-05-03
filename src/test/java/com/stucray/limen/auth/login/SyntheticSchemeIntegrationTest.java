@@ -72,7 +72,7 @@ class SyntheticSchemeIntegrationTest {
         userRepository.save(new User(
             null, alpha.id(), "owner@example.test",
             passwordEncoder.encode("alpha-pwd"),
-            true, false, false, LocalDateTime.now()));
+            true, false, false, true, LocalDateTime.now()));
     }
 
     @Test

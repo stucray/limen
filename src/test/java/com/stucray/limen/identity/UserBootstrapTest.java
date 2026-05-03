@@ -83,7 +83,7 @@ class UserBootstrapTest {
     @Test
     @DisplayName("Re-hashes and saves the admin password when the admin user already exists")
     void updatesPasswordHashWhenAdminUserExists() throws Exception {
-        var existing = new User(10L, 1L, "admin@example.test", "oldhash", true, false, false, LocalDateTime.now());
+        var existing = new User(10L, 1L, "admin@example.test", "oldhash", true, false, false, true, LocalDateTime.now());
         given(userRepository.findByEmailAndTenantId("admin@example.test", 1L)).willReturn(Optional.of(existing));
         given(passwordEncoder.encode("newpass")).willReturn("newhash");
 

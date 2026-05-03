@@ -2,6 +2,9 @@ package com.stucray.limen.oauth2;
 
 import com.stucray.limen.auth.login.TenantLogin;
 import com.stucray.limen.auth.login.TenantUrlScheme;
+import com.stucray.limen.auth.ott.OttEmailNotifier;
+import com.stucray.limen.auth.ott.TenantAwareOneTimeTokenService;
+import com.stucray.limen.auth.ott.TenantOttAuthenticationProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +27,14 @@ import java.util.regex.Pattern;
  * management chain (Order 2). Form-login wiring is delegated to {@link TenantLogin};
  * everything left here is distinctive to this surface (URL scope, CSRF, request cache,
  * tenant-aware entry point, logout).
+ *
+ * <p>One-Time Token Login is wired here as well: the magic link issued during
+ * email verification (and, in slice #126, during password reset) lands at
+ * {@code /t/{slug}/login/ott} where {@link TenantOttAuthenticationProvider}
+ * exchanges the token for an authenticated session. Post-OTT dispatch reuses
+ * the same {@link TenantLogin#successHandlerFor intent chain} as form login
+ * so email-verification, must-change-password, and saved-/oauth2/authorize-resume
+ * behave identically across surfaces.
  */
 @Configuration
 @Order(1)
@@ -31,13 +42,22 @@ public class OAuth2LoginSecurityConfig {
 
     private final TenantLogin login;
     private final TenantUrlScheme oauth2UrlScheme;
+    private final TenantAwareOneTimeTokenService oneTimeTokenService;
+    private final OttEmailNotifier ottEmailNotifier;
+    private final TenantOttAuthenticationProvider ottAuthenticationProvider;
 
     public OAuth2LoginSecurityConfig(
         TenantLogin login,
-        @Qualifier("oauth2UrlScheme") TenantUrlScheme oauth2UrlScheme
+        @Qualifier("oauth2UrlScheme") TenantUrlScheme oauth2UrlScheme,
+        TenantAwareOneTimeTokenService oneTimeTokenService,
+        OttEmailNotifier ottEmailNotifier,
+        TenantOttAuthenticationProvider ottAuthenticationProvider
     ) {
         this.login = login;
         this.oauth2UrlScheme = oauth2UrlScheme;
+        this.oneTimeTokenService = oneTimeTokenService;
+        this.ottEmailNotifier = ottEmailNotifier;
+        this.ottAuthenticationProvider = ottAuthenticationProvider;
     }
 
     @Bean
@@ -51,12 +71,27 @@ public class OAuth2LoginSecurityConfig {
             .securityMatcher("/t/**")
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/t/*/login").permitAll()
+                .requestMatchers("/t/*/login/ott").permitAll()
+                .requestMatchers("/t/*/check-inbox").permitAll()
+                .requestMatchers("/t/*/resend-verification").permitAll()
                 .anyRequest().authenticated()
             )
             .requestCache(rc -> rc.requestCache(requestCache))
             .exceptionHandling(ex -> ex.authenticationEntryPoint(
                 TenantLoginUrlAuthenticationEntryPoint.fromUrl()
             ))
+            .oneTimeTokenLogin(ott -> ott
+                .tokenService(oneTimeTokenService)
+                .tokenGenerationSuccessHandler(ottEmailNotifier)
+                .authenticationProvider(ottAuthenticationProvider)
+                .loginProcessingUrl("/t/*/login/ott")
+                // Spring's default submit page filter renders a form whose action
+                // is the literal loginProcessingUrl ("/t/*/login/ott") — the
+                // unexpanded wildcard breaks the form. {@code OttSubmitController}
+                // renders the equivalent page with the resolved slug.
+                .showDefaultSubmitPage(false)
+                .successHandler(login.successHandlerFor(oauth2UrlScheme))
+            )
             .logout(logout -> logout
                 .logoutRequestMatcher(PathPatternRequestMatcher.withDefaults()
                     .matcher(HttpMethod.POST, "/t/*/logout"))

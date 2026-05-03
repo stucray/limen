@@ -53,7 +53,7 @@ public class UserBootstrap implements CommandLineRunner {
             .ifPresentOrElse(
                 existing -> userRepository.save(existing.withPasswordHash(hash).withMustChangePassword(false)),
                 () -> userRepository.save(
-                    new User(null, systemTenant.id(), adminProperties.email(), hash, true, false, false, LocalDateTime.now())
+                    new User(null, systemTenant.id(), adminProperties.email(), hash, true, false, false, true, LocalDateTime.now())
                 )
             );
     }

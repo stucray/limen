@@ -51,7 +51,7 @@ class LoginIntegrationTest {
         jdbcTemplate.execute("DELETE FROM users WHERE tenant_id = (SELECT id FROM tenants WHERE slug = 'system')");
 
         systemTenantId = tenantRepository.findBySlug("system").orElseThrow().id();
-        userRepository.save(new User(null, systemTenantId, "testuser@example.test", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
+        userRepository.save(new User(null, systemTenantId, "testuser@example.test", passwordEncoder.encode("password"), true, false, false, true, LocalDateTime.now()));
     }
 
     @Test

@@ -41,7 +41,7 @@ public class UserManagementService {
         userRepository.save(new User(
             null, tenantId, email,
             Objects.requireNonNull(passwordEncoder.encode(temporaryPassword)),
-            true, true, false, LocalDateTime.now()
+            true, true, false, true, LocalDateTime.now()
         ));
     }
 

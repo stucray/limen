@@ -109,7 +109,7 @@ class TenantOAuth2RoutingIntegrationTest {
         alphaAdmin = userRepository.save(new User(
             null, alphaCorpTenant.id(), "alpha-admin@example.test",
             passwordEncoder.encode("password"),
-            true, false, true, LocalDateTime.now()
+            true, false, true, true, LocalDateTime.now()
         ));
     }
 
@@ -241,7 +241,7 @@ class TenantOAuth2RoutingIntegrationTest {
         User alice = userRepository.save(new User(
             null, alphaCorpTenant.id(), "alice@example.test",
             passwordEncoder.encode("password"),
-            true, false, false, LocalDateTime.now()
+            true, false, false, true, LocalDateTime.now()
         ));
 
         // Create public PKCE client with consent disabled (bypasses consent step in test)
@@ -390,7 +390,7 @@ class TenantOAuth2RoutingIntegrationTest {
         User bob = userRepository.save(new User(
             null, alphaCorpTenant.id(), "bob@example.test",
             passwordEncoder.encode("password"),
-            true, false, false, LocalDateTime.now()
+            true, false, false, true, LocalDateTime.now()
         ));
 
         String internalId = UUID.randomUUID().toString();

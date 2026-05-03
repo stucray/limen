@@ -58,7 +58,7 @@ class ManagementLoginIntegrationTest {
         userRepository.save(new User(
             null, testTenant.id(), "owner@example.test",
             passwordEncoder.encode("password"),
-            true, false, false, LocalDateTime.now()
+            true, false, false, true, LocalDateTime.now()
         ));
     }
 
@@ -124,7 +124,7 @@ class ManagementLoginIntegrationTest {
         userRepository.save(new User(
             null, systemTenant.id(), "sysadmin@example.test",
             passwordEncoder.encode("syspassword"),
-            true, false, false, LocalDateTime.now()
+            true, false, false, true, LocalDateTime.now()
         ));
 
         mockMvc.perform(post("/manage/t/system/login")

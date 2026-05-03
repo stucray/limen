@@ -60,7 +60,7 @@ class EndUserHomeIntegrationTest {
         userRepository.save(new User(
             null, testTenant.id(), "alice@example.test",
             passwordEncoder.encode("password"),
-            true, false, false, LocalDateTime.now()
+            true, false, false, true, LocalDateTime.now()
         ));
     }
 
