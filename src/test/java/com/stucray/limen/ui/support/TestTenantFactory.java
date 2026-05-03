@@ -1,5 +1,7 @@
 package com.stucray.limen.ui.support;
 
+import com.stucray.limen.management.applications.Application;
+import com.stucray.limen.management.applications.ApplicationService;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
@@ -32,17 +34,28 @@ public class TestTenantFactory {
     private final TenantRepository tenantRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationService applicationService;
 
     public TestTenantFactory(
         TenantProvisioningService tenantProvisioningService,
         TenantRepository tenantRepository,
         UserRepository userRepository,
-        PasswordEncoder passwordEncoder
+        PasswordEncoder passwordEncoder,
+        ApplicationService applicationService
     ) {
         this.tenantProvisioningService = tenantProvisioningService;
         this.tenantRepository = tenantRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.applicationService = applicationService;
+    }
+
+    @Transactional
+    public SeededApplication seedApplication(SeededTenant tenant) {
+        String suffix = uniqueSuffix();
+        String name = "App " + suffix;
+        Application app = applicationService.createApplication(tenant.tenantId(), name, "Seeded for UI test");
+        return new SeededApplication(app.id(), name);
     }
 
     @Transactional
@@ -93,4 +106,6 @@ public class TestTenantFactory {
     ) {}
 
     public record SeededSystemAdmin(String username, String password) {}
+
+    public record SeededApplication(Long appId, String name) {}
 }

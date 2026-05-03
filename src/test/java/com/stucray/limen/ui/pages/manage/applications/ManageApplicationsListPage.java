@@ -1,8 +1,10 @@
 package com.stucray.limen.ui.pages.manage.applications;
 
+import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
+import com.stucray.limen.ui.pages.manage.applications.clients.ManageApplicationClientsListPage;
 
 public final class ManageApplicationsListPage {
 
@@ -34,5 +36,14 @@ public final class ManageApplicationsListPage {
             page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(applicationName))
         ).isVisible();
         return this;
+    }
+
+    public ManageApplicationClientsListPage clickClientsForApplication(String applicationName) {
+        page.locator("tr")
+            .filter(new Locator.FilterOptions().setHasText(applicationName))
+            .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Clients"))
+            .click();
+        page.waitForURL(baseUrl + "/manage/t/" + slug + "/applications/*/clients");
+        return new ManageApplicationClientsListPage(page, baseUrl, slug);
     }
 }

@@ -15,7 +15,7 @@
             <h1>Clients</h1>
             <p>OAuth clients for <strong th:text="${app.name()}">app</strong>.</p>
         </hgroup>
-        <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/new'}" class="btn">New client</a>
+        <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/new'}" class="btn" data-test-action="clients-new">New client</a>
     </div>
 
     <div class="alert alert--secret" th:if="${clientSecret}">
