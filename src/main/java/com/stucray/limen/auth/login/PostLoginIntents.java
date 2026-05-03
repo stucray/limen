@@ -1,5 +1,6 @@
 package com.stucray.limen.auth.login;
 
+import com.stucray.limen.auth.ott.PasswordResetSessionMarker;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.savedrequest.SavedRequest;
@@ -16,13 +17,19 @@ import java.net.URI;
  *       just-authenticated user has not yet verified their email. Sits ahead of
  *       OAuth2-resume so an unverified principal cannot complete an authorize
  *       flow before clicking the magic link.</li>
+ *   <li>{@link #passwordChangeAfterReset()} — redirect to change-password when
+ *       the just-authenticated session carries the password-reset breadcrumb
+ *       set by {@code TenantOttAuthenticationProvider} on a {@code password-reset}
+ *       OTT consume. Ahead of OAuth2-resume so a reset interrupts any saved
+ *       authorize.</li>
  *   <li>{@link #passwordChangeRequired()} — redirect when {@code mustChangePassword} is set.</li>
  *   <li>{@link #resumeOAuth2Authorize()} — consume a saved {@code /oauth2/authorize} request.</li>
  *   <li>{@link #tenantHome()} — terminal default; always returns the tenant home URL.</li>
  * </ol>
  *
- * The password-change check fires <em>before</em> OAuth2-resume so a user with an
- * expired password cannot complete an authorize flow before updating their password.
+ * The password-change checks fire <em>before</em> OAuth2-resume so a user with an
+ * expired password — or one mid password-reset — cannot complete an authorize
+ * flow before updating their password.
  */
 public final class PostLoginIntents {
 
@@ -43,6 +50,19 @@ public final class PostLoginIntents {
 
     public static PostLoginIntent passwordChangeRequired() {
         return (req, res, principal, scheme) -> principal.mustChangePassword()
+            ? scheme.changePasswordUrl(principal.tenantSlug())
+            : null;
+    }
+
+    /**
+     * If the just-completed login was an OTT consume with intent=password-reset,
+     * route to change-password. The marker is read here, cleared by
+     * {@code TenantPasswordChangeFlow} after a successful submission so a reload
+     * of the form does not fall back to tenant home before the user has actually
+     * set a new password.
+     */
+    public static PostLoginIntent passwordChangeAfterReset() {
+        return (req, res, principal, scheme) -> PasswordResetSessionMarker.isPresent(req)
             ? scheme.changePasswordUrl(principal.tenantSlug())
             : null;
     }

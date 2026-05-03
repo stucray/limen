@@ -59,6 +59,7 @@ public class TenantLoginAutoConfig {
     ) {
         List<PostLoginIntent> intents = new ArrayList<>(userIntents.orderedStream().toList());
         intents.add(PostLoginIntents.emailVerificationRequired());
+        intents.add(PostLoginIntents.passwordChangeAfterReset());
         intents.add(PostLoginIntents.passwordChangeRequired());
         intents.add(PostLoginIntents.resumeOAuth2Authorize());
         intents.add(PostLoginIntents.tenantHome());

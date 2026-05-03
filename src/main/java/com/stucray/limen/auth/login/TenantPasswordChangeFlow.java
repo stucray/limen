@@ -1,6 +1,8 @@
 package com.stucray.limen.auth.login;
 
 import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.auth.ott.PasswordResetService;
+import com.stucray.limen.auth.ott.PasswordResetSessionMarker;
 import com.stucray.limen.management.users.UserManagementService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,10 +27,15 @@ import java.net.URI;
 public class TenantPasswordChangeFlow {
 
     private final UserManagementService userManagementService;
+    private final PasswordResetService passwordResetService;
     private final HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
 
-    public TenantPasswordChangeFlow(UserManagementService userManagementService) {
+    public TenantPasswordChangeFlow(
+        UserManagementService userManagementService,
+        PasswordResetService passwordResetService
+    ) {
         this.userManagementService = userManagementService;
+        this.passwordResetService = passwordResetService;
     }
 
     /** Returns an error message if validation fails, else null. */
@@ -52,6 +59,17 @@ public class TenantPasswordChangeFlow {
     ) {
         userManagementService.changePassword(
             principal.userId(), principal.tenantId(), newPassword);
+
+        // If the marker is present, this submission is the tail of a
+        // password-reset journey. Clear it (so a refresh of the form does not
+        // double-fire completion) and emit the reset-completed audit event,
+        // before computing the redirect target. The PasswordChangedEvent fired
+        // by changePassword above covers the hash-rotation audit row; this is
+        // the additional "the reset journey is done" marker.
+        if (PasswordResetSessionMarker.isPresent(request)) {
+            PasswordResetSessionMarker.clear(request);
+            passwordResetService.completeReset(principal.userId(), principal.tenantId());
+        }
 
         SavedRequest saved = requestCache.getRequest(request, response);
         if (saved != null && saved.getRedirectUrl().contains("/oauth2/authorize")) {
