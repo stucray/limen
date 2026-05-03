@@ -112,7 +112,12 @@ class AccountLockoutFlowIntegrationTest {
             User user = userRepository.save(activeUser(tenant.id(), email, "right-secret")
                 .withFailedLoginAttempts(lockoutProperties.threshold())
                 .withLockedUntil(LocalDateTime.now().plusMinutes(5)));
-            LocalDateTime initialLockedUntil = user.lockedUntil();
+            // Re-fetch so initialLockedUntil reflects the persisted (microsecond)
+            // precision; LocalDateTime.now() carries nanosecond precision on Linux
+            // but Postgres `timestamp` truncates, so the in-memory original would
+            // not equal what later findById calls return.
+            LocalDateTime initialLockedUntil = userRepository.findById(user.id())
+                .orElseThrow().lockedUntil();
 
             // Multiple post-lock attempts — none should bump the counter or
             // shift the window. The tracker explicitly skips LockedException.
