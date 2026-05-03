@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout(~{::title}, ~{::main})}">
+<head><title th:text="|${tenantName} — Limen|">Limen</title></head>
+<body>
+<main class="container">
+    <hgroup>
+        <h1 th:text="${tenantName}">Tenant</h1>
+        <p>Signed in as <span th:text="${username}">user</span>.</p>
+    </hgroup>
+    <form method="post" th:action="@{/t/{slug}/logout(slug=${slug})}">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <button type="submit" class="btn--ghost">Sign out</button>
+    </form>
+</main>
+</body>
+</html>
