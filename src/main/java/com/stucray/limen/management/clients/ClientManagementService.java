@@ -1,6 +1,8 @@
 package com.stucray.limen.management.clients;
 
+import com.stucray.limen.audit.events.ClientSecretRotatedEvent;
 import org.jspecify.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
@@ -9,6 +11,7 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -23,15 +26,18 @@ public class ClientManagementService {
     private final RegisteredClientRepository registeredClientRepository;
     private final TenantClientRepository tenantClientRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ClientManagementService(
         RegisteredClientRepository registeredClientRepository,
         TenantClientRepository tenantClientRepository,
-        PasswordEncoder passwordEncoder
+        PasswordEncoder passwordEncoder,
+        ApplicationEventPublisher eventPublisher
     ) {
         this.registeredClientRepository = registeredClientRepository;
         this.tenantClientRepository = tenantClientRepository;
         this.passwordEncoder = passwordEncoder;
+        this.eventPublisher = eventPublisher;
     }
 
     public List<TenantClient> listClients(Long applicationId, Long tenantId) {
@@ -165,7 +171,8 @@ public class ClientManagementService {
 
     public record SecretRotationResult(String rawSecret) {}
 
-    public SecretRotationResult rotateSecret(String registeredClientId, Long tenantId) {
+    @Transactional
+    public SecretRotationResult rotateSecret(String registeredClientId, Long tenantId, long actorUserId) {
         getClient(registeredClientId, tenantId); // assert ownership
         RegisteredClient existing = registeredClientRepository.findById(registeredClientId);
         if (existing == null) throw new IllegalArgumentException("Client not found");
@@ -175,6 +182,8 @@ public class ClientManagementService {
             .clientSecret(passwordEncoder.encode(rawSecret))
             .build();
         registeredClientRepository.save(updated);
+        eventPublisher.publishEvent(
+            new ClientSecretRotatedEvent(tenantId, registeredClientId, actorUserId));
         return new SecretRotationResult(rawSecret);
     }
 
