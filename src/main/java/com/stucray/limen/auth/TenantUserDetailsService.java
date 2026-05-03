@@ -29,17 +29,17 @@ public class TenantUserDetailsService implements UserDetailsService {
         this.userRepository = userRepository;
     }
 
-    public UserDetails loadByUsernameAndSlug(String username, String slug) {
+    public UserDetails loadByEmailAndSlug(String email, String slug) {
         Tenant tenant = tenantRepository.findBySlug(slug)
             .orElseThrow(() -> new UsernameNotFoundException("Unknown tenant: " + slug));
-        User user = userRepository.findByUsernameAndTenantId(username, tenant.id())
-            .orElseThrow(() -> new UsernameNotFoundException(username));
+        User user = userRepository.findByEmailAndTenantId(email, tenant.id())
+            .orElseThrow(() -> new UsernameNotFoundException(email));
         return new TenantUserDetails(user, tenant);
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) {
         throw new UnsupportedOperationException(
-            "Plain username lookup is not supported — use loadByUsernameAndSlug(username, slug)");
+            "Plain email lookup is not supported — use loadByEmailAndSlug(email, slug)");
     }
 }

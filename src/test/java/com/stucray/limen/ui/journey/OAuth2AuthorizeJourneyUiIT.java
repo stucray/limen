@@ -42,7 +42,7 @@ class OAuth2AuthorizeJourneyUiIT extends BaseUiIT {
         page.navigate(authorizeUrl);
         page.waitForURL("**/t/" + tenant.slug() + "/login");
 
-        page.getByLabel("Username").fill(tenant.endUserUsername());
+        page.getByLabel("Email").fill(tenant.endUserEmail());
         page.getByLabel("Password").fill(tenant.endUserPassword());
         // The terminal hop is a 302 to http://localhost/callback?code=…&state=… —
         // capture it via waitForRequest so the assertion doesn't depend on the

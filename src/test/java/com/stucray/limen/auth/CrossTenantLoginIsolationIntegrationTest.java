@@ -53,12 +53,12 @@ class CrossTenantLoginIsolationIntegrationTest {
         beta = tenantRepository.save(new Tenant(null, "beta", "Beta", TenantStatus.ACTIVE, LocalDateTime.now()));
 
         userRepository.save(new User(
-            null, alpha.id(), "alice",
+            null, alpha.id(), "alice@example.test",
             passwordEncoder.encode("alpha-pwd"),
             true, false, false, LocalDateTime.now()
         ));
         userRepository.save(new User(
-            null, beta.id(), "alice",
+            null, beta.id(), "alice@example.test",
             passwordEncoder.encode("beta-pwd"),
             true, false, false, LocalDateTime.now()
         ));
@@ -68,7 +68,7 @@ class CrossTenantLoginIsolationIntegrationTest {
     @DisplayName("OAuth2 surface: alice@alpha cannot sign in with beta's password")
     void oauth2LoginRejectsOtherTenantsPassword() throws Exception {
         mockMvc.perform(post("/t/alpha/login")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "beta-pwd")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())
@@ -79,7 +79,7 @@ class CrossTenantLoginIsolationIntegrationTest {
     @DisplayName("Management surface: alice@alpha cannot sign in with beta's password")
     void managementLoginRejectsOtherTenantsPassword() throws Exception {
         mockMvc.perform(post("/manage/t/alpha/login")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "beta-pwd")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())
@@ -90,7 +90,7 @@ class CrossTenantLoginIsolationIntegrationTest {
     @DisplayName("OAuth2 surface: alice@alpha signs in successfully with alpha's password")
     void oauth2LoginAcceptsOwnTenantsPassword() throws Exception {
         mockMvc.perform(post("/t/alpha/login")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "alpha-pwd")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())

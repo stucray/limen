@@ -70,7 +70,7 @@ class SyntheticSchemeIntegrationTest {
         tenantRepository.save(new Tenant(
             null, "beta", "Beta", TenantStatus.ACTIVE, LocalDateTime.now()));
         userRepository.save(new User(
-            null, alpha.id(), "owner",
+            null, alpha.id(), "owner@example.test",
             passwordEncoder.encode("alpha-pwd"),
             true, false, false, LocalDateTime.now()));
     }
@@ -86,7 +86,7 @@ class SyntheticSchemeIntegrationTest {
     @DisplayName("Alpha session hitting /api/t/beta/... is force-logged-out and redirected to /api/t/beta/login")
     void crossTenantAccessOnSyntheticSurfaceForcesLogoutAndRedirects() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/manage/t/alpha/login")
-                .param("username", "owner")
+                .param("email", "owner@example.test")
                 .param("password", "alpha-pwd")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())

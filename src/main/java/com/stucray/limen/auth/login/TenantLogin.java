@@ -149,9 +149,9 @@ public final class TenantLogin {
             // slug is non-null here because attemptAuthentication only fires on a request
             // that already matched scheme.loginMatcher().
             String slug = Objects.requireNonNull(scheme.slugFrom(request));
-            String username = request.getParameter("username");
+            String email = request.getParameter("email");
             String password = request.getParameter("password");
-            return getAuthenticationManager().authenticate(new TenantAuthToken(slug, username, password));
+            return getAuthenticationManager().authenticate(new TenantAuthToken(slug, email, password));
         }
     }
 

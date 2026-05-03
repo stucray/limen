@@ -107,14 +107,14 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     @DisplayName("During an /oauth2/authorize flow, a user with mustChangePassword=true is redirected to the tenant change-password page after login")
     void userWithMustChangePasswordRedirectedToChangePasswordPage() throws Exception {
         userRepository.save(new User(
-            null, tenant.id(), "alice",
+            null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
             true, true, false, LocalDateTime.now()));
 
         MockHttpSession session = startAuthorize(newPkce().challenge());
 
         MvcResult loginResult = mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "alice").param("password", "temp")
+                .param("email", "alice@example.test").param("password", "temp")
                 .session(session).with(csrf()))
             .andExpect(status().is3xxRedirection())
             .andReturn();
@@ -127,7 +127,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     @DisplayName("Successful change-password clears mustChangePassword and resumes the saved /oauth2/authorize request, ultimately yielding an authorization code")
     void changePasswordResumesOAuth2FlowAndClearsFlag() throws Exception {
         User original = userRepository.save(new User(
-            null, tenant.id(), "alice",
+            null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
             true, true, false, LocalDateTime.now()));
         ClientMembershipTestFixture.grant(
@@ -139,7 +139,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
         MockHttpSession session = startAuthorize(newPkce().challenge());
 
         mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "alice").param("password", "temp")
+                .param("email", "alice@example.test").param("password", "temp")
                 .session(session).with(csrf()))
             .andExpect(status().is3xxRedirection());
 
@@ -167,14 +167,14 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     @DisplayName("Mismatched new/confirm re-renders the form and leaves mustChangePassword=true so the user remains gated")
     void mismatchedPasswordsRerendersFormAndDoesNotClearFlag() throws Exception {
         User original = userRepository.save(new User(
-            null, tenant.id(), "alice",
+            null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
             true, true, false, LocalDateTime.now()));
 
         MockHttpSession session = startAuthorize(newPkce().challenge());
 
         mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "alice").param("password", "temp")
+                .param("email", "alice@example.test").param("password", "temp")
                 .session(session).with(csrf()))
             .andExpect(status().is3xxRedirection());
 
@@ -191,14 +191,14 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     @DisplayName("A user without mustChangePassword goes straight from login back to /oauth2/authorize without the change-password detour")
     void userWithoutMustChangePasswordCompletesNormally() throws Exception {
         userRepository.save(new User(
-            null, tenant.id(), "bob",
+            null, tenant.id(), "bob@example.test",
             passwordEncoder.encode("password"),
             true, false, false, LocalDateTime.now()));
 
         MockHttpSession session = startAuthorize(newPkce().challenge());
 
         MvcResult loginResult = mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "bob").param("password", "password")
+                .param("email", "bob@example.test").param("password", "password")
                 .session(session).with(csrf()))
             .andExpect(status().is3xxRedirection())
             .andReturn();
@@ -211,14 +211,14 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     @DisplayName("Blank/whitespace new password re-renders the form and leaves mustChangePassword=true")
     void blankNewPasswordRerendersFormAndDoesNotClearFlag() throws Exception {
         User original = userRepository.save(new User(
-            null, tenant.id(), "alice",
+            null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
             true, true, false, LocalDateTime.now()));
 
         MockHttpSession session = startAuthorize(newPkce().challenge());
 
         mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "alice").param("password", "temp")
+                .param("email", "alice@example.test").param("password", "temp")
                 .session(session).with(csrf()))
             .andExpect(status().is3xxRedirection());
 
@@ -237,13 +237,13 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
         // SavedRequest in the cache); after success the controller should fall back
         // to redirect:/t/{slug}/.
         User original = userRepository.save(new User(
-            null, tenant.id(), "alice",
+            null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
             true, true, false, LocalDateTime.now()));
 
         MockHttpSession session = new MockHttpSession();
         mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "alice").param("password", "temp")
+                .param("email", "alice@example.test").param("password", "temp")
                 .session(session).with(csrf()))
             .andExpect(status().is3xxRedirection());
 
@@ -262,13 +262,13 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
     @DisplayName("GET /t/{slug}/change-password renders the change-password view for an authenticated mustChangePassword user")
     void changePasswordFormGetRendersChangePasswordView() throws Exception {
         userRepository.save(new User(
-            null, tenant.id(), "alice",
+            null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
             true, true, false, LocalDateTime.now()));
 
         MockHttpSession session = new MockHttpSession();
         mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "alice").param("password", "temp")
+                .param("email", "alice@example.test").param("password", "temp")
                 .session(session).with(csrf()))
             .andExpect(status().is3xxRedirection());
 

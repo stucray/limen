@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 public class SignupService {
 
     private static final Pattern SLUG_FORMAT = Pattern.compile("^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$");
+    private static final Pattern EMAIL_FORMAT = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final Set<String> RESERVED_SLUGS = Set.of(
         "system", "admin", "manage", "api", "www", "static", "health", "limen"
     );
@@ -67,12 +68,15 @@ public class SignupService {
             return new SignupResult.Error("organizationName", "Organization name is required");
         }
 
-        String username = form.username() == null ? "" : form.username().trim();
-        if (username.isBlank()) {
-            return new SignupResult.Error("username", "Username is required");
+        String email = form.email() == null ? "" : form.email().trim();
+        if (email.isBlank()) {
+            return new SignupResult.Error("email", "Email is required");
         }
-        if (username.length() > 100) {
-            return new SignupResult.Error("username", "Username must be 100 characters or fewer");
+        if (email.length() > 255) {
+            return new SignupResult.Error("email", "Email must be 255 characters or fewer");
+        }
+        if (!EMAIL_FORMAT.matcher(email).matches()) {
+            return new SignupResult.Error("email", "Email must be a valid email address");
         }
 
         if (form.password() == null || form.password().isBlank()) {
@@ -81,7 +85,7 @@ public class SignupService {
 
         Tenant tenant = tenantProvisioningService.createTenant(slug, orgName);
         userRepository.save(new User(
-            null, tenant.id(), username,
+            null, tenant.id(), email,
             Objects.requireNonNull(passwordEncoder.encode(form.password())),
             true, false, true, LocalDateTime.now()
         ));

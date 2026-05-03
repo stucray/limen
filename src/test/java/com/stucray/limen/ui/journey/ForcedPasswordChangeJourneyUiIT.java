@@ -19,7 +19,7 @@ class ForcedPasswordChangeJourneyUiIT extends BaseUiIT {
         SeededForcedChangeUser user = tenants.seedEndUserForcedPasswordChange(tenant);
 
         new LoginPageObject(page, baseUrl())
-            .loginAsEndUserWithCredentials(tenant.slug(), user.username(), user.temporaryPassword());
+            .loginAsEndUserWithCredentials(tenant.slug(), user.email(), user.temporaryPassword());
 
         new EndUserChangePasswordPage(page, baseUrl(), tenant.slug())
             .assertOnChangePasswordPage()
@@ -27,6 +27,6 @@ class ForcedPasswordChangeJourneyUiIT extends BaseUiIT {
             .fillConfirmPassword("new-password-123")
             .submit()
             .assertOnHomeForTenant(tenant.displayName())
-            .assertSignedInAs(user.username());
+            .assertSignedInAs(user.email());
     }
 }

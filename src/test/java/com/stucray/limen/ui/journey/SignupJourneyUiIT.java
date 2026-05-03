@@ -17,13 +17,13 @@ class SignupJourneyUiIT extends BaseUiIT {
         String suffix = uniqueSuffix();
         String slug = "t-" + suffix;
         String orgName = "Acme " + suffix;
-        String username = "owner-" + suffix;
+        String email = "owner-" + suffix + "@example.test";
         String password = "secret123";
 
         new LandingPage(page, baseUrl())
             .visit()
             .clickSignUp()
-            .fillForm(orgName, slug, username, password)
+            .fillForm(orgName, slug, email, password)
             .submit(slug)
             .assertOnLoginForTenant(orgName)
             .assertJustRegisteredBannerVisible();

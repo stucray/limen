@@ -52,7 +52,7 @@ class SignupIntegrationTest {
         mockMvc.perform(post("/signup")
                 .param("organizationName", "Acme Corp")
                 .param("slug", "acme-corp")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "secret123")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())
@@ -74,7 +74,7 @@ class SignupIntegrationTest {
         mockMvc.perform(post("/signup")
                 .param("organizationName", "Another Corp")
                 .param("slug", "taken-slug")
-                .param("username", "bob")
+                .param("email", "bob@example.test")
                 .param("password", "secret123")
                 .with(csrf()))
             .andExpect(status().isOk())
@@ -88,7 +88,7 @@ class SignupIntegrationTest {
             mockMvc.perform(post("/signup")
                     .param("organizationName", "Test")
                     .param("slug", reserved)
-                    .param("username", "user")
+                    .param("email", "user@example.test")
                     .param("password", "secret123")
                     .with(csrf()))
                 .andExpect(status().isOk())
@@ -102,7 +102,7 @@ class SignupIntegrationTest {
         mockMvc.perform(post("/signup")
                 .param("organizationName", "Test")
                 .param("slug", "UPPERCASE")
-                .param("username", "user")
+                .param("email", "user@example.test")
                 .param("password", "secret123")
                 .with(csrf()))
             .andExpect(status().isOk())
@@ -113,12 +113,12 @@ class SignupIntegrationTest {
     @MethodSource("invalidFormCases")
     @DisplayName("Invalid field re-renders form with field-level error")
     void invalidFormFieldRendersFieldError(
-        String label, String slug, String orgName, String username, String password, String expectedFragment
+        String label, String slug, String orgName, String email, String password, String expectedFragment
     ) throws Exception {
         mockMvc.perform(post("/signup")
                 .param("slug", slug)
                 .param("organizationName", orgName)
-                .param("username", username)
+                .param("email", email)
                 .param("password", password)
                 .with(csrf()))
             .andExpect(status().isOk())
@@ -127,14 +127,15 @@ class SignupIntegrationTest {
 
     static java.util.stream.Stream<Arguments> invalidFormCases() {
         String fortyNineChars  = "a".repeat(49);
-        String hundredOneChars = "u".repeat(101);
+        String twoFiftySixLocal = "u".repeat(256);
         return java.util.stream.Stream.of(
-            Arguments.of("slug too short",          "ab",            "Acme", "alice", "secret123", "between 3 and 48"),
-            Arguments.of("slug too long",           fortyNineChars,  "Acme", "alice", "secret123", "between 3 and 48"),
-            Arguments.of("blank organization name", "acme-corp",     "",     "alice", "secret123", "Organization name is required"),
-            Arguments.of("blank username",          "acme-corp",     "Acme", "",      "secret123", "Username is required"),
-            Arguments.of("username too long",       "acme-corp",     "Acme", hundredOneChars, "secret123", "100 characters or fewer"),
-            Arguments.of("blank password",          "acme-corp",     "Acme", "alice", "",          "Password is required")
+            Arguments.of("slug too short",          "ab",            "Acme", "alice@example.test", "secret123", "between 3 and 48"),
+            Arguments.of("slug too long",           fortyNineChars,  "Acme", "alice@example.test", "secret123", "between 3 and 48"),
+            Arguments.of("blank organization name", "acme-corp",     "",     "alice@example.test", "secret123", "Organization name is required"),
+            Arguments.of("blank email",             "acme-corp",     "Acme", "",                   "secret123", "Email is required"),
+            Arguments.of("email too long",          "acme-corp",     "Acme", twoFiftySixLocal + "@example.test", "secret123", "255 characters or fewer"),
+            Arguments.of("email malformed (no @)",  "acme-corp",     "Acme", "not-an-email",       "secret123", "valid email address"),
+            Arguments.of("blank password",          "acme-corp",     "Acme", "alice@example.test", "",          "Password is required")
         );
     }
 }

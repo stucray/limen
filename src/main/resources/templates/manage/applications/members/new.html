@@ -25,7 +25,7 @@
         <label>
             User
             <select name="userId" required>
-                <option th:each="u : ${grantableUsers}" th:value="${u.id()}" th:text="${u.username()}"></option>
+                <option th:each="u : ${grantableUsers}" th:value="${u.id()}" th:text="${u.email()}"></option>
             </select>
         </label>
         <div class="form-actions">

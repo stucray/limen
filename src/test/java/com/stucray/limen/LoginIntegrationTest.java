@@ -51,7 +51,7 @@ class LoginIntegrationTest {
         jdbcTemplate.execute("DELETE FROM users WHERE tenant_id = (SELECT id FROM tenants WHERE slug = 'system')");
 
         systemTenantId = tenantRepository.findBySlug("system").orElseThrow().id();
-        userRepository.save(new User(null, systemTenantId, "testuser", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
+        userRepository.save(new User(null, systemTenantId, "testuser@example.test", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
     }
 
     @Test
@@ -83,7 +83,7 @@ class LoginIntegrationTest {
     @DisplayName("System admin signs in at /manage/t/system/login and lands on /manage/t/system/")
     void systemAdminLoginAtSystemTenantSucceeds() throws Exception {
         mockMvc.perform(post("/manage/t/system/login")
-                .param("username", "testuser")
+                .param("email", "testuser@example.test")
                 .param("password", "password")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())

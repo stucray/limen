@@ -107,7 +107,7 @@ class TenantOAuth2RoutingIntegrationTest {
             null, alphaCorpTenant.id(), "Alpha App", "Test app", LocalDateTime.now()
         ));
         alphaAdmin = userRepository.save(new User(
-            null, alphaCorpTenant.id(), "alpha-admin",
+            null, alphaCorpTenant.id(), "alpha-admin@example.test",
             passwordEncoder.encode("password"),
             true, false, true, LocalDateTime.now()
         ));
@@ -239,7 +239,7 @@ class TenantOAuth2RoutingIntegrationTest {
     @DisplayName("Full authorization-code + PKCE flow under /t/{slug}/ yields a token with tenant + iss claims for the end user")
     void authorizationCodePkceFlowProducesTokenWithTenantClaims() throws Exception {
         User alice = userRepository.save(new User(
-            null, alphaCorpTenant.id(), "alice",
+            null, alphaCorpTenant.id(), "alice@example.test",
             passwordEncoder.encode("password"),
             true, false, false, LocalDateTime.now()
         ));
@@ -296,7 +296,7 @@ class TenantOAuth2RoutingIntegrationTest {
 
         // 2. POST /t/alpha-corp/login → redirect to /t/alpha-corp/oauth2/authorize
         MvcResult loginResult = mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "password")
                 .session(session)
                 .with(csrf()))
@@ -388,7 +388,7 @@ class TenantOAuth2RoutingIntegrationTest {
     @DisplayName("/t/{slug}/userinfo accepts a Bearer token from the same tenant and returns the user's claims")
     void userinfoEndpointReturnsClaimsForTenantUser() throws Exception {
         User bob = userRepository.save(new User(
-            null, alphaCorpTenant.id(), "bob",
+            null, alphaCorpTenant.id(), "bob@example.test",
             passwordEncoder.encode("password"),
             true, false, false, LocalDateTime.now()
         ));
@@ -435,7 +435,7 @@ class TenantOAuth2RoutingIntegrationTest {
             .andExpect(status().is3xxRedirection());
 
         mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "bob")
+                .param("email", "bob@example.test")
                 .param("password", "password")
                 .session(session)
                 .with(csrf()))

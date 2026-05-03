@@ -32,8 +32,8 @@ public final class ManageLoginPage {
         return this;
     }
 
-    public ManageLoginPage fill(String username, String password) {
-        page.getByLabel("Username").fill(username);
+    public ManageLoginPage fill(String email, String password) {
+        page.getByLabel("Email").fill(email);
         page.getByLabel("Password").fill(password);
         return this;
     }

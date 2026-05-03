@@ -37,50 +37,51 @@ class TenantUserDetailsServiceUnitTest {
     void setUp() {
         service = new TenantUserDetailsService(tenantRepository, userRepository);
         alpha = new Tenant(1L, "alpha", "Alpha", TenantStatus.ACTIVE, LocalDateTime.now());
-        alice = new User(10L, 1L, "alice", "hash", true, false, false, LocalDateTime.now());
+        alice = new User(10L, 1L, "alice@example.test", "hash", true, false, false, LocalDateTime.now());
     }
 
     @Test
-    @DisplayName("Returns TenantUserDetails carrying both username and tenant slug for a known user")
-    void loadByUsernameAndSlugReturnsTenantUserDetailsForKnownUser() {
+    @DisplayName("Returns TenantUserDetails carrying both email and tenant slug for a known user")
+    void loadByEmailAndSlugReturnsTenantUserDetailsForKnownUser() {
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.of(alpha));
-        given(userRepository.findByUsernameAndTenantId("alice", 1L)).willReturn(Optional.of(alice));
+        given(userRepository.findByEmailAndTenantId("alice@example.test", 1L)).willReturn(Optional.of(alice));
 
-        UserDetails details = service.loadByUsernameAndSlug("alice", "alpha");
+        UserDetails details = service.loadByEmailAndSlug("alice@example.test", "alpha");
 
         assertThat(details).isInstanceOf(TenantUserDetails.class);
         TenantUserDetails tenantDetails = (TenantUserDetails) details;
-        assertThat(tenantDetails.getUsername()).isEqualTo("alice");
+        // Spring's UserDetails.getUsername() returns the email value in this codebase
+        assertThat(tenantDetails.getUsername()).isEqualTo("alice@example.test");
         assertThat(tenantDetails.tenantSlug()).isEqualTo("alpha");
         assertThat(tenantDetails.userId()).isEqualTo(10L);
     }
 
     @Test
     @DisplayName("Throws UsernameNotFoundException when the slug does not resolve to a tenant")
-    void loadByUsernameAndSlugThrowsWhenTenantSlugUnknown() {
+    void loadByEmailAndSlugThrowsWhenTenantSlugUnknown() {
         given(tenantRepository.findBySlug("ghost")).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.loadByUsernameAndSlug("alice", "ghost"))
+        assertThatThrownBy(() -> service.loadByEmailAndSlug("alice@example.test", "ghost"))
             .isInstanceOf(UsernameNotFoundException.class)
             .hasMessageContaining("Unknown tenant: ghost");
     }
 
     @Test
     @DisplayName("Throws UsernameNotFoundException when the user is unknown within the resolved tenant")
-    void loadByUsernameAndSlugThrowsWhenUserUnknownInTenant() {
+    void loadByEmailAndSlugThrowsWhenUserUnknownInTenant() {
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.of(alpha));
-        given(userRepository.findByUsernameAndTenantId("nobody", 1L)).willReturn(Optional.empty());
+        given(userRepository.findByEmailAndTenantId("nobody@example.test", 1L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.loadByUsernameAndSlug("nobody", "alpha"))
+        assertThatThrownBy(() -> service.loadByEmailAndSlug("nobody@example.test", "alpha"))
             .isInstanceOf(UsernameNotFoundException.class)
-            .hasMessage("nobody");
+            .hasMessage("nobody@example.test");
     }
 
     @Test
     @DisplayName("loadUserByUsername (the slugless API) always throws — slug is required")
     void loadUserByUsernameAlwaysThrowsBecauseSlugIsRequired() {
-        assertThatThrownBy(() -> service.loadUserByUsername("alice"))
+        assertThatThrownBy(() -> service.loadUserByUsername("alice@example.test"))
             .isInstanceOf(UnsupportedOperationException.class)
-            .hasMessageContaining("loadByUsernameAndSlug");
+            .hasMessageContaining("loadByEmailAndSlug");
     }
 }

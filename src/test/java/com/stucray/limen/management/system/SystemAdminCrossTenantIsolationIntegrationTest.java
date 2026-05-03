@@ -57,7 +57,7 @@ class SystemAdminCrossTenantIsolationIntegrationTest {
 
         Tenant systemTenant = tenantRepository.findBySlug("system").orElseThrow();
         userRepository.save(new User(
-            null, systemTenant.id(), "sysadmin",
+            null, systemTenant.id(), "sysadmin@example.test",
             passwordEncoder.encode("syspass"),
             true, false, false, LocalDateTime.now()
         ));
@@ -67,7 +67,7 @@ class SystemAdminCrossTenantIsolationIntegrationTest {
         ));
 
         MvcResult login = mockMvc.perform(post("/manage/t/system/login")
-                .param("username", "sysadmin")
+                .param("email", "sysadmin@example.test")
                 .param("password", "syspass")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())

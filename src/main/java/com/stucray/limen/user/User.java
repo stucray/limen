@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 public record User(
     @Id Long id,
     Long tenantId,
-    String username,
+    String email,
     String passwordHash,
     boolean enabled,
     boolean mustChangePassword,
@@ -17,18 +17,18 @@ public record User(
     LocalDateTime createdAt
 ) {
     public User withPasswordHash(String newHash) {
-        return new User(id, tenantId, username, newHash, enabled, true, tenantOwner, createdAt);
+        return new User(id, tenantId, email, newHash, enabled, true, tenantOwner, createdAt);
     }
 
     public User withEnabled(boolean newEnabled) {
-        return new User(id, tenantId, username, passwordHash, newEnabled, mustChangePassword, tenantOwner, createdAt);
+        return new User(id, tenantId, email, passwordHash, newEnabled, mustChangePassword, tenantOwner, createdAt);
     }
 
     public User withMustChangePassword(boolean value) {
-        return new User(id, tenantId, username, passwordHash, enabled, value, tenantOwner, createdAt);
+        return new User(id, tenantId, email, passwordHash, enabled, value, tenantOwner, createdAt);
     }
 
     public User withTenantOwner(boolean value) {
-        return new User(id, tenantId, username, passwordHash, enabled, mustChangePassword, value, createdAt);
+        return new User(id, tenantId, email, passwordHash, enabled, mustChangePassword, value, createdAt);
     }
 }

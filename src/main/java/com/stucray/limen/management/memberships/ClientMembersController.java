@@ -65,7 +65,7 @@ public class ClientMembersController {
         model.addAttribute("app", app);
         model.addAttribute("client", client);
         model.addAttribute("memberships", memberships);
-        model.addAttribute("usernamesById", usernamesByIdFor(memberships));
+        model.addAttribute("emailsById", emailsByIdFor(memberships));
         model.addAttribute("roleNamesById", roleNamesByIdFor(allRoles));
         return "manage/clients/members/list";
     }
@@ -132,7 +132,7 @@ public class ClientMembersController {
         model.addAttribute("app", app);
         model.addAttribute("client", client);
         model.addAttribute("membership", membership);
-        model.addAttribute("memberUsername", member.username());
+        model.addAttribute("memberEmail", member.email());
         model.addAttribute("allRoles", allRoles);
         model.addAttribute("assignedRoleIds", membership.roleIds());
         return "manage/clients/members/edit";
@@ -163,7 +163,7 @@ public class ClientMembersController {
             model.addAttribute("app", app);
             model.addAttribute("client", client);
             model.addAttribute("membership", membership);
-            model.addAttribute("memberUsername", member.username());
+            model.addAttribute("memberEmail", member.email());
             model.addAttribute("allRoles", allRoles);
             model.addAttribute("assignedRoleIds", roleIds == null ? Set.of() : new LinkedHashSet<>(roleIds));
             model.addAttribute("errorMessage", e.getMessage());
@@ -183,10 +183,10 @@ public class ClientMembersController {
         return "redirect:/manage/t/" + slug + "/applications/" + appId + "/clients/" + registeredClientId + "/members";
     }
 
-    private Map<Long, String> usernamesByIdFor(List<ClientMembership> memberships) {
+    private Map<Long, String> emailsByIdFor(List<ClientMembership> memberships) {
         Map<Long, String> map = new LinkedHashMap<>();
         for (ClientMembership m : memberships) {
-            userRepository.findById(m.userId()).ifPresent(u -> map.put(u.id(), u.username()));
+            userRepository.findById(m.userId()).ifPresent(u -> map.put(u.id(), u.email()));
         }
         return map;
     }

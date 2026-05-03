@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 @ControllerAdvice(basePackages = "com.stucray.limen.management")
 public class ManagementModelAdvice {
 
-    @ModelAttribute("currentUsername")
-    public @Nullable String currentUsername(@AuthenticationPrincipal @Nullable TenantUserDetails principal) {
-        return principal == null ? null : principal.displayUsername();
+    @ModelAttribute("currentEmail")
+    public @Nullable String currentEmail(@AuthenticationPrincipal @Nullable TenantUserDetails principal) {
+        return principal == null ? null : principal.displayEmail();
     }
 }

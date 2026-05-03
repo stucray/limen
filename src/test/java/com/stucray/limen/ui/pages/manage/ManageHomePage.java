@@ -37,8 +37,8 @@ public final class ManageHomePage {
         return this;
     }
 
-    public ManageHomePage assertWelcomeForUser(String username) {
-        PlaywrightAssertions.assertThat(page.getByText("Welcome, " + username)).isVisible();
+    public ManageHomePage assertWelcomeForUser(String email) {
+        PlaywrightAssertions.assertThat(page.getByText("Welcome, " + email)).isVisible();
         return this;
     }
 

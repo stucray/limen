@@ -21,7 +21,7 @@ import java.util.Date;
 public class TenantPersistentTokenRepository {
 
     private static final String INSERT_SQL =
-        "INSERT INTO persistent_logins (tenant_id, username, series, token, last_used) "
+        "INSERT INTO persistent_logins (tenant_id, email, series, token, last_used) "
         + "VALUES (?, ?, ?, ?, ?)";
 
     private static final String UPDATE_SQL =
@@ -29,11 +29,11 @@ public class TenantPersistentTokenRepository {
         + "WHERE tenant_id = ? AND series = ?";
 
     private static final String SELECT_SQL =
-        "SELECT username, series, token, last_used, tenant_id FROM persistent_logins "
+        "SELECT email, series, token, last_used, tenant_id FROM persistent_logins "
         + "WHERE tenant_id = ? AND series = ?";
 
     private static final String DELETE_USER_SQL =
-        "DELETE FROM persistent_logins WHERE tenant_id = ? AND username = ?";
+        "DELETE FROM persistent_logins WHERE tenant_id = ? AND email = ?";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -55,7 +55,7 @@ public class TenantPersistentTokenRepository {
         try {
             return jdbcTemplate.queryForObject(SELECT_SQL, (rs, rowNum) ->
                 new TenantPersistentRememberMeToken(
-                    rs.getString("username"),
+                    rs.getString("email"),
                     rs.getString("series"),
                     rs.getString("token"),
                     rs.getTimestamp("last_used"),
@@ -68,7 +68,7 @@ public class TenantPersistentTokenRepository {
         }
     }
 
-    public void removeUserTokens(String username, Long tenantId) {
-        jdbcTemplate.update(DELETE_USER_SQL, tenantId, username);
+    public void removeUserTokens(String email, Long tenantId) {
+        jdbcTemplate.update(DELETE_USER_SQL, tenantId, email);
     }
 }

@@ -9,7 +9,7 @@
             Limen
         </span>
         <div class="app-header__user">
-            <span class="app-header__user-name" th:if="${currentUsername}" th:text="${currentUsername}">user</span>
+            <span class="app-header__user-name" th:if="${currentEmail}" th:text="${currentEmail}">user</span>
             <form method="post" th:action="@{/manage/logout}">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                 <button type="submit" class="btn--ghost">Sign out</button>

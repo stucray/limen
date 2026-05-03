@@ -34,7 +34,7 @@ public final class TenantUserDetails implements UserDetails {
 
     @Override
     public String getUsername() {
-        return user.username();
+        return user.email();
     }
 
     @Override
@@ -45,7 +45,7 @@ public final class TenantUserDetails implements UserDetails {
     public String tenantSlug() { return tenant.slug(); }
     public Long tenantId()     { return tenant.id(); }
     public Long userId()       { return user.id(); }
-    public String displayUsername() { return user.username(); }
+    public String displayEmail() { return user.email(); }
     public boolean mustChangePassword() { return user.mustChangePassword(); }
     public Tenant tenant() { return tenant; }
     public User user()     { return user; }

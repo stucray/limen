@@ -26,9 +26,9 @@
             </label>
 
             <label>
-                Username
-                <input type="text" name="username" th:value="${form.username()}" required/>
-                <span class="form-error" th:if="${errorField == 'username'}" th:text="${errorMessage}"></span>
+                Email
+                <input type="email" name="email" th:value="${form.email()}" required/>
+                <span class="form-error" th:if="${errorField == 'email'}" th:text="${errorMessage}"></span>
             </label>
 
             <label>

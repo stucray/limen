@@ -25,11 +25,11 @@ public class SignupController {
     public String signup(
         @RequestParam String organizationName,
         @RequestParam String slug,
-        @RequestParam String username,
+        @RequestParam String email,
         @RequestParam String password,
         Model model
     ) {
-        SignupForm form = new SignupForm(organizationName, slug, username, password);
+        SignupForm form = new SignupForm(organizationName, slug, email, password);
         SignupService.SignupResult result = signupService.signup(form);
 
         if (result instanceof SignupService.SignupResult.Success success) {

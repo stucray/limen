@@ -45,8 +45,8 @@ class IssuerContractTest {
     @BeforeEach
     void setUp() {
         Long systemTenantId = tenantRepository.findBySlug("system").orElseThrow().id();
-        if (!userRepository.existsByUsernameAndTenantId("testuser", systemTenantId)) {
-            userRepository.save(new User(null, systemTenantId, "testuser", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
+        if (!userRepository.existsByEmailAndTenantId("testuser@example.test", systemTenantId)) {
+            userRepository.save(new User(null, systemTenantId, "testuser@example.test", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
         }
 
         RegisteredClient existing = registeredClientRepository.findByClientId(CLIENT_ID);

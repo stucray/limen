@@ -85,7 +85,7 @@ class ClientTokenSettingsIntegrationTest {
 
         tenant = tenantProvisioningService.createTenant("token-test", "Token Test");
         app = applicationRepository.save(new Application(null, tenant.id(), "Test App", null, LocalDateTime.now()));
-        alice = userRepository.save(new User(null, tenant.id(), "alice", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
+        alice = userRepository.save(new User(null, tenant.id(), "alice@example.test", passwordEncoder.encode("password"), true, false, false, LocalDateTime.now()));
     }
 
     private void grantMembership(String registeredClientId) {
@@ -165,7 +165,7 @@ class ClientTokenSettingsIntegrationTest {
             .andExpect(status().is3xxRedirection());
 
         mockMvc.perform(post("/t/token-test/login")
-                .param("username", "alice").param("password", "password")
+                .param("email", "alice@example.test").param("password", "password")
                 .session(session).with(csrf()))
             .andExpect(status().is3xxRedirection());
 
@@ -323,7 +323,7 @@ class ClientTokenSettingsIntegrationTest {
 
         // Login
         mockMvc.perform(post("/t/token-test/login")
-                .param("username", "alice").param("password", "password")
+                .param("email", "alice@example.test").param("password", "password")
                 .session(session).with(csrf()))
             .andExpect(status().is3xxRedirection());
 

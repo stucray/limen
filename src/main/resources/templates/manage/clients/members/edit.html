@@ -10,12 +10,12 @@
         <li><a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients'}">Clients</a></li>
         <li th:text="${client.displayName()}">Client</li>
         <li><a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${client.registeredClientId()} + '/members'}">Members</a></li>
-        <li th:text="${memberUsername}">user</li>
+        <li th:text="${memberEmail}">user</li>
     </ol>
 
     <hgroup>
         <h1>Client member roles</h1>
-        <p><strong th:text="${memberUsername}">user</strong> on <strong th:text="${client.displayName()}">client</strong></p>
+        <p><strong th:text="${memberEmail}">user</strong> on <strong th:text="${client.displayName()}">client</strong></p>
     </hgroup>
 
     <p class="form-error" th:if="${errorMessage}" th:text="${errorMessage}"></p>

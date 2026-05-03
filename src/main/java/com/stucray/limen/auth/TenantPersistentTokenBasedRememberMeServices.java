@@ -64,7 +64,7 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
         HttpServletRequest request, HttpServletResponse response, Authentication auth
     ) {
         TenantUserDetails principal = (TenantUserDetails) Objects.requireNonNull(auth.getPrincipal());
-        String username = principal.displayUsername();
+        String email = principal.displayEmail();
         String slug = principal.tenantSlug();
         Long tenantId = principal.tenantId();
         String series = encodeBase64(seriesLength());
@@ -72,7 +72,7 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
         Date now = new Date();
         try {
             tokenRepository.createNewToken(
-                new PersistentRememberMeToken(username, series, tokenValue, now), tenantId);
+                new PersistentRememberMeToken(email, series, tokenValue, now), tenantId);
         } catch (Exception ex) {
             this.logger.error("Failed to save persistent token", ex);
             return;
@@ -128,14 +128,14 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
             throw new RememberMeAuthenticationException("Autologin failed due to data access problem");
         }
 
-        return tenantUserDetailsService.loadByUsernameAndSlug(token.getUsername(), cookieSlug);
+        return tenantUserDetailsService.loadByEmailAndSlug(token.getUsername(), cookieSlug);
     }
 
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response, @Nullable Authentication auth) {
         super.logout(request, response, auth);
         if (auth != null && auth.getPrincipal() instanceof TenantUserDetails details) {
-            tokenRepository.removeUserTokens(details.displayUsername(), details.tenantId());
+            tokenRepository.removeUserTokens(details.displayEmail(), details.tenantId());
         }
     }
 

@@ -29,9 +29,9 @@ public final class ManageUsersListPage {
         return new ManageUsersNewPage(page, baseUrl, slug);
     }
 
-    public ManageUsersListPage assertUserVisible(String username) {
+    public ManageUsersListPage assertUserVisible(String email) {
         PlaywrightAssertions.assertThat(
-            page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(username))
+            page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(email))
         ).isVisible();
         return this;
     }
