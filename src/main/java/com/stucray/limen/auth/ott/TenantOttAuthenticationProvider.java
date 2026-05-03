@@ -36,9 +36,12 @@ import java.util.Set;
  *   <li>{@link OttIntent#VERIFY_EMAIL} — flips {@code email_verified=true} via
  *       {@link EmailVerificationService#markEmailVerified} (idempotent on a
  *       second consume).</li>
- *   <li>{@link OttIntent#PASSWORD_RESET} — left to slice #126; the principal
- *       is returned authenticated so the post-login dispatch can route to
- *       change-password.</li>
+ *   <li>{@link OttIntent#PASSWORD_RESET} — also flips {@code email_verified=true}
+ *       (clicking a link delivered to the address proves control of it, same
+ *       guarantee as the verify-email flow), and sets a session breadcrumb via
+ *       {@link PasswordResetSessionMarker} so {@code passwordChangeAfterReset()}
+ *       can route the just-authenticated user through change-password ahead of
+ *       any saved /oauth2/authorize request.</li>
  * </ul>
  */
 @Component
@@ -84,14 +87,25 @@ public class TenantOttAuthenticationProvider implements AuthenticationProvider {
             throw new BadCredentialsException("Failed to authenticate the one-time token");
         }
 
-        if (row.intent() == OttIntent.VERIFY_EMAIL) {
-            verificationService.markEmailVerified(principal.userId(), principal.tenantId());
-            // Reflect the just-applied flip on the in-memory principal so the
-            // PostLoginIntent.emailVerificationRequired() check that runs from
-            // the success handler doesn't see stale state and bounce the user
-            // back to check-inbox.
-            principal = new TenantUserDetails(
-                principal.user().withEmailVerified(true), principal.tenant());
+        // Both intents flip email_verified=true. For VERIFY_EMAIL that is the
+        // whole point of the flow; for PASSWORD_RESET it is a defensible side
+        // effect — the user just demonstrated control of the address by clicking
+        // a link delivered to it, the same proof the verify-email flow accepts.
+        // Without this an unverified user using forgot-password would be bounced
+        // to /check-inbox by emailVerificationRequired() before ever reaching
+        // change-password.
+        verificationService.markEmailVerified(principal.userId(), principal.tenantId());
+        // Reflect the just-applied flip on the in-memory principal so the
+        // PostLoginIntent.emailVerificationRequired() check that runs from
+        // the success handler doesn't see stale state and bounce the user
+        // back to check-inbox.
+        principal = new TenantUserDetails(
+            principal.user().withEmailVerified(true), principal.tenant());
+
+        if (row.intent() == OttIntent.PASSWORD_RESET) {
+            // Set the session breadcrumb that passwordChangeAfterReset() reads
+            // and TenantPasswordChangeFlow clears on successful submission.
+            PasswordResetSessionMarker.setOnCurrentRequest();
         }
 
         Set<GrantedAuthority> authorities = new HashSet<>(principal.getAuthorities());

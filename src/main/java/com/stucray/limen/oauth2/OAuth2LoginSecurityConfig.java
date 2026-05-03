@@ -74,6 +74,7 @@ public class OAuth2LoginSecurityConfig {
                 .requestMatchers("/t/*/login/ott").permitAll()
                 .requestMatchers("/t/*/check-inbox").permitAll()
                 .requestMatchers("/t/*/resend-verification").permitAll()
+                .requestMatchers("/t/*/forgot-password").permitAll()
                 .anyRequest().authenticated()
             )
             .requestCache(rc -> rc.requestCache(requestCache))

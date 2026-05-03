@@ -24,6 +24,10 @@
             </label>
             <button type="submit" class="btn--block" data-test-action="login-submit">Sign in</button>
         </form>
+        <p>
+            <a th:href="@{/t/{slug}/forgot-password(slug=${tenantSlug})}"
+               data-test-action="forgot-password-link">Forgot your password?</a>
+        </p>
     </article>
 </main>
 </body>

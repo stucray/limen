@@ -62,6 +62,14 @@ public class OttEmailNotifier implements OneTimeTokenGenerationSuccessHandler {
         send(tenant, recipientEmail, tokenValue, OttIntent.VERIFY_EMAIL);
     }
 
+    /**
+     * Direct entry point used by the forgot-password flow: build the
+     * password-reset email and dispatch it via {@link EmailSender}.
+     */
+    public void sendPasswordReset(Tenant tenant, String recipientEmail, String tokenValue) {
+        send(tenant, recipientEmail, tokenValue, OttIntent.PASSWORD_RESET);
+    }
+
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response, OneTimeToken oneTimeToken)
             throws java.io.IOException {

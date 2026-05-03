@@ -8,7 +8,15 @@
             <h1>Check your inbox</h1>
             <p th:if="${tenantName}" th:text="${tenantName}">Tenant</p>
         </hgroup>
-        <p>
+        <p th:if="${flow == 'password-reset'}">
+            If an account exists for
+            <span th:if="${email != null and !email.isEmpty()}">
+                <strong th:text="${email}" data-test-action="reset-email">you@example.com</strong>,
+            </span>
+            <span th:unless="${email != null and !email.isEmpty()}">that address,</span>
+            we've sent a password-reset link. Click it to set a new password.
+        </p>
+        <p th:if="${flow != 'password-reset'}">
             We've sent a verification link
             <span th:if="${email != null and !email.isEmpty()}">
                 to <strong th:text="${email}" data-test-action="verification-email">you@example.com</strong>
@@ -17,10 +25,15 @@
         </p>
         <p class="muted">The link is single-use and expires in 60 minutes.</p>
         <hr/>
-        <p>
+        <p th:if="${flow != 'password-reset'}">
             Didn't receive the email?
             <a th:href="@{/t/{slug}/resend-verification(slug=${slug}, email=${email})}"
                data-test-action="resend-verification-link">Resend it</a>.
+        </p>
+        <p th:if="${flow == 'password-reset'}">
+            Didn't receive the email?
+            <a th:href="@{/t/{slug}/forgot-password(slug=${slug}, email=${email})}"
+               data-test-action="resend-reset-link">Request a new link</a>.
         </p>
         <p>
             <a th:href="@{/t/{slug}/login(slug=${slug})}" data-test-action="back-to-login">Back to sign in</a>

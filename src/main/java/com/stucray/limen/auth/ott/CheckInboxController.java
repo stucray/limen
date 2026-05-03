@@ -27,6 +27,7 @@ public class CheckInboxController {
     public String checkInbox(
         @PathVariable String slug,
         @RequestParam(required = false) String email,
+        @RequestParam(required = false) String flow,
         Model model
     ) {
         Tenant tenant = tenantRepository.findBySlug(slug).orElse(null);
@@ -36,6 +37,11 @@ public class CheckInboxController {
         model.addAttribute("slug", slug);
         model.addAttribute("tenantName", tenant.displayName());
         model.addAttribute("email", email == null ? "" : email);
+        // Two flows land on this page: verify-email (default) and password-reset.
+        // The template branches on this so the copy mentions the right link
+        // and the resend prompt only renders for verify-email (resending is
+        // implicit for forgot-password — the user just resubmits the form).
+        model.addAttribute("flow", "password-reset".equals(flow) ? "password-reset" : "verify-email");
         return "check-inbox";
     }
 }

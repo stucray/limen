@@ -3,6 +3,8 @@ package com.stucray.limen.audit;
 import com.stucray.limen.audit.events.ClientSecretRotatedEvent;
 import com.stucray.limen.audit.events.EmailVerifiedEvent;
 import com.stucray.limen.audit.events.PasswordChangedEvent;
+import com.stucray.limen.audit.events.PasswordResetCompletedEvent;
+import com.stucray.limen.audit.events.PasswordResetOttIssuedEvent;
 import com.stucray.limen.audit.events.TenantCreatedEvent;
 import com.stucray.limen.audit.events.TenantDeletedEvent;
 import com.stucray.limen.audit.events.TenantSuspendedEvent;
@@ -195,6 +197,32 @@ public class AuditEventListener {
             currentIp(), currentUserAgent(),
             LocalDateTime.now(ZoneId.systemDefault()),
             details));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPasswordResetOttIssued(PasswordResetOttIssuedEvent event) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("email", event.email());
+        details.put("delivered", event.delivered());
+        safeWrite(new AuditEvent(
+            null, event.tenantId(), event.userId(),
+            "password_reset_ott_issued",
+            event.userId() == null ? null : "user",
+            event.userId() == null ? null : String.valueOf(event.userId()),
+            currentIp(), currentUserAgent(),
+            LocalDateTime.now(ZoneId.systemDefault()),
+            details));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPasswordResetCompleted(PasswordResetCompletedEvent event) {
+        safeWrite(new AuditEvent(
+            null, event.tenantId(), event.userId(),
+            "password_reset_completed",
+            "user", String.valueOf(event.userId()),
+            currentIp(), currentUserAgent(),
+            LocalDateTime.now(ZoneId.systemDefault()),
+            Map.of()));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

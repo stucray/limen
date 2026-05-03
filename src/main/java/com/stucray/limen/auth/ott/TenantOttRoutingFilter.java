@@ -18,10 +18,10 @@ import java.util.regex.Pattern;
 
 /**
  * Binds {@link TenantScope} for the OTT URLs ({@code /t/{slug}/login/ott},
- * {@code /t/{slug}/check-inbox}, {@code /t/{slug}/resend-verification}) so the
- * OTT auth provider, the tenant-aware token service, and the controllers below
- * can read tenant identity from {@link TenantScope} instead of plumbing it
- * through every method signature.
+ * {@code /t/{slug}/check-inbox}, {@code /t/{slug}/resend-verification},
+ * {@code /t/{slug}/forgot-password}) so the OTT auth provider, the tenant-aware
+ * token service, and the controllers below can read tenant identity from
+ * {@link TenantScope} instead of plumbing it through every method signature.
  *
  * <p>Modelled on {@code TenantOAuth2RoutingFilter} but does <em>not</em> strip
  * the URL prefix — these endpoints are owned by Limen's own controllers and
@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
 public class TenantOttRoutingFilter extends OncePerRequestFilter {
 
     private static final Pattern TENANT_OTT_PATH =
-        Pattern.compile("^/t/([^/]+)/(login/ott|check-inbox|resend-verification)(?:[/?].*)?$");
+        Pattern.compile("^/t/([^/]+)/(login/ott|check-inbox|resend-verification|forgot-password)(?:[/?].*)?$");
 
     private final TenantRepository tenantRepository;
 

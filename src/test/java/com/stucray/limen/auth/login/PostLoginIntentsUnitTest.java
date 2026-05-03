@@ -1,6 +1,7 @@
 package com.stucray.limen.auth.login;
 
 import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.auth.ott.PasswordResetSessionMarker;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
@@ -119,6 +120,38 @@ class PostLoginIntentsUnitTest {
 
         assertThat(url).isNull();
         verify(requestCache, never()).removeRequest(req, res);
+    }
+
+    @Test
+    @DisplayName("passwordChangeAfterReset: redirects to change-password when the password-reset session marker is present")
+    void passwordChangeAfterResetRedirectsWhenMarkerPresent() {
+        req.getSession(true).setAttribute(PasswordResetSessionMarker.ATTRIBUTE_NAME, Boolean.TRUE);
+        PostLoginIntent intent = PostLoginIntents.passwordChangeAfterReset();
+
+        String url = intent.resolve(req, res, freshPrincipal, OAUTH2);
+
+        assertThat(url).isEqualTo("/t/alpha/change-password");
+    }
+
+    @Test
+    @DisplayName("passwordChangeAfterReset: returns null (falls through) when no session exists")
+    void passwordChangeAfterResetFallsThroughWhenNoSession() {
+        PostLoginIntent intent = PostLoginIntents.passwordChangeAfterReset();
+
+        String url = intent.resolve(req, res, freshPrincipal, OAUTH2);
+
+        assertThat(url).isNull();
+    }
+
+    @Test
+    @DisplayName("passwordChangeAfterReset: returns null when session exists but marker is unset")
+    void passwordChangeAfterResetFallsThroughWhenMarkerAbsent() {
+        req.getSession(true);
+        PostLoginIntent intent = PostLoginIntents.passwordChangeAfterReset();
+
+        String url = intent.resolve(req, res, freshPrincipal, OAUTH2);
+
+        assertThat(url).isNull();
     }
 
     @Test
