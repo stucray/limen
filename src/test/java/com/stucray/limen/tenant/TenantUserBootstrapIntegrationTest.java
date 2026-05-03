@@ -51,7 +51,13 @@ class TenantUserBootstrapIntegrationTest {
             slug, "Acme " + slug, "owner-" + slug + "@example.test",
             new OwnerCredentials.Provided("secret123"));
 
-        assertThat(tenantRepository.findBySlug(slug)).contains(tenant);
+        // Compare by id rather than full equality: Linux LocalDateTime.now() is
+        // nanosecond-precision in memory, Postgres timestamp truncates to micros
+        // on persistence (memory note 2026-05-03 / slice-6).
+        Tenant reloaded = tenantRepository.findBySlug(slug).orElseThrow();
+        assertThat(reloaded.id()).isEqualTo(tenant.id());
+        assertThat(reloaded.slug()).isEqualTo(slug);
+
         var owner = userRepository.findByEmailAndTenantId("owner-" + slug + "@example.test", tenant.id())
             .orElseThrow();
         assertThat(owner.tenantOwner()).isTrue();
