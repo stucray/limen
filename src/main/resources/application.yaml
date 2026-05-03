@@ -17,6 +17,45 @@ limen:
     # How long the lock holds; admins can short-circuit via the user-detail
     # "Unlock account" button on /manage/t/{slug}/users/{userId}.
     window: 15m
+  rate-limit:
+    # Token-bucket throttling on pre-auth endpoints (RateLimitFilter). Disable
+    # in test profiles that load the full context but want to exercise floods
+    # without 429s by setting enabled=false.
+    enabled: true
+    rules:
+      # /oauth2/token, both bare and tenant-prefixed forms. Per-client and
+      # per-IP rules both fire — a request must pass both. Capacity 60 /
+      # 1-min refill ≈ 1 req/sec sustained, 60-burst absorbed.
+      oauth2-token-per-client:
+        path-pattern: "(/t/[^/]+)?/oauth2/token"
+        key: client-id
+        capacity: 60
+        refill-tokens: 60
+        refill-period: 1m
+      oauth2-token-per-ip:
+        path-pattern: "(/t/[^/]+)?/oauth2/token"
+        key: ip
+        capacity: 60
+        refill-tokens: 60
+        refill-period: 1m
+      # Public signup. Generous enough that a real user reloading the form a
+      # few times before submit has headroom; tight enough that scripted
+      # tenant-creation abuse trips fast.
+      signup-per-ip:
+        path-pattern: "/signup"
+        key: ip
+        capacity: 10
+        refill-tokens: 10
+        refill-period: 1h
+      # Forgot-password is tenant-scoped (/t/{slug}/forgot-password). Per-IP
+      # ceiling is the abuse-defence anchor; per-email rate-limiting is
+      # already handled by the OTT-issuance debounce in slice 5.
+      forgot-password-per-ip:
+        path-pattern: "/t/[^/]+/forgot-password"
+        key: ip
+        capacity: 10
+        refill-tokens: 10
+        refill-period: 1h
 spring:
   application:
     name: limen
