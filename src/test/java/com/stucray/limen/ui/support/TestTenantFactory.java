@@ -59,6 +59,16 @@ public class TestTenantFactory {
     }
 
     @Transactional
+    public SeededForcedChangeUser seedEndUserForcedPasswordChange(SeededTenant tenant) {
+        String suffix = uniqueSuffix();
+        String username = "forcechange-" + suffix;
+        String hash = passwordEncoder.encode(SHARED_TEST_PASSWORD);
+        userRepository.save(new User(
+            null, tenant.tenantId(), username, hash, true, true, false, LocalDateTime.now()));
+        return new SeededForcedChangeUser(username, SHARED_TEST_PASSWORD);
+    }
+
+    @Transactional
     public SeededTenant createTenant() {
         String suffix = uniqueSuffix();
         String slug = "t-" + suffix;
@@ -108,4 +118,6 @@ public class TestTenantFactory {
     public record SeededSystemAdmin(String username, String password) {}
 
     public record SeededApplication(Long appId, String name) {}
+
+    public record SeededForcedChangeUser(String username, String temporaryPassword) {}
 }
