@@ -35,11 +35,15 @@ public final class LoginPageObject {
     }
 
     public void loginAsEndUser(SeededTenant tenant) {
-        page.navigate(baseUrl + "/t/" + tenant.slug() + "/login");
-        page.getByLabel("Username").fill(tenant.endUserUsername());
-        page.getByLabel("Password").fill(tenant.endUserPassword());
+        loginAsEndUserWithCredentials(tenant.slug(), tenant.endUserUsername(), tenant.endUserPassword());
+    }
+
+    public void loginAsEndUserWithCredentials(String slug, String username, String password) {
+        page.navigate(baseUrl + "/t/" + slug + "/login");
+        page.getByLabel("Username").fill(username);
+        page.getByLabel("Password").fill(password);
         page.getByTestId("login-submit").click();
-        page.waitForURL(baseUrl + "/t/" + tenant.slug() + "/**");
+        page.waitForURL(baseUrl + "/t/" + slug + "/**");
     }
 
     public void loginAsSystemAdmin(String username, String password) {
