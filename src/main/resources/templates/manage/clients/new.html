@@ -64,7 +64,7 @@
         </fieldset>
 
         <div class="form-actions">
-            <button type="submit">Create client</button>
+            <button type="submit" data-test-action="clients-create-submit">Create client</button>
             <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients'}" class="btn btn--secondary">Cancel</a>
         </div>
     </form>
