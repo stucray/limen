@@ -4,6 +4,7 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
 import com.stucray.limen.ui.pages.manage.applications.ManageApplicationsListPage;
+import com.stucray.limen.ui.pages.manage.users.ManageUsersListPage;
 
 public final class ManageHomePage {
 
@@ -21,6 +22,12 @@ public final class ManageHomePage {
         page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Applications")).click();
         page.waitForURL(baseUrl + "/manage/t/" + slug + "/applications");
         return new ManageApplicationsListPage(page, baseUrl, slug);
+    }
+
+    public ManageUsersListPage clickUsers() {
+        page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Users")).click();
+        page.waitForURL(baseUrl + "/manage/t/" + slug + "/users");
+        return new ManageUsersListPage(page, baseUrl, slug);
     }
 
     public ManageHomePage assertOnHomeForTenant(String tenantDisplayName) {
