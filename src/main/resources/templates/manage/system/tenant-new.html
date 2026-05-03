@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout-authed :: layout(~{::title}, ~{::main})}">
+<head><title>New tenant — System Admin</title></head>
+<body>
+<main class="container">
+    <ol class="breadcrumb" aria-label="breadcrumb">
+        <li><a th:href="@{/manage/t/system/}">Home</a></li>
+        <li><a th:href="@{/manage/system/tenants}">Tenants</a></li>
+        <li>New</li>
+    </ol>
+
+    <article class="card card--auth">
+        <hgroup>
+            <h1>Create a tenant</h1>
+            <p>Provisions a new tenant and sends a verification email to the owner. They set their own password after clicking the link.</p>
+        </hgroup>
+        <form method="post" th:action="@{/manage/system/tenants/new}" class="stack">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+            <label>
+                Slug
+                <input type="text" name="slug" th:value="${form.slug()}"
+                       pattern="[a-z0-9][a-z0-9\-]{1,46}[a-z0-9]"
+                       autofocus required
+                       data-test-field="slug"/>
+                <small class="muted">Their management URL will be <code>/manage/t/{slug}/</code></small>
+                <span class="form-error" th:if="${errorField == 'slug'}" th:text="${errorMessage}"></span>
+            </label>
+
+            <label>
+                Display name
+                <input type="text" name="displayName" th:value="${form.displayName()}" required
+                       data-test-field="displayName"/>
+                <span class="form-error" th:if="${errorField == 'displayName'}" th:text="${errorMessage}"></span>
+            </label>
+
+            <label>
+                Owner email
+                <input type="email" name="ownerEmail" th:value="${form.ownerEmail()}" required
+                       data-test-field="ownerEmail"/>
+                <small class="muted">A verification link will be sent here. The owner sets a password after clicking it.</small>
+                <span class="form-error" th:if="${errorField == 'ownerEmail'}" th:text="${errorMessage}"></span>
+            </label>
+
+            <button type="submit" class="btn--block" data-test-action="tenant-create-submit">Create tenant</button>
+        </form>
+    </article>
+</main>
+</body>
+</html>
