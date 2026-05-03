@@ -1,5 +1,6 @@
 package com.stucray.limen.management.users;
 
+import com.stucray.limen.audit.events.AccountUnlockedEvent;
 import com.stucray.limen.audit.events.PasswordChangedEvent;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
@@ -86,5 +87,24 @@ public class UserManagementService {
     public void setTenantOwner(Long userId, Long tenantId, boolean isTenantOwner) {
         User user = getUser(userId, tenantId);
         userRepository.save(user.withTenantOwner(isTenantOwner));
+    }
+
+    /**
+     * Clear the lockout state on a user row: zero the failed-attempt counter and
+     * null out {@code locked_until}. {@code actorUserId} is the admin running
+     * the action — recorded on the {@link AccountUnlockedEvent} so audit can
+     * see who unlocked whom.
+     *
+     * <p>{@code @Transactional} so the AFTER_COMMIT audit listener has a
+     * transaction to hook onto.
+     */
+    @Transactional
+    public void unlockAccount(Long userId, Long tenantId, Long actorUserId) {
+        User user = getUser(userId, tenantId);
+        userRepository.save(user
+            .withFailedLoginAttempts(0)
+            .withLockedUntil(null));
+        eventPublisher.publishEvent(new AccountUnlockedEvent(
+            tenantId, actorUserId, userId, user.email()));
     }
 }

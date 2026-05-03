@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.DefaultRedirectStrategy;
@@ -141,7 +142,13 @@ public final class TenantLogin {
             // slug is non-null here because the failure handler only fires on a request
             // that already matched scheme.loginMatcher().
             String slug = Objects.requireNonNull(scheme.slugFrom(req));
-            res.sendRedirect(req.getContextPath() + scheme.loginUrl(slug) + "?error");
+            // LockedException needs a distinct error code so the login template
+            // can render "account is locked" rather than generic "invalid creds"
+            // (PRD #120 user story 21). Other exceptions (BadCredentials,
+            // DisabledException, etc.) all collapse onto the bare ?error marker
+            // — that's the historical contract several integration tests pin.
+            String errorSuffix = ex instanceof LockedException ? "?error=locked" : "?error";
+            res.sendRedirect(req.getContextPath() + scheme.loginUrl(slug) + errorSuffix);
         };
     }
 

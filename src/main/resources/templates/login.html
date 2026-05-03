@@ -8,6 +8,14 @@
             <h1>Sign in</h1>
             <p th:if="${tenantName}" th:text="${tenantName}">Tenant</p>
         </hgroup>
+        <p class="form-error" th:if="${param.error != null and param.error[0] == 'locked'}"
+           data-test-action="login-error-locked">
+            Account is locked due to too many failed attempts. Try again later or contact your tenant admin to unlock.
+        </p>
+        <p class="form-error" th:if="${param.error != null and param.error[0] != 'locked'}"
+           data-test-action="login-error">
+            Invalid email or password.
+        </p>
         <form method="post" th:action="@{/t/{slug}/login(slug=${tenantSlug})}" class="stack">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
             <label>

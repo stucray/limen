@@ -1,5 +1,7 @@
 package com.stucray.limen.audit;
 
+import com.stucray.limen.audit.events.AccountLockedEvent;
+import com.stucray.limen.audit.events.AccountUnlockedEvent;
 import com.stucray.limen.audit.events.ClientSecretRotatedEvent;
 import com.stucray.limen.audit.events.EmailVerifiedEvent;
 import com.stucray.limen.audit.events.PasswordChangedEvent;
@@ -194,6 +196,33 @@ public class AuditEventListener {
             "verification_resent",
             event.userId() == null ? null : "user",
             event.userId() == null ? null : String.valueOf(event.userId()),
+            currentIp(), currentUserAgent(),
+            LocalDateTime.now(ZoneId.systemDefault()),
+            details));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAccountLocked(AccountLockedEvent event) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("email", event.email());
+        details.put("lockedUntil", event.lockedUntil().toString());
+        safeWrite(new AuditEvent(
+            null, event.tenantId(), event.userId(),
+            "account_locked",
+            "user", String.valueOf(event.userId()),
+            currentIp(), currentUserAgent(),
+            LocalDateTime.now(ZoneId.systemDefault()),
+            details));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAccountUnlocked(AccountUnlockedEvent event) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("email", event.email());
+        safeWrite(new AuditEvent(
+            null, event.tenantId(), event.actorUserId(),
+            "account_unlocked",
+            "user", String.valueOf(event.userId()),
             currentIp(), currentUserAgent(),
             LocalDateTime.now(ZoneId.systemDefault()),
             details));
