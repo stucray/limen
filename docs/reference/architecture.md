@@ -450,19 +450,19 @@ CI is a single GitHub Actions workflow (`.github/workflows/ci.yml`) with one `ve
 
 ## 5. Current Gaps and Shortcomings
 
-These are known limitations of the current surface. None of them block the product working; all of them are fair targets for follow-up work.
+These are known limitations of the current surface. None of them block the product working; all of them are fair targets for follow-up work. Items marked **→ PRD #120** are closed by the production-credibility PRD currently in progress (see §6 v3).
 
 ### Authentication and identity
 
 - **No MFA, no WebAuthn, no social login.** The PRD scoped v1 to username + password.
-- **No email capability.** Forced password change exists, but there is no password-reset-via-email flow, no signup confirmation, and no notification on suspicious login. Tenant Owners must hand out temporary passwords out-of-band.
-- **No account lockout or brute-force protection** on either the management login or the end-user login.
+- **→ PRD #120 — No email capability.** Forced password change exists, but there is no password-reset-via-email flow, no signup confirmation, and no notification on suspicious login. Tenant Owners must hand out temporary passwords out-of-band.
+- **→ PRD #120 — No account lockout or brute-force protection** on either the management login or the end-user login.
 - **No session management UI.** Users cannot list or revoke their active sessions, and Tenant Owners cannot terminate a User's sessions.
 
 ### Operational concerns
 
-- **No rate limiting** on `/oauth2/token`, `/oauth2/authorize`, `/login`, or `/signup`. A single attacker can hammer the token endpoint or sign up reserved-looking slugs without friction.
-- **No audit log.** Login attempts (success or failure), token issuance, client secret rotation, and Tenant lifecycle events are not recorded.
+- **→ PRD #120 — No rate limiting** on `/oauth2/token`, `/oauth2/authorize`, `/login`, or `/signup`. A single attacker can hammer the token endpoint or sign up reserved-looking slugs without friction.
+- **→ PRD #120 — No audit log.** Login attempts (success or failure), token issuance, client secret rotation, and Tenant lifecycle events are not recorded.
 - **No metrics / observability.** Spring Boot Actuator is on the classpath but no Micrometer dashboards or counters are wired beyond defaults.
 - **No signing-key rotation job.** The schema supports it; nothing schedules it.
 - **No consent revocation UI.** Consents are persisted per Tenant but end-users have no way to view or revoke them; only direct DB or admin action would clear them.
@@ -470,7 +470,7 @@ These are known limitations of the current surface. None of them block the produ
 ### Code-level
 
 - **No CSRF / origin checks on Client redirect URIs** beyond what Spring's `RegisteredClient` already enforces. The management UI does not validate that user-supplied redirect URIs use HTTPS, are not localhost, or are not open redirectors.
-- **System Admin console is partial.** Suspend / unsuspend / delete endpoints exist; the surrounding Thymeleaf UI is thin compared to the Tenant Owner console.
+- **→ PRD #120 — System Admin console is partial.** Suspend / unsuspend / delete endpoints exist; the surrounding Thymeleaf UI is thin compared to the Tenant Owner console — notably, there is no UI for *creating* a Tenant outside the public `/signup` path.
 
 ### Schema and data model
 
@@ -485,22 +485,36 @@ Roughly grouped by horizon. None of these are committed to dates.
 1. ~~**Roles, Memberships, Scopes** — the v1 PRD explicitly deferred these.~~ Shipped: per-Application `role` catalogue, split `application_membership` / `client_membership` tables with role-join tables, real `roles` JWT claim from Client Memberships, `/oauth2/authorize` Membership gate. Scopes intentionally untouched (still on `oauth2_registered_client.scopes`); see §4.6 for the wiring. PRD #39, slices #40–#46.
 2. ~~**Application + Client membership UI** in the Tenant Owner console.~~ Shipped: per-Application Members and Roles screens, per-Client Members screen, read-only Membership portfolio on the User detail page (rows link back to the Application screens for editing).
 
-### v2.5 — operational hardening
+### v3 — production credibility (PRD #120, in progress)
 
-3. **Audit log** for login attempts, token issuance, secret rotations, and Tenant lifecycle changes. Likely an append-only Postgres table plus a small viewer in the System Admin console.
-4. **Rate limiting** on `/oauth2/token`, `/login`, and `/signup`. A Bucket4j-style token-bucket per IP and per (tenant, IP) is probably enough for v1.
-5. **Metrics** — Micrometer counters for login success / failure, token issuance, key rotation, plus latency histograms on the token endpoint.
+A single PRD covering five gaps that block Limen being credible as a hosted IdP. Eight tracer-bullet slices; sequencing in the PRD.
 
-### v3 — identity surface
+3. **Email-as-identity.** Drops `username` in favour of `email` with `UNIQUE(tenant_id, email)`. The per-tenant uniqueness scope preserves the user-pool-per-Tenant model (Auth0 / AWS Cognito shape) — the same email can identify two distinct Users in two different Tenants. Existing dev data is dropped at migration time; there are no real customers yet.
+4. **`EmailSender` infrastructure.** Provider-agnostic interface with two implementations: `LoggingEmailSender` (default and dev profile, writes message to slf4j — click the magic link from the log) and `SmtpEmailSender` (test profile, wired to a Mailpit Testcontainer; later, production profile pointing at a real SMTP host). No real provider in this PRD — that's a deferred config swap (see v4).
+5. **Audit log — event-driven.** A new `audit_event` Postgres table written by **event listeners**, not by direct service calls. Spring's existing `AuthenticationSuccessEvent` / `AuthenticationFailureEvent` are subscribed natively; small `record`-based custom event types cover OTT lifecycle, Tenant lifecycle, secret rotation, password change, rate-limit hits. Listeners use `@TransactionalEventListener(phase = AFTER_COMMIT)` so a failed audit write never rolls back the user-facing action. Loose coupling: code paths that perform actions never name `AuditService` — they `applicationEventPublisher.publishEvent(...)` and the audit module decides whether to listen. Future consumers (metrics, webhooks, SIEM forwarders) add listeners without touching emit sites. No admin UI in v3 — the schema is designed so the UI is a pure-additive follow-up (see v3.5). Best-effort delivery for now: a JVM crash between transaction commit and listener execution loses that event; at-least-once is the Modulith adoption story below.
+6. **Email verification + self-service password reset.** Both built on Spring Security 7's One-Time Token Login (`OneTimeTokenService`, `oneTimeTokenLogin()` DSL, `JdbcOneTimeTokenService`) — one OTT primitive serves both flows, distinguished by an `intent` column on the OTT row. A `TenantAwareOneTimeTokenService` decorator mirrors the existing `TenantAware*` storage decorators (§4.3): tokens generated under Tenant A are invisible / unusable from Tenant B. A custom `OneTimeTokenGenerationSuccessHandler` calls into `EmailSender` to deliver the magic link. Verification is required before first login. Password-reset OTT consumption drops the User into the existing `TenantPasswordChangeFlow` (§4.5) for forced change.
+7. **Account lockout.** A new event listener subscribes to `AuthenticationFailureEvent` and `AuthenticationSuccessEvent`, increments / resets `failed_login_attempts` on `users`, and sets `locked_until` when a threshold is reached. A pre-authentication check rejects logins for locked users with an explicit "account locked" message rather than "wrong password". Tenant-admin unlock UI on the User detail page closes the loop.
+8. **Rate limiting.** Bucket4j in-memory, single-process. A high-precedence `RateLimitFilter` is configured per-endpoint with key extractors (per-IP, per-client, per-email as appropriate) and returns 429 + `Retry-After` when a bucket is dry. State is per-process — fine for the current single-container deployment; Postgres-backed Bucket4j is a deferred swap (see v3.5) for when horizontal scaling matters.
+9. **System-admin tenant-create UI.** Exposes the existing `TenantProvisioningService` via `/manage/system/tenants/new`. A new `TenantUserBootstrap` wraps Tenant creation + Owner User insert + verification-OTT send into one atomic operation, reused both by the new system-admin form and by the public `/signup` path so both bootstrap flows stay consistent.
 
-6. **Email capability** (transactional email provider integration), enabling: signup confirmation, password reset, security notifications.
-7. **MFA** — TOTP first, WebAuthn / passkeys after.
-8. **Session management UI** — for end-users (revoke my own sessions and consents) and for Tenant Owners (revoke a User's sessions).
-9. **Signing-key rotation job** — scheduled, with overlap window so old tokens validate against the retired key during grace period.
+### v3.5 — operational hardening (post-PRD-#120)
 
-### v3+ — platform
+10. **Spring Modulith adoption.** Formalises the existing package boundaries (`auth`, `oauth2`, `management`, `tenant`, etc.) as application modules with explicit cross-module dependency rules. Brings two concrete wins: `@ApplicationModuleListener` (async + transactional event handling out of the box) and the `event_publication` registry, which **closes the at-least-once delivery gap** in the v3 audit design (events are persisted in the publication registry before listener execution and replayed on restart if the listener fails). Module boundaries are also verifiable by Modulith's built-in ArchUnit-style tests, replacing convention-based discipline with compile-time enforcement. Migration cost: map current packages to modules, decide cross-module dependency policy, add the publication registry table via Flyway. **Audit-side change at adoption time is a single annotation swap (`@TransactionalEventListener` → `@ApplicationModuleListener`); emit sites are unchanged.** The forward-compatibility was the design driver behind choosing event-driven audit in v3.
+11. **Audit admin UI.** List + filter views under `/manage/t/{slug}/audit` (Tenant-scoped) and `/manage/system/audit` (cross-tenant). CSV export. Pure-additive on top of the v3 schema.
+12. **Metrics.** Micrometer counters for login success / failure, token issuance, key rotation; latency histograms on the token endpoint.
+13. **Signing-key rotation job.** Scheduled, with overlap window so old tokens validate against the retired key during a grace period.
+14. **Postgres-backed rate-limit state.** Swap Bucket4j in-memory for `bucket4j-postgresql` when horizontal scaling matters. The v3 `RateLimitFilter` interface is designed to accept either backend.
 
-10. **Federation / social login** as Tenant-configurable identity providers.
-11. **Per-Tenant branding** (login page logo, colour scheme, custom domain).
-12. **Per-Tenant custom claims** in JWTs.
-13. **Hardware-backed KEK** (KMS / HSM) instead of the env-var KEK, with envelope encryption per signing key.
+### v4 — identity surface
+
+15. **MFA** — TOTP first, WebAuthn / passkeys after. Spring Security 7 ships `@EnableMultiFactorAuthentication` as a starting point.
+16. **Session management UI** — for end-users (revoke my own sessions and consents) and for Tenant Owners (revoke a User's sessions).
+17. **Consent / OAuth2 scope revocation UI.** `OAuth2AuthorizationConsent` rows persist today but are invisible to end-users.
+18. **Real email provider wiring.** Resend / Brevo / SendGrid / SES / etc. — a one-slice config swap on top of the v3 `EmailSender` abstraction.
+
+### v4+ — platform
+
+19. **Federation / social login** as Tenant-configurable identity providers.
+20. **Per-Tenant branding** (login page logo, colour scheme, custom domain).
+21. **Per-Tenant custom claims** in JWTs.
+22. **Hardware-backed KEK** (KMS / HSM) instead of the env-var KEK, with envelope encryption per signing key.
