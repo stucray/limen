@@ -1,0 +1,18 @@
+# Test profile. Activated via @ActiveProfiles("test") on integration tests that
+# need the SMTP path (e.g. SmtpEmailSenderIntegrationTest); everyone else falls
+# through to application.yaml's `limen.email.driver=logging` default.
+#
+# spring.mail.host / spring.mail.port are wired dynamically at runtime by
+# TestcontainersConfiguration's MailpitContainer bean, since the container
+# binds an ephemeral host port.
+limen:
+  email:
+    driver: smtp
+spring:
+  mail:
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false

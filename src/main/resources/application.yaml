@@ -4,6 +4,12 @@ limen:
     remember-me-key: dev-remember-me-key-change-me
     # 14 days
     remember-me-validity-seconds: 1209600
+  email:
+    # logging | smtp. Default writes outbound emails to slf4j INFO so a developer
+    # can read magic links from the application log without running mail
+    # infrastructure. Set to `smtp` (and configure spring.mail.*) in any
+    # deployment that should actually deliver mail.
+    driver: logging
 spring:
   application:
     name: limen
