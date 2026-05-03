@@ -20,6 +20,6 @@ class EndUserLoginJourneyUiIT extends BaseUiIT {
 
         new EndUserHomePage(page, baseUrl(), tenant.slug())
             .assertOnHomeForTenant(tenant.displayName())
-            .assertSignedInAs(tenant.endUserUsername());
+            .assertSignedInAs(tenant.endUserEmail());
     }
 }

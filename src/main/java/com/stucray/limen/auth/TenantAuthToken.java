@@ -10,8 +10,8 @@ public final class TenantAuthToken extends UsernamePasswordAuthenticationToken {
     private final String tenantSlug;
 
     /** Unauthenticated — used when submitting credentials. */
-    public TenantAuthToken(String tenantSlug, String username, String password) {
-        super(username, password);
+    public TenantAuthToken(String tenantSlug, String email, String password) {
+        super(email, password);
         this.tenantSlug = tenantSlug;
     }
 

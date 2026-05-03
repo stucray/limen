@@ -38,7 +38,7 @@ class UserBootstrapTest {
     }
 
     private static final BootstrapAdminProperties NO_ADMIN = new BootstrapAdminProperties(null, null);
-    private static final BootstrapAdminProperties ADMIN = new BootstrapAdminProperties("admin", "pass");
+    private static final BootstrapAdminProperties ADMIN = new BootstrapAdminProperties("admin@example.test", "pass");
 
     @Test
     @DisplayName("Always looks up the system tenant on startup, even with no admin credentials configured")
@@ -69,13 +69,13 @@ class UserBootstrapTest {
     @Test
     @DisplayName("Creates the configured admin user in the system tenant with an encoded password")
     void createsAdminUserInSystemTenantWhenAbsent() throws Exception {
-        given(userRepository.findByUsernameAndTenantId("admin", 1L)).willReturn(Optional.empty());
+        given(userRepository.findByEmailAndTenantId("admin@example.test", 1L)).willReturn(Optional.empty());
         given(passwordEncoder.encode("pass")).willReturn("hashed");
 
         new UserBootstrap(ADMIN, tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
 
         verify(userRepository).save(argThat(u ->
-            u.username().equals("admin") && u.passwordHash().equals("hashed")
+            u.email().equals("admin@example.test") && u.passwordHash().equals("hashed")
             && u.tenantId().equals(1L) && u.enabled() && !u.mustChangePassword()
         ));
     }
@@ -83,11 +83,11 @@ class UserBootstrapTest {
     @Test
     @DisplayName("Re-hashes and saves the admin password when the admin user already exists")
     void updatesPasswordHashWhenAdminUserExists() throws Exception {
-        var existing = new User(10L, 1L, "admin", "oldhash", true, false, false, LocalDateTime.now());
-        given(userRepository.findByUsernameAndTenantId("admin", 1L)).willReturn(Optional.of(existing));
+        var existing = new User(10L, 1L, "admin@example.test", "oldhash", true, false, false, LocalDateTime.now());
+        given(userRepository.findByEmailAndTenantId("admin@example.test", 1L)).willReturn(Optional.of(existing));
         given(passwordEncoder.encode("newpass")).willReturn("newhash");
 
-        new UserBootstrap(new BootstrapAdminProperties("admin", "newpass"),
+        new UserBootstrap(new BootstrapAdminProperties("admin@example.test", "newpass"),
             tenantRepository, tenantProvisioningService, userRepository, passwordEncoder).run();
 
         verify(userRepository).save(argThat(u -> u.id().equals(10L) && u.passwordHash().equals("newhash")));

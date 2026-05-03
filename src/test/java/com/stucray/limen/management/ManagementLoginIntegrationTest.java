@@ -56,7 +56,7 @@ class ManagementLoginIntegrationTest {
             null, "test-corp", "Test Corp", TenantStatus.ACTIVE, LocalDateTime.now()
         ));
         userRepository.save(new User(
-            null, testTenant.id(), "owner",
+            null, testTenant.id(), "owner@example.test",
             passwordEncoder.encode("password"),
             true, false, false, LocalDateTime.now()
         ));
@@ -75,7 +75,7 @@ class ManagementLoginIntegrationTest {
     @DisplayName("Successful login redirects to /manage/t/{slug}/")
     void successfulLoginRedirectsToHome() throws Exception {
         mockMvc.perform(post("/manage/t/test-corp/login")
-                .param("username", "owner")
+                .param("email", "owner@example.test")
                 .param("password", "password")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())
@@ -86,7 +86,7 @@ class ManagementLoginIntegrationTest {
     @DisplayName("Bad password redirects back to /manage/t/{slug}/login?error")
     void failedLoginShowsError() throws Exception {
         mockMvc.perform(post("/manage/t/test-corp/login")
-                .param("username", "owner")
+                .param("email", "owner@example.test")
                 .param("password", "wrong")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())
@@ -105,7 +105,7 @@ class ManagementLoginIntegrationTest {
     @DisplayName("Authenticated user can GET /manage/t/{slug}/ and sees their tenant's display name")
     void authenticatedUserCanAccessManagementHome() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/manage/t/test-corp/login")
-                .param("username", "owner")
+                .param("email", "owner@example.test")
                 .param("password", "password")
                 .with(csrf()))
             .andReturn();
@@ -122,13 +122,13 @@ class ManagementLoginIntegrationTest {
     void systemAdminCanLoginAtSystemSlug() throws Exception {
         Tenant systemTenant = tenantRepository.findBySlug("system").orElseThrow();
         userRepository.save(new User(
-            null, systemTenant.id(), "sysadmin",
+            null, systemTenant.id(), "sysadmin@example.test",
             passwordEncoder.encode("syspassword"),
             true, false, false, LocalDateTime.now()
         ));
 
         mockMvc.perform(post("/manage/t/system/login")
-                .param("username", "sysadmin")
+                .param("email", "sysadmin@example.test")
                 .param("password", "syspassword")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())
@@ -139,7 +139,7 @@ class ManagementLoginIntegrationTest {
     @DisplayName("Cross-tenant access: TenantAccessFilter force-logs out and redirects to the URL slug's login page")
     void userCannotAccessAnotherTenantManagementPages() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/manage/t/test-corp/login")
-                .param("username", "owner")
+                .param("email", "owner@example.test")
                 .param("password", "password")
                 .with(csrf()))
             .andReturn();

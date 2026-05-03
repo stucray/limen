@@ -28,27 +28,27 @@ public final class LoginPageObject {
 
     public void loginAsTenantAdmin(SeededTenant tenant) {
         page.navigate(baseUrl + "/manage/t/" + tenant.slug() + "/login");
-        page.getByLabel("Username").fill(tenant.adminUsername());
+        page.getByLabel("Email").fill(tenant.adminEmail());
         page.getByLabel("Password").fill(tenant.adminPassword());
         page.getByTestId("manage-login-submit").click();
         page.waitForURL(baseUrl + "/manage/t/" + tenant.slug() + "/**");
     }
 
     public void loginAsEndUser(SeededTenant tenant) {
-        loginAsEndUserWithCredentials(tenant.slug(), tenant.endUserUsername(), tenant.endUserPassword());
+        loginAsEndUserWithCredentials(tenant.slug(), tenant.endUserEmail(), tenant.endUserPassword());
     }
 
-    public void loginAsEndUserWithCredentials(String slug, String username, String password) {
+    public void loginAsEndUserWithCredentials(String slug, String email, String password) {
         page.navigate(baseUrl + "/t/" + slug + "/login");
-        page.getByLabel("Username").fill(username);
+        page.getByLabel("Email").fill(email);
         page.getByLabel("Password").fill(password);
         page.getByTestId("login-submit").click();
         page.waitForURL(baseUrl + "/t/" + slug + "/**");
     }
 
-    public void loginAsSystemAdmin(String username, String password) {
+    public void loginAsSystemAdmin(String email, String password) {
         page.navigate(baseUrl + "/manage/t/system/login");
-        page.getByLabel("Username").fill(username);
+        page.getByLabel("Email").fill(email);
         page.getByLabel("Password").fill(password);
         page.getByTestId("manage-login-submit").click();
         page.waitForURL(baseUrl + "/manage/t/system/**");

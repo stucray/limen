@@ -25,12 +25,12 @@ public class UserManagementService {
     }
 
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
-    public void createUser(Long tenantId, String username, String temporaryPassword) {
-        if (userRepository.existsByUsernameAndTenantId(username, tenantId)) {
-            throw new IllegalArgumentException("Username already exists in this tenant");
+    public void createUser(Long tenantId, String email, String temporaryPassword) {
+        if (userRepository.existsByEmailAndTenantId(email, tenantId)) {
+            throw new IllegalArgumentException("Email already exists in this tenant");
         }
         userRepository.save(new User(
-            null, tenantId, username,
+            null, tenantId, email,
             Objects.requireNonNull(passwordEncoder.encode(temporaryPassword)),
             true, true, false, LocalDateTime.now()
         ));

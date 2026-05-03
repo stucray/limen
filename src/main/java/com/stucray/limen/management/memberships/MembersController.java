@@ -56,7 +56,7 @@ public class MembersController {
         model.addAttribute("slug", slug);
         model.addAttribute("app", app);
         model.addAttribute("memberships", memberships);
-        model.addAttribute("usernamesById", usernamesByIdFor(memberships));
+        model.addAttribute("emailsById", emailsByIdFor(memberships));
         model.addAttribute("roleNamesById", roleNamesByIdFor(allRoles));
         return "manage/applications/members/list";
     }
@@ -112,7 +112,7 @@ public class MembersController {
         model.addAttribute("slug", slug);
         model.addAttribute("app", app);
         model.addAttribute("membership", membership);
-        model.addAttribute("memberUsername", member.username());
+        model.addAttribute("memberEmail", member.email());
         model.addAttribute("allRoles", allRoles);
         model.addAttribute("assignedRoleIds", membership.roleIds());
         return "manage/applications/members/edit";
@@ -140,7 +140,7 @@ public class MembersController {
             model.addAttribute("slug", slug);
             model.addAttribute("app", app);
             model.addAttribute("membership", membership);
-            model.addAttribute("memberUsername", member.username());
+            model.addAttribute("memberEmail", member.email());
             model.addAttribute("allRoles", allRoles);
             model.addAttribute("assignedRoleIds", roleIds == null ? Set.of() : new java.util.LinkedHashSet<>(roleIds));
             model.addAttribute("errorMessage", e.getMessage());
@@ -159,10 +159,10 @@ public class MembersController {
         return "redirect:/manage/t/" + slug + "/applications/" + appId + "/members";
     }
 
-    private Map<Long, String> usernamesByIdFor(List<ApplicationMembership> memberships) {
+    private Map<Long, String> emailsByIdFor(List<ApplicationMembership> memberships) {
         Map<Long, String> map = new LinkedHashMap<>();
         for (ApplicationMembership m : memberships) {
-            userRepository.findById(m.userId()).ifPresent(u -> map.put(u.id(), u.username()));
+            userRepository.findById(m.userId()).ifPresent(u -> map.put(u.id(), u.email()));
         }
         return map;
     }

@@ -111,22 +111,22 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
             null, betaTenant.id(), "Beta App", null, LocalDateTime.now()
         ));
         aliceAlpha = userRepository.save(new User(
-            null, alphaTenant.id(), "alice",
+            null, alphaTenant.id(), "alice@example.test",
             passwordEncoder.encode("password"),
             true, false, false, LocalDateTime.now()
         ));
         adminAlpha = userRepository.save(new User(
-            null, alphaTenant.id(), "alpha-admin",
+            null, alphaTenant.id(), "alpha-admin@example.test",
             passwordEncoder.encode("password"),
             true, false, true, LocalDateTime.now()
         ));
         bobBeta = userRepository.save(new User(
-            null, betaTenant.id(), "bob",
+            null, betaTenant.id(), "bob@example.test",
             passwordEncoder.encode("password"),
             true, false, false, LocalDateTime.now()
         ));
         adminBeta = userRepository.save(new User(
-            null, betaTenant.id(), "beta-admin",
+            null, betaTenant.id(), "beta-admin@example.test",
             passwordEncoder.encode("password"),
             true, false, true, LocalDateTime.now()
         ));
@@ -139,7 +139,7 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
 
         // alice authenticates successfully; the gate rejects the authorization
         // request with access_denied (302 to redirect_uri).
-        String location = runFlowToAuthorizeRedirect(alphaTenant.slug(), client, "alice", "password");
+        String location = runFlowToAuthorizeRedirect(alphaTenant.slug(), client, "alice@example.test", "password");
 
         Map<String, String> params = queryParams(location);
         assertThat(params.get("error")).isEqualTo("access_denied");
@@ -158,7 +158,7 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
         );
 
         Map<String, Object> claims = runFlowAndExtractJwtClaims(
-            alphaTenant.slug(), client, "alice", "password"
+            alphaTenant.slug(), client, "alice@example.test", "password"
         );
 
         assertThat(claims.get("tenant")).isEqualTo("gate-alpha");
@@ -178,7 +178,7 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
         );
 
         Map<String, Object> claims = runFlowAndExtractJwtClaims(
-            alphaTenant.slug(), client, "alice", "password"
+            alphaTenant.slug(), client, "alice@example.test", "password"
         );
 
         assertThat(claims.get("tenant")).isEqualTo("gate-alpha");
@@ -209,7 +209,7 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
 
         // bob's credentials don't validate against Tenant Alpha's User pool.
         mockMvc.perform(post("/t/" + alphaTenant.slug() + "/login")
-                .param("username", "bob").param("password", "password")
+                .param("email", "bob@example.test").param("password", "password")
                 .session(session).with(csrf()))
             .andExpect(status().is3xxRedirection())
             .andExpect(result ->
@@ -238,7 +238,7 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
     }
 
     private String runFlowToAuthorizeRedirect(
-        String slug, TenantClient client, String username, String password
+        String slug, TenantClient client, String email, String password
     ) throws Exception {
         Pkce pkce = pkce();
         MockHttpSession session = new MockHttpSession();
@@ -248,7 +248,7 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
             .andExpect(status().is3xxRedirection());
 
         mockMvc.perform(post("/t/" + slug + "/login")
-                .param("username", username).param("password", password)
+                .param("email", email).param("password", password)
                 .session(session).with(csrf()))
             .andExpect(status().is3xxRedirection());
 
@@ -260,7 +260,7 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
     }
 
     private Map<String, Object> runFlowAndExtractJwtClaims(
-        String slug, TenantClient client, String username, String password
+        String slug, TenantClient client, String email, String password
     ) throws Exception {
         Pkce pkce = pkce();
         MockHttpSession session = new MockHttpSession();
@@ -269,7 +269,7 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
         mockMvc.perform(get(authzUri).session(session))
             .andExpect(status().is3xxRedirection());
         mockMvc.perform(post("/t/" + slug + "/login")
-                .param("username", username).param("password", password)
+                .param("email", email).param("password", password)
                 .session(session).with(csrf()))
             .andExpect(status().is3xxRedirection());
         MvcResult codeResult = mockMvc.perform(get(authzUri).session(session))

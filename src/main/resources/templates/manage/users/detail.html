@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout-authed :: layout(~{::title}, ~{::main})}">
-<head><title th:text="'User · ' + ${user.username()}">User</title></head>
+<head><title th:text="'User · ' + ${user.email()}">User</title></head>
 <body>
 <main class="container">
     <ol class="breadcrumb" aria-label="breadcrumb">
         <li><a th:href="@{'/manage/t/' + ${slug} + '/'}">Home</a></li>
         <li><a th:href="@{'/manage/t/' + ${slug} + '/users'}">Users</a></li>
-        <li th:text="${user.username()}">user</li>
+        <li th:text="${user.email()}">user</li>
     </ol>
 
     <hgroup>
-        <h1 th:text="${user.username()}">username</h1>
+        <h1 th:text="${user.email()}">email</h1>
         <p>User account details.</p>
     </hgroup>
 

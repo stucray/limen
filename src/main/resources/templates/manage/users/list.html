@@ -19,7 +19,7 @@
     <table>
         <thead>
             <tr>
-                <th scope="col">Username</th>
+                <th scope="col">Email</th>
                 <th scope="col">Status</th>
                 <th scope="col">Tenant Owner</th>
                 <th scope="col">Actions</th>
@@ -27,7 +27,7 @@
         </thead>
         <tbody>
             <tr th:each="user : ${users}">
-                <td><a th:href="@{'/manage/t/' + ${slug} + '/users/' + ${user.id()}}" th:text="${user.username()}"></a></td>
+                <td><a th:href="@{'/manage/t/' + ${slug} + '/users/' + ${user.id()}}" th:text="${user.email()}"></a></td>
                 <td>
                     <span th:if="${user.enabled()}" class="badge badge--success">Active</span>
                     <span th:unless="${user.enabled()}" class="badge badge--muted">Disabled</span>

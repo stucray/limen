@@ -82,8 +82,8 @@ class UserDetailControllerIntegrationTest {
 
         tenantA = tenantRepository.save(new Tenant(null, "user-detail-a", "User Detail A", TenantStatus.ACTIVE, LocalDateTime.now()));
         tenantB = tenantRepository.save(new Tenant(null, "user-detail-b", "User Detail B", TenantStatus.ACTIVE, LocalDateTime.now()));
-        ownerA = userRepository.save(new User(null, tenantA.id(), "owner", passwordEncoder.encode("pass"), true, false, true,  LocalDateTime.now()));
-        aliceA = userRepository.save(new User(null, tenantA.id(), "alice", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
+        ownerA = userRepository.save(new User(null, tenantA.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true,  LocalDateTime.now()));
+        aliceA = userRepository.save(new User(null, tenantA.id(), "alice@example.test", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
         appA = applicationRepository.save(new Application(null, tenantA.id(), "Acme Web", "desc", LocalDateTime.now()));
         clientA = clientManagementService.createClient(
             appA.id(), tenantA.id(), "acme-spa",
@@ -93,7 +93,7 @@ class UserDetailControllerIntegrationTest {
         ).client();
 
         MvcResult login = mockMvc.perform(post("/manage/t/user-detail-a/login")
-                .param("username", "owner").param("password", "pass").with(csrf()))
+                .param("email", "owner@example.test").param("password", "pass").with(csrf()))
             .andReturn();
         sessionA = (MockHttpSession) login.getRequest().getSession(false);
     }
@@ -162,9 +162,9 @@ class UserDetailControllerIntegrationTest {
     @Test
     @DisplayName("A session for tenant B cannot view a user-detail page in tenant A — redirects to tenant A's login")
     void crossTenantSessionCannotReachUserDetail() throws Exception {
-        userRepository.save(new User(null, tenantB.id(), "ownerB", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        userRepository.save(new User(null, tenantB.id(), "ownerB@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
         MvcResult loginB = mockMvc.perform(post("/manage/t/user-detail-b/login")
-                .param("username", "ownerB").param("password", "pass").with(csrf()))
+                .param("email", "ownerB@example.test").param("password", "pass").with(csrf()))
             .andReturn();
         MockHttpSession sessionB = (MockHttpSession) loginB.getRequest().getSession(false);
 
@@ -174,8 +174,8 @@ class UserDetailControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("On the users list page, each username links to that user's detail page")
-    void usernameOnListPageLinksToDetail() throws Exception {
+    @DisplayName("On the users list page, each email links to that user's detail page")
+    void emailOnListPageLinksToDetail() throws Exception {
         mockMvc.perform(get("/manage/t/user-detail-a/users").session(sessionA))
             .andExpect(status().isOk())
             .andExpect(content().string(containsString(
@@ -187,7 +187,7 @@ class UserDetailControllerIntegrationTest {
     @DisplayName("Empty-state still shows when other users in the same tenant have memberships but the target user does not")
     void detailPageRendersWhenMembershipsExistInOtherAppsButNotForThisUser() throws Exception {
         // Other user has memberships, target user does not — empty state still shows.
-        User bob = userRepository.save(new User(null, tenantA.id(), "bob", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
+        User bob = userRepository.save(new User(null, tenantA.id(), "bob@example.test", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
         appMembershipRepository.save(new ApplicationMembership(
             null, bob.id(), appA.id(), LocalDateTime.now(), ownerA.id(), Set.of()
         ));

@@ -59,7 +59,7 @@ class TenantAccessFilterIntegrationTest {
         beta = tenantRepository.save(new Tenant(null, "beta", "Beta", TenantStatus.ACTIVE, LocalDateTime.now()));
 
         userRepository.save(new User(
-            null, alpha.id(), "owner",
+            null, alpha.id(), "owner@example.test",
             passwordEncoder.encode("alpha-pwd"),
             true, false, false, LocalDateTime.now()
         ));
@@ -69,7 +69,7 @@ class TenantAccessFilterIntegrationTest {
     @DisplayName("Alpha-tenant session presented at /manage/t/beta/ is invalidated, redirected to beta's login, and is no longer authenticated for alpha either")
     void crossTenantManagementAccessForcesLogoutAndRedirect() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/manage/t/alpha/login")
-                .param("username", "owner")
+                .param("email", "owner@example.test")
                 .param("password", "alpha-pwd")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())

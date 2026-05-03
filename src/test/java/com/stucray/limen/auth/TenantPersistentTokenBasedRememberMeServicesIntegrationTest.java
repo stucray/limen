@@ -61,9 +61,9 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
         alpha = tenantRepository.save(new Tenant(null, "alpha-rm", "Alpha", TenantStatus.ACTIVE, LocalDateTime.now()));
         beta = tenantRepository.save(new Tenant(null, "beta-rm", "Beta", TenantStatus.ACTIVE, LocalDateTime.now()));
 
-        userRepository.save(new User(null, alpha.id(), "alice",
+        userRepository.save(new User(null, alpha.id(), "alice@example.test",
             passwordEncoder.encode("alpha-pwd"), true, false, false, LocalDateTime.now()));
-        userRepository.save(new User(null, beta.id(), "alice",
+        userRepository.save(new User(null, beta.id(), "alice@example.test",
             passwordEncoder.encode("beta-pwd"), true, false, false, LocalDateTime.now()));
     }
 
@@ -71,15 +71,15 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
     @DisplayName("OAuth2 login: persisted persistent_logins row carries the user's tenant_id")
     void rememberMeRowOnOAuth2LoginCarriesTenantId() throws Exception {
         mockMvc.perform(post("/t/alpha-rm/login")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "alpha-pwd")
                 .param("remember-me", "on")
                 .with(csrf()))
             .andExpect(cookie().exists("remember-me"));
 
         Long persistedTenantId = jdbcTemplate.queryForObject(
-            "SELECT tenant_id FROM persistent_logins WHERE username = ?",
-            Long.class, "alice"
+            "SELECT tenant_id FROM persistent_logins WHERE email = ?",
+            Long.class, "alice@example.test"
         );
         assertThat(persistedTenantId).isEqualTo(alpha.id());
 
@@ -94,15 +94,15 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
     @DisplayName("Management login: persisted persistent_logins row carries the user's tenant_id")
     void rememberMeOnManagementLoginCarriesTenantId() throws Exception {
         mockMvc.perform(post("/manage/t/alpha-rm/login")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "alpha-pwd")
                 .param("remember-me", "on")
                 .with(csrf()))
             .andExpect(cookie().exists("remember-me"));
 
         Long persistedTenantId = jdbcTemplate.queryForObject(
-            "SELECT tenant_id FROM persistent_logins WHERE username = ?",
-            Long.class, "alice"
+            "SELECT tenant_id FROM persistent_logins WHERE email = ?",
+            Long.class, "alice@example.test"
         );
         assertThat(persistedTenantId).isEqualTo(alpha.id());
     }
@@ -111,7 +111,7 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
     @DisplayName("Issued cookie value (base64-decoded) is series:token:slug")
     void cookieValueIncludesSlugAsThirdSegment() throws Exception {
         MvcResult result = mockMvc.perform(post("/t/alpha-rm/login")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "alpha-pwd")
                 .param("remember-me", "on")
                 .with(csrf()))
@@ -134,8 +134,8 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
         Cookie rememberMeCookie = loginAndGetRememberMeCookie("/manage/t/alpha-rm/login", "alpha-pwd");
         assertThat(rememberMeCookie).isNotNull();
         // Server-side token is replaced — the presented cookie's token will mismatch.
-        jdbcTemplate.update("UPDATE persistent_logins SET token = ? WHERE username = ?",
-            "tampered-server-token-value", "alice");
+        jdbcTemplate.update("UPDATE persistent_logins SET token = ? WHERE email = ?",
+            "tampered-server-token-value", "alice@example.test");
 
         // Auto-login on a protected URL with no session triggers processAutoLoginCookie,
         // which calls removeUserTokens before throwing CookieTheftException (which propagates
@@ -145,8 +145,8 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
             .isInstanceOf(org.springframework.security.web.authentication.rememberme.CookieTheftException.class);
 
         Integer rowCount = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM persistent_logins WHERE username = ?",
-            Integer.class, "alice"
+            "SELECT COUNT(*) FROM persistent_logins WHERE email = ?",
+            Integer.class, "alice@example.test"
         );
         assertThat(rowCount).isEqualTo(0);
     }
@@ -157,16 +157,16 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
         Cookie rememberMeCookie = loginAndGetRememberMeCookie("/manage/t/alpha-rm/login", "alpha-pwd");
         assertThat(rememberMeCookie).isNotNull();
         // Backdate the persisted token well beyond the validity window (default 14 days).
-        jdbcTemplate.update("UPDATE persistent_logins SET last_used = ? WHERE username = ?",
-            Timestamp.valueOf(LocalDateTime.now().minusDays(100)), "alice");
+        jdbcTemplate.update("UPDATE persistent_logins SET last_used = ? WHERE email = ?",
+            Timestamp.valueOf(LocalDateTime.now().minusDays(100)), "alice@example.test");
 
         mockMvc.perform(get("/manage/t/alpha-rm/applications").cookie(rememberMeCookie))
             .andExpect(status().is3xxRedirection());
 
         // Expired tokens are not removed (only theft removes them); the row remains.
         Integer rowCount = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM persistent_logins WHERE username = ?",
-            Integer.class, "alice"
+            "SELECT COUNT(*) FROM persistent_logins WHERE email = ?",
+            Integer.class, "alice@example.test"
         );
         assertThat(rowCount).isEqualTo(1);
     }
@@ -175,7 +175,7 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
     @DisplayName("Logout deletes the persistent_logins row and redirects back to the tenant's login page")
     void logoutRemovesPersistentTokenAndRedirectsToTenantLogin() throws Exception {
         MvcResult login = mockMvc.perform(post("/manage/t/alpha-rm/login")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "alpha-pwd")
                 .param("remember-me", "on")
                 .with(csrf()))
@@ -185,7 +185,7 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
         Cookie rememberMeCookie = login.getResponse().getCookie("remember-me");
         assertThat(rememberMeCookie).isNotNull();
         assertThat(jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM persistent_logins WHERE username = ?", Integer.class, "alice"))
+            "SELECT COUNT(*) FROM persistent_logins WHERE email = ?", Integer.class, "alice@example.test"))
             .isEqualTo(1);
 
         mockMvc.perform(post("/manage/logout")
@@ -197,13 +197,13 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
             .andExpect(redirectedUrl("/manage/t/alpha-rm/login"));
 
         assertThat(jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM persistent_logins WHERE username = ?", Integer.class, "alice"))
+            "SELECT COUNT(*) FROM persistent_logins WHERE email = ?", Integer.class, "alice@example.test"))
             .isEqualTo(0);
     }
 
     private Cookie loginAndGetRememberMeCookie(String loginPath, String password) throws Exception {
         return mockMvc.perform(post(loginPath)
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", password)
                 .param("remember-me", "on")
                 .with(csrf()))

@@ -101,12 +101,12 @@ class OAuth2JwtRolesClaimIntegrationTest {
             null, tenant.id(), "Acme Web", "End-to-end test app", LocalDateTime.now()
         ));
         alice = userRepository.save(new User(
-            null, tenant.id(), "alice",
+            null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("password"),
             true, false, false, LocalDateTime.now()
         ));
         admin = userRepository.save(new User(
-            null, tenant.id(), "admin",
+            null, tenant.id(), "admin@example.test",
             passwordEncoder.encode("password"),
             true, false, true, LocalDateTime.now()
         ));
@@ -128,7 +128,7 @@ class OAuth2JwtRolesClaimIntegrationTest {
         );
 
         // 3. Run the authorization code + PKCE flow as alice.
-        Map<String, Object> claims = runAuthorizationCodeFlow(client, "alice");
+        Map<String, Object> claims = runAuthorizationCodeFlow(client, "alice@example.test");
 
         // 4. Verify JWT claims.
         assertThat(claims.get("tenant")).isEqualTo("acme");
@@ -151,7 +151,7 @@ class OAuth2JwtRolesClaimIntegrationTest {
             client.registeredClientId(), Set.of()
         );
 
-        Map<String, Object> claims = runAuthorizationCodeFlow(client, "alice");
+        Map<String, Object> claims = runAuthorizationCodeFlow(client, "alice@example.test");
 
         assertThat(claims.get("tenant")).isEqualTo("acme");
         assertThat((List<?>) claims.get("roles")).isEmpty();
@@ -177,7 +177,7 @@ class OAuth2JwtRolesClaimIntegrationTest {
         ));
     }
 
-    private Map<String, Object> runAuthorizationCodeFlow(TenantClient client, String username) throws Exception {
+    private Map<String, Object> runAuthorizationCodeFlow(TenantClient client, String email) throws Exception {
         String oauthClientId = jdbcTemplate.queryForObject(
             "SELECT client_id FROM oauth2_registered_client WHERE id = ?",
             String.class, client.registeredClientId()
@@ -206,7 +206,7 @@ class OAuth2JwtRolesClaimIntegrationTest {
         assertThat(authzResult.getResponse().getHeader("Location")).contains("/t/acme/login");
 
         mockMvc.perform(post("/t/acme/login")
-                .param("username", username)
+                .param("email", email)
                 .param("password", "password")
                 .session(session)
                 .with(csrf()))

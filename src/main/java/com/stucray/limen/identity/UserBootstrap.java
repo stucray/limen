@@ -49,11 +49,11 @@ public class UserBootstrap implements CommandLineRunner {
         if (!adminProperties.isConfigured()) return;
 
         String hash = Objects.requireNonNull(passwordEncoder.encode(adminProperties.password()));
-        userRepository.findByUsernameAndTenantId(adminProperties.username(), systemTenant.id())
+        userRepository.findByEmailAndTenantId(adminProperties.email(), systemTenant.id())
             .ifPresentOrElse(
                 existing -> userRepository.save(existing.withPasswordHash(hash).withMustChangePassword(false)),
                 () -> userRepository.save(
-                    new User(null, systemTenant.id(), adminProperties.username(), hash, true, false, false, LocalDateTime.now())
+                    new User(null, systemTenant.id(), adminProperties.email(), hash, true, false, false, LocalDateTime.now())
                 )
             );
     }

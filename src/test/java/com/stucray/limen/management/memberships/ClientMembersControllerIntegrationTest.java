@@ -75,8 +75,8 @@ class ClientMembersControllerIntegrationTest {
 
         tenantA = tenantRepository.save(new Tenant(null, "client-mem-a", "Client Mem A", TenantStatus.ACTIVE, LocalDateTime.now()));
         tenantB = tenantRepository.save(new Tenant(null, "client-mem-b", "Client Mem B", TenantStatus.ACTIVE, LocalDateTime.now()));
-        ownerA = userRepository.save(new User(null, tenantA.id(), "owner", passwordEncoder.encode("pass"), true, false, true,  LocalDateTime.now()));
-        aliceA = userRepository.save(new User(null, tenantA.id(), "alice", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
+        ownerA = userRepository.save(new User(null, tenantA.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true,  LocalDateTime.now()));
+        aliceA = userRepository.save(new User(null, tenantA.id(), "alice@example.test", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
         appA = applicationRepository.save(new Application(null, tenantA.id(), "App A", "desc", LocalDateTime.now()));
         clientA = clientManagementService.createClient(
             appA.id(), tenantA.id(), "client-a",
@@ -86,7 +86,7 @@ class ClientMembersControllerIntegrationTest {
         ).client();
 
         MvcResult login = mockMvc.perform(post("/manage/t/client-mem-a/login")
-                .param("username", "owner").param("password", "pass").with(csrf()))
+                .param("email", "owner@example.test").param("password", "pass").with(csrf()))
             .andReturn();
         sessionA = (MockHttpSession) login.getRequest().getSession(false);
     }
@@ -107,7 +107,7 @@ class ClientMembersControllerIntegrationTest {
 
         mockMvc.perform(get(url("/members")).session(sessionA))
             .andExpect(status().isOk())
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("alice")));
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("alice@example.test")));
     }
 
     @Test
@@ -209,7 +209,7 @@ class ClientMembersControllerIntegrationTest {
 
         mockMvc.perform(get(url("/members/new")).session(sessionA))
             .andExpect(status().isOk())
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("alice")));
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("alice@example.test")));
     }
 
     @Test
@@ -251,9 +251,9 @@ class ClientMembersControllerIntegrationTest {
     @Test
     @DisplayName("Tenant B session is force-redirected to tenant A's login when reaching tenant A's client members")
     void tenantBSessionCannotReachTenantAClientMembers() throws Exception {
-        userRepository.save(new User(null, tenantB.id(), "ownerB", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        userRepository.save(new User(null, tenantB.id(), "ownerB@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
         MvcResult loginB = mockMvc.perform(post("/manage/t/client-mem-b/login")
-                .param("username", "ownerB").param("password", "pass").with(csrf()))
+                .param("email", "ownerB@example.test").param("password", "pass").with(csrf()))
             .andReturn();
         MockHttpSession sessionB = (MockHttpSession) loginB.getRequest().getSession(false);
 

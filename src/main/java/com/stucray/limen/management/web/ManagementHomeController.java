@@ -18,7 +18,7 @@ public class ManagementHomeController {
     ) {
         model.addAttribute("slug", slug);
         model.addAttribute("tenantName", principal.tenant().displayName());
-        model.addAttribute("username", principal.displayUsername());
+        model.addAttribute("email", principal.displayEmail());
         model.addAttribute("isSystemAdmin", principal.tenant().isSystem());
         return "manage/home";
     }

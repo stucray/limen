@@ -58,7 +58,7 @@ class EndUserHomeIntegrationTest {
             null, "alpha-corp", "Alpha Corp", TenantStatus.ACTIVE, LocalDateTime.now()
         ));
         userRepository.save(new User(
-            null, testTenant.id(), "alice",
+            null, testTenant.id(), "alice@example.test",
             passwordEncoder.encode("password"),
             true, false, false, LocalDateTime.now()
         ));
@@ -68,7 +68,7 @@ class EndUserHomeIntegrationTest {
     @DisplayName("Successful end-user login redirects to /t/{slug}/")
     void successfulLoginRedirectsToHome() throws Exception {
         mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "password")
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())
@@ -84,10 +84,10 @@ class EndUserHomeIntegrationTest {
     }
 
     @Test
-    @DisplayName("Authenticated end user can GET /t/{slug}/ and sees the tenant display name plus their username")
+    @DisplayName("Authenticated end user can GET /t/{slug}/ and sees the tenant display name plus their email")
     void authenticatedUserCanAccessHome() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "password")
                 .with(csrf()))
             .andReturn();
@@ -97,14 +97,14 @@ class EndUserHomeIntegrationTest {
         mockMvc.perform(get("/t/alpha-corp/").session(session))
             .andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Alpha Corp")))
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("alice")));
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("alice@example.test")));
     }
 
     @Test
     @DisplayName("Cross-tenant access: TenantAccessFilter force-logs out and redirects to the URL slug's login page")
     void crossTenantAccessIsBlocked() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "password")
                 .with(csrf()))
             .andReturn();
@@ -124,7 +124,7 @@ class EndUserHomeIntegrationTest {
     @DisplayName("POST /t/{slug}/logout invalidates the session and redirects to that tenant's login page")
     void logoutInvalidatesSessionAndRedirects() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/t/alpha-corp/login")
-                .param("username", "alice")
+                .param("email", "alice@example.test")
                 .param("password", "password")
                 .with(csrf()))
             .andReturn();

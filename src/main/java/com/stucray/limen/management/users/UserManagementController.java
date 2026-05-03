@@ -43,17 +43,17 @@ public class UserManagementController {
     public String createUser(
         @PathVariable String slug,
         @AuthenticationPrincipal TenantUserDetails principal,
-        @RequestParam String username,
+        @RequestParam String email,
         @RequestParam String temporaryPassword,
         Model model
     ) {
         try {
-            userManagementService.createUser(principal.tenantId(), username, temporaryPassword);
+            userManagementService.createUser(principal.tenantId(), email, temporaryPassword);
             return "redirect:/manage/t/" + slug + "/users";
         } catch (IllegalArgumentException e) {
             model.addAttribute("slug", slug);
             model.addAttribute("errorMessage", e.getMessage());
-            model.addAttribute("username", username);
+            model.addAttribute("email", email);
             return "manage/users/new";
         }
     }

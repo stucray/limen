@@ -19,8 +19,8 @@
     <form method="post" th:action="@{'/manage/t/' + ${slug} + '/users'}" class="stack section">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
         <label>
-            Username
-            <input type="text" name="username" th:value="${username}" autofocus required/>
+            Email
+            <input type="email" name="email" th:value="${email}" autofocus required/>
         </label>
         <label>
             Temporary password

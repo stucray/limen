@@ -48,10 +48,10 @@ class UserManagementIntegrationTest {
         jdbcTemplate.execute("DELETE FROM tenants WHERE slug != 'system'");
 
         tenant = tenantRepository.save(new Tenant(null, "corp", "Corp", TenantStatus.ACTIVE, LocalDateTime.now()));
-        userRepository.save(new User(null, tenant.id(), "owner", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        userRepository.save(new User(null, tenant.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
 
         MvcResult login = mockMvc.perform(post("/manage/t/corp/login")
-                .param("username", "owner").param("password", "pass").with(csrf()))
+                .param("email", "owner@example.test").param("password", "pass").with(csrf()))
             .andReturn();
         ownerSession = (MockHttpSession) login.getRequest().getSession(false);
     }
@@ -61,24 +61,24 @@ class UserManagementIntegrationTest {
     void ownerCanListUsers() throws Exception {
         mockMvc.perform(get("/manage/t/corp/users").session(ownerSession))
             .andExpect(status().isOk())
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("owner")));
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("owner@example.test")));
     }
 
     @Test
     @DisplayName("Creating a user persists them with mustChangePassword=true so they're forced to set a real password on first login")
     void ownerCanCreateUser() throws Exception {
         mockMvc.perform(post("/manage/t/corp/users").session(ownerSession).with(csrf())
-                .param("username", "alice").param("temporaryPassword", "temppass1"))
+                .param("email", "alice@example.test").param("temporaryPassword", "temppass1"))
             .andExpect(status().is3xxRedirection());
 
-        assertThat(userRepository.findByUsernameAndTenantId("alice", tenant.id())).isPresent();
-        assertThat(userRepository.findByUsernameAndTenantId("alice", tenant.id()).orElseThrow().mustChangePassword()).isTrue();
+        assertThat(userRepository.findByEmailAndTenantId("alice@example.test", tenant.id())).isPresent();
+        assertThat(userRepository.findByEmailAndTenantId("alice@example.test", tenant.id()).orElseThrow().mustChangePassword()).isTrue();
     }
 
     @Test
     @DisplayName("Tenant owner can disable a user and re-enable them, flipping the enabled flag in both directions")
     void ownerCanDisableAndEnableUser() throws Exception {
-        User alice = userRepository.save(new User(null, tenant.id(), "alice", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
+        User alice = userRepository.save(new User(null, tenant.id(), "alice@example.test", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
 
         mockMvc.perform(post("/manage/t/corp/users/" + alice.id() + "/disable").session(ownerSession).with(csrf()))
             .andExpect(status().is3xxRedirection());
@@ -92,7 +92,7 @@ class UserManagementIntegrationTest {
     @Test
     @DisplayName("Tenant owner can delete a user — the row is removed from the users table")
     void ownerCanDeleteUser() throws Exception {
-        User alice = userRepository.save(new User(null, tenant.id(), "alice", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
+        User alice = userRepository.save(new User(null, tenant.id(), "alice@example.test", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
 
         mockMvc.perform(post("/manage/t/corp/users/" + alice.id() + "/delete").session(ownerSession).with(csrf()))
             .andExpect(status().is3xxRedirection());
@@ -102,7 +102,7 @@ class UserManagementIntegrationTest {
     @Test
     @DisplayName("Reset-password sets a temporary password and flips mustChangePassword=true so the user must change it on next login")
     void ownerCanResetPassword() throws Exception {
-        User alice = userRepository.save(new User(null, tenant.id(), "alice", passwordEncoder.encode("oldpass"), true, false, false, LocalDateTime.now()));
+        User alice = userRepository.save(new User(null, tenant.id(), "alice@example.test", passwordEncoder.encode("oldpass"), true, false, false, LocalDateTime.now()));
 
         mockMvc.perform(post("/manage/t/corp/users/" + alice.id() + "/reset-password").session(ownerSession).with(csrf())
                 .param("temporaryPassword", "newpass123"))
@@ -115,7 +115,7 @@ class UserManagementIntegrationTest {
     @Test
     @DisplayName("Tenant owner can grant the tenant-owner role to another user and revoke it again")
     void ownerCanGrantAndRevokeTenantOwnerRole() throws Exception {
-        User alice = userRepository.save(new User(null, tenant.id(), "alice", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
+        User alice = userRepository.save(new User(null, tenant.id(), "alice@example.test", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
 
         mockMvc.perform(post("/manage/t/corp/users/" + alice.id() + "/grant-owner").session(ownerSession).with(csrf()))
             .andExpect(status().is3xxRedirection());
@@ -129,10 +129,10 @@ class UserManagementIntegrationTest {
     @Test
     @DisplayName("A user with mustChangePassword=true is redirected to the change-password page on every authenticated request")
     void userWithMustChangePasswordIsInterceptedToChangePasswordPage() throws Exception {
-        userRepository.save(new User(null, tenant.id(), "newuser", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
+        userRepository.save(new User(null, tenant.id(), "newuser@example.test", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
 
         MvcResult login = mockMvc.perform(post("/manage/t/corp/login")
-                .param("username", "newuser").param("password", "temp").with(csrf()))
+                .param("email", "newuser@example.test").param("password", "temp").with(csrf()))
             .andReturn();
         MockHttpSession newUserSession = (MockHttpSession) login.getRequest().getSession(false);
 
@@ -144,10 +144,10 @@ class UserManagementIntegrationTest {
     @Test
     @DisplayName("After successfully changing the password, mustChangePassword is cleared so the user can use the app normally")
     void mustChangePasswordClearedAfterChange() throws Exception {
-        User newUser = userRepository.save(new User(null, tenant.id(), "newuser", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
+        User newUser = userRepository.save(new User(null, tenant.id(), "newuser@example.test", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
 
         MvcResult login = mockMvc.perform(post("/manage/t/corp/login")
-                .param("username", "newuser").param("password", "temp").with(csrf()))
+                .param("email", "newuser@example.test").param("password", "temp").with(csrf()))
             .andReturn();
         MockHttpSession newUserSession = (MockHttpSession) login.getRequest().getSession(false);
 
@@ -161,10 +161,10 @@ class UserManagementIntegrationTest {
     @Test
     @DisplayName("Mismatched new/confirm passwords re-render the form with an error and leave mustChangePassword=true")
     void changePasswordRedisplaysFormWhenNewAndConfirmDoNotMatch() throws Exception {
-        User newUser = userRepository.save(new User(null, tenant.id(), "newuser", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
+        User newUser = userRepository.save(new User(null, tenant.id(), "newuser@example.test", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
 
         MvcResult login = mockMvc.perform(post("/manage/t/corp/login")
-                .param("username", "newuser").param("password", "temp").with(csrf()))
+                .param("email", "newuser@example.test").param("password", "temp").with(csrf()))
             .andReturn();
         MockHttpSession newUserSession = (MockHttpSession) login.getRequest().getSession(false);
 
@@ -180,10 +180,10 @@ class UserManagementIntegrationTest {
     @Test
     @DisplayName("Blank/whitespace new password re-renders the form with 'Password is required' and leaves mustChangePassword=true")
     void changePasswordRedisplaysFormWhenNewPasswordIsBlank() throws Exception {
-        User newUser = userRepository.save(new User(null, tenant.id(), "newuser", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
+        User newUser = userRepository.save(new User(null, tenant.id(), "newuser@example.test", passwordEncoder.encode("temp"), true, true, false, LocalDateTime.now()));
 
         MvcResult login = mockMvc.perform(post("/manage/t/corp/login")
-                .param("username", "newuser").param("password", "temp").with(csrf()))
+                .param("email", "newuser@example.test").param("password", "temp").with(csrf()))
             .andReturn();
         MockHttpSession newUserSession = (MockHttpSession) login.getRequest().getSession(false);
 

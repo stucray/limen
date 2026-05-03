@@ -30,7 +30,7 @@ import java.util.UUID;
  * Single source of truth for "give me a fresh tenant" across UI tests.
  *
  * <p>Each call seeds a uniquely-named tenant with one admin (owner) and one end user,
- * so concurrent tests cannot collide on slug/username and no teardown is needed —
+ * so concurrent tests cannot collide on slug/email and no teardown is needed —
  * the Testcontainers Postgres is discarded at JVM exit.
  *
  * <p>Goes through real service-layer code ({@link TenantProvisioningService} +
@@ -98,9 +98,9 @@ public class TestTenantFactory {
     public SeededOAuth2Client seedOAuth2ClientForEndUser(
         SeededTenant tenant, SeededApplication app, String redirectUri
     ) {
-        User endUser = userRepository.findByUsernameAndTenantId(tenant.endUserUsername(), tenant.tenantId())
+        User endUser = userRepository.findByEmailAndTenantId(tenant.endUserEmail(), tenant.tenantId())
             .orElseThrow(() -> new IllegalStateException("seeded end user missing"));
-        User admin = userRepository.findByUsernameAndTenantId(tenant.adminUsername(), tenant.tenantId())
+        User admin = userRepository.findByEmailAndTenantId(tenant.adminEmail(), tenant.tenantId())
             .orElseThrow(() -> new IllegalStateException("seeded admin missing"));
 
         String registeredClientId = UUID.randomUUID().toString();
@@ -132,11 +132,11 @@ public class TestTenantFactory {
     @Transactional
     public SeededForcedChangeUser seedEndUserForcedPasswordChange(SeededTenant tenant) {
         String suffix = uniqueSuffix();
-        String username = "forcechange-" + suffix;
+        String email = "forcechange-" + suffix + "@example.test";
         String hash = passwordEncoder.encode(SHARED_TEST_PASSWORD);
         userRepository.save(new User(
-            null, tenant.tenantId(), username, hash, true, true, false, LocalDateTime.now()));
-        return new SeededForcedChangeUser(username, SHARED_TEST_PASSWORD);
+            null, tenant.tenantId(), email, hash, true, true, false, LocalDateTime.now()));
+        return new SeededForcedChangeUser(email, SHARED_TEST_PASSWORD);
     }
 
     @Transactional
@@ -144,32 +144,32 @@ public class TestTenantFactory {
         String suffix = uniqueSuffix();
         String slug = "t-" + suffix;
         String displayName = "Test Org " + suffix;
-        String adminUsername = "admin-" + suffix;
-        String endUserUsername = "user-" + suffix;
+        String adminEmail = "admin-" + suffix + "@example.test";
+        String endUserEmail = "user-" + suffix + "@example.test";
 
         Tenant tenant = tenantProvisioningService.createTenant(slug, displayName);
         String hash = passwordEncoder.encode(SHARED_TEST_PASSWORD);
         userRepository.save(new User(
-            null, tenant.id(), adminUsername, hash, true, false, true, LocalDateTime.now()));
+            null, tenant.id(), adminEmail, hash, true, false, true, LocalDateTime.now()));
         userRepository.save(new User(
-            null, tenant.id(), endUserUsername, hash, true, false, false, LocalDateTime.now()));
+            null, tenant.id(), endUserEmail, hash, true, false, false, LocalDateTime.now()));
 
         return new SeededTenant(
             tenant.id(), slug, displayName,
-            adminUsername, SHARED_TEST_PASSWORD,
-            endUserUsername, SHARED_TEST_PASSWORD);
+            adminEmail, SHARED_TEST_PASSWORD,
+            endUserEmail, SHARED_TEST_PASSWORD);
     }
 
     @Transactional
     public SeededSystemAdmin createSystemAdmin() {
         String suffix = uniqueSuffix();
-        String username = "sysadmin-" + suffix;
+        String email = "sysadmin-" + suffix + "@example.test";
         Tenant systemTenant = tenantRepository.findBySlug("system")
             .orElseThrow(() -> new IllegalStateException("system tenant not bootstrapped"));
         String hash = passwordEncoder.encode(SHARED_TEST_PASSWORD);
         userRepository.save(new User(
-            null, systemTenant.id(), username, hash, true, false, false, LocalDateTime.now()));
-        return new SeededSystemAdmin(username, SHARED_TEST_PASSWORD);
+            null, systemTenant.id(), email, hash, true, false, false, LocalDateTime.now()));
+        return new SeededSystemAdmin(email, SHARED_TEST_PASSWORD);
     }
 
     private static String uniqueSuffix() {
@@ -180,17 +180,17 @@ public class TestTenantFactory {
         Long tenantId,
         String slug,
         String displayName,
-        String adminUsername,
+        String adminEmail,
         String adminPassword,
-        String endUserUsername,
+        String endUserEmail,
         String endUserPassword
     ) {}
 
-    public record SeededSystemAdmin(String username, String password) {}
+    public record SeededSystemAdmin(String email, String password) {}
 
     public record SeededApplication(Long appId, String name) {}
 
-    public record SeededForcedChangeUser(String username, String temporaryPassword) {}
+    public record SeededForcedChangeUser(String email, String temporaryPassword) {}
 
     public record SeededOAuth2Client(String clientId, String redirectUri) {}
 }

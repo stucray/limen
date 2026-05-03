@@ -13,10 +13,10 @@ public final class SignupPage {
         this.baseUrl = baseUrl;
     }
 
-    public SignupPage fillForm(String organizationName, String slug, String username, String password) {
+    public SignupPage fillForm(String organizationName, String slug, String email, String password) {
         page.getByLabel("Organization name").fill(organizationName);
         page.getByLabel("Slug").fill(slug);
-        page.getByLabel("Username").fill(username);
+        page.getByLabel("Email").fill(email);
         page.getByLabel("Password").fill(password);
         return this;
     }

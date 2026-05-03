@@ -10,13 +10,13 @@
             <h1>Sign in</h1>
             <p th:text="${tenantName}">Tenant</p>
         </hgroup>
-        <p class="form-error" th:if="${param.error}">Invalid username or password.</p>
+        <p class="form-error" th:if="${param.error}">Invalid email or password.</p>
         <p class="form-info" th:if="${param.registered}">Account created — please sign in.</p>
         <form method="post" th:action="@{'/manage/t/' + ${slug} + '/login'}" class="stack">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
             <label>
-                Username
-                <input type="text" name="username" autofocus required/>
+                Email
+                <input type="email" name="email" autofocus required/>
             </label>
             <label>
                 Password

@@ -20,7 +20,7 @@ class TenantAdminLoginJourneyUiIT extends BaseUiIT {
 
         new ManageHomePage(page, baseUrl(), tenant.slug())
             .assertOnHomeForTenant(tenant.displayName())
-            .assertWelcomeForUser(tenant.adminUsername())
+            .assertWelcomeForUser(tenant.adminEmail())
             .assertTenantAdminNavTilesVisible();
     }
 }

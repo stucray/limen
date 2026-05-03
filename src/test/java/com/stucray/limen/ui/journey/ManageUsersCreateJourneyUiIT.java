@@ -17,7 +17,7 @@ class ManageUsersCreateJourneyUiIT extends BaseUiIT {
     @DisplayName("happy path: from the manage home, navigates to Users, fills the add-user form, submits, and the new user appears in the list")
     void happyPath(Page page) {
         SeededTenant tenant = tenants.createTenant();
-        String username = "newuser-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String email = "newuser-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8) + "@example.test";
 
         new LoginPageObject(page, baseUrl()).loginAsTenantAdmin(tenant);
 
@@ -26,10 +26,10 @@ class ManageUsersCreateJourneyUiIT extends BaseUiIT {
             .assertOnList()
             .clickAddUser()
             .assertOnForm()
-            .fillUsername(username)
+            .fillEmail(email)
             .fillTemporaryPassword("temp-secret-123")
             .submit()
             .assertOnList()
-            .assertUserVisible(username);
+            .assertUserVisible(email);
     }
 }

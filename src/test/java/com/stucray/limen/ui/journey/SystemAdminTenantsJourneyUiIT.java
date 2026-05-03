@@ -19,7 +19,7 @@ class SystemAdminTenantsJourneyUiIT extends BaseUiIT {
         SeededSystemAdmin admin = tenants.createSystemAdmin();
 
         new LoginPageObject(page, baseUrl())
-            .loginAsSystemAdmin(admin.username(), admin.password());
+            .loginAsSystemAdmin(admin.email(), admin.password());
 
         new SystemTenantsListPage(page, baseUrl())
             .visit()

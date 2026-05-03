@@ -23,8 +23,8 @@ public final class EndUserHomePage {
         return this;
     }
 
-    public EndUserHomePage assertSignedInAs(String username) {
-        PlaywrightAssertions.assertThat(page.getByText("Signed in as " + username)).isVisible();
+    public EndUserHomePage assertSignedInAs(String email) {
+        PlaywrightAssertions.assertThat(page.getByText("Signed in as " + email)).isVisible();
         return this;
     }
 }

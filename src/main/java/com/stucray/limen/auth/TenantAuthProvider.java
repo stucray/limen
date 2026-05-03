@@ -34,9 +34,9 @@ public class TenantAuthProvider implements AuthenticationProvider {
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
         TenantAuthToken token = (TenantAuthToken) authentication;
         String slug = token.getTenantSlug();
-        String username = (String) token.getPrincipal();
+        String email = (String) token.getPrincipal();
         String rawPassword = (String) token.getCredentials();
-        if (username == null) {
+        if (email == null) {
             throw new BadCredentialsException("Invalid credentials");
         }
 
@@ -47,7 +47,7 @@ public class TenantAuthProvider implements AuthenticationProvider {
             throw new DisabledException("Tenant is suspended");
         }
 
-        User user = userRepository.findByUsernameAndTenantId(username, tenant.id())
+        User user = userRepository.findByEmailAndTenantId(email, tenant.id())
             .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         if (!user.enabled()) {

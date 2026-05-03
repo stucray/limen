@@ -64,10 +64,10 @@ class ApplicationMembershipServiceIntegrationTest {
         tenantB = tenantRepository.save(new Tenant(null, "mem-b", "Mem B", TenantStatus.ACTIVE, LocalDateTime.now()));
         appA = applicationRepository.save(new Application(null, tenantA.id(), "App A", null, LocalDateTime.now()));
         appB = applicationRepository.save(new Application(null, tenantB.id(), "App B", null, LocalDateTime.now()));
-        aliceA = userRepository.save(new User(null, tenantA.id(), "alice", "x", true, false, false, LocalDateTime.now()));
-        bobA = userRepository.save(new User(null, tenantA.id(), "bob",   "x", true, false, false, LocalDateTime.now()));
-        adminA = userRepository.save(new User(null, tenantA.id(), "admin", "x", true, false, true,  LocalDateTime.now()));
-        carolB = userRepository.save(new User(null, tenantB.id(), "carol", "x", true, false, false, LocalDateTime.now()));
+        aliceA = userRepository.save(new User(null, tenantA.id(), "alice@example.test", "x", true, false, false, LocalDateTime.now()));
+        bobA = userRepository.save(new User(null, tenantA.id(), "bob@example.test",   "x", true, false, false, LocalDateTime.now()));
+        adminA = userRepository.save(new User(null, tenantA.id(), "admin@example.test", "x", true, false, true,  LocalDateTime.now()));
+        carolB = userRepository.save(new User(null, tenantB.id(), "carol@example.test", "x", true, false, false, LocalDateTime.now()));
     }
 
     @Test
@@ -279,6 +279,6 @@ class ApplicationMembershipServiceIntegrationTest {
 
         var grantable = membershipService.listGrantableUsers(appA.id(), tenantA.id());
 
-        assertThat(grantable).extracting(User::username).containsExactlyInAnyOrder("bob", "admin");
+        assertThat(grantable).extracting(User::email).containsExactlyInAnyOrder("bob@example.test", "admin@example.test");
     }
 }

@@ -23,8 +23,8 @@ public final class ManageUsersNewPage {
         return this;
     }
 
-    public ManageUsersNewPage fillUsername(String username) {
-        page.getByLabel("Username").fill(username);
+    public ManageUsersNewPage fillEmail(String email) {
+        page.getByLabel("Email").fill(email);
         return this;
     }
 

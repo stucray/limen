@@ -62,11 +62,11 @@ class RolesControllerIntegrationTest {
 
         tenantA = tenantRepository.save(new Tenant(null, "roles-corp-a", "Roles Corp A", TenantStatus.ACTIVE, LocalDateTime.now()));
         tenantB = tenantRepository.save(new Tenant(null, "roles-corp-b", "Roles Corp B", TenantStatus.ACTIVE, LocalDateTime.now()));
-        userRepository.save(new User(null, tenantA.id(), "owner", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        userRepository.save(new User(null, tenantA.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
         appA = applicationRepository.save(new Application(null, tenantA.id(), "App A", "desc", LocalDateTime.now()));
 
         MvcResult login = mockMvc.perform(post("/manage/t/roles-corp-a/login")
-                .param("username", "owner").param("password", "pass").with(csrf()))
+                .param("email", "owner@example.test").param("password", "pass").with(csrf()))
             .andReturn();
         sessionA = (MockHttpSession) login.getRequest().getSession(false);
     }
@@ -162,7 +162,7 @@ class RolesControllerIntegrationTest {
         // row so the FK ON DELETE RESTRICT fires when the role is deleted. Using
         // raw SQL keeps the test independent of the ApplicationMembershipService.
         Role role = roleRepository.save(new Role(null, appA.id(), "viewer", null, LocalDateTime.now()));
-        Long ownerId = userRepository.findByUsernameAndTenantId("owner", tenantA.id()).orElseThrow().id();
+        Long ownerId = userRepository.findByEmailAndTenantId("owner@example.test", tenantA.id()).orElseThrow().id();
         Long membershipId = jdbcTemplate.queryForObject(
             "INSERT INTO application_membership (user_id, application_id, granted_at, granted_by) VALUES (?,?,NOW(),?) RETURNING id",
             Long.class, ownerId, appA.id(), ownerId
@@ -195,9 +195,9 @@ class RolesControllerIntegrationTest {
     @Test
     @DisplayName("Tenant B session is force-redirected to tenant A's login when reaching tenant A's roles")
     void tenantBSessionCannotReachTenantARoles() throws Exception {
-        userRepository.save(new User(null, tenantB.id(), "ownerB", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        userRepository.save(new User(null, tenantB.id(), "ownerB@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
         MvcResult loginB = mockMvc.perform(post("/manage/t/roles-corp-b/login")
-                .param("username", "ownerB").param("password", "pass").with(csrf()))
+                .param("email", "ownerB@example.test").param("password", "pass").with(csrf()))
             .andReturn();
         MockHttpSession sessionB = (MockHttpSession) loginB.getRequest().getSession(false);
 

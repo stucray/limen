@@ -41,12 +41,13 @@ class TenantPersistentTokenRepositoryIntegrationTest {
     @Test
     @DisplayName("getTokenForSeries returns the row only when called with the matching tenant_id")
     void createAndGetIsTenantScoped() {
-        repo.createNewToken(new PersistentRememberMeToken("alice", "series-1", "tok-1", new Date()), alpha.id());
-        repo.createNewToken(new PersistentRememberMeToken("alice", "series-2", "tok-2", new Date()), beta.id());
+        repo.createNewToken(new PersistentRememberMeToken("alice@example.test", "series-1", "tok-1", new Date()), alpha.id());
+        repo.createNewToken(new PersistentRememberMeToken("alice@example.test", "series-2", "tok-2", new Date()), beta.id());
 
         TenantPersistentRememberMeToken alphaRow = repo.getTokenForSeries("series-1", alpha.id());
         assertThat(alphaRow).isNotNull();
-        assertThat(alphaRow.getUsername()).isEqualTo("alice");
+        // Spring's PersistentRememberMeToken.getUsername() returns the email value in this codebase
+        assertThat(alphaRow.getUsername()).isEqualTo("alice@example.test");
         assertThat(alphaRow.getTenantId()).isEqualTo(alpha.id());
 
         // Same series under wrong tenant returns null
@@ -56,7 +57,7 @@ class TenantPersistentTokenRepositoryIntegrationTest {
     @Test
     @DisplayName("updateToken under the wrong tenant_id is a no-op; under the right one it replaces the token")
     void updateIsTenantScoped() {
-        repo.createNewToken(new PersistentRememberMeToken("alice", "series-3", "old-tok", new Date()), alpha.id());
+        repo.createNewToken(new PersistentRememberMeToken("alice@example.test", "series-3", "old-tok", new Date()), alpha.id());
 
         // Update under wrong tenant — no-op
         repo.updateToken("series-3", beta.id(), "wrong-tok", new Date());
@@ -70,10 +71,10 @@ class TenantPersistentTokenRepositoryIntegrationTest {
     @Test
     @DisplayName("removeUserTokens deletes only the rows belonging to the named tenant")
     void removeUserTokensIsTenantScoped() {
-        repo.createNewToken(new PersistentRememberMeToken("alice", "series-4", "tok-a", new Date()), alpha.id());
-        repo.createNewToken(new PersistentRememberMeToken("alice", "series-5", "tok-b", new Date()), beta.id());
+        repo.createNewToken(new PersistentRememberMeToken("alice@example.test", "series-4", "tok-a", new Date()), alpha.id());
+        repo.createNewToken(new PersistentRememberMeToken("alice@example.test", "series-5", "tok-b", new Date()), beta.id());
 
-        repo.removeUserTokens("alice", alpha.id());
+        repo.removeUserTokens("alice@example.test", alpha.id());
 
         assertThat(repo.getTokenForSeries("series-4", alpha.id())).isNull();
         // Beta's row survives
@@ -84,8 +85,8 @@ class TenantPersistentTokenRepositoryIntegrationTest {
     @DisplayName("Two tenants can store rows for the same series — (tenant_id, series) is the composite PK")
     void sameSeriesAcrossTenantsCoexist() {
         // (tenant_id, series) is the PK so both rows can persist with the same series.
-        repo.createNewToken(new PersistentRememberMeToken("alice", "shared", "tok-a", new Date()), alpha.id());
-        repo.createNewToken(new PersistentRememberMeToken("alice", "shared", "tok-b", new Date()), beta.id());
+        repo.createNewToken(new PersistentRememberMeToken("alice@example.test", "shared", "tok-a", new Date()), alpha.id());
+        repo.createNewToken(new PersistentRememberMeToken("alice@example.test", "shared", "tok-b", new Date()), beta.id());
 
         assertThat(repo.getTokenForSeries("shared", alpha.id()).getTokenValue()).isEqualTo("tok-a");
         assertThat(repo.getTokenForSeries("shared", beta.id()).getTokenValue()).isEqualTo("tok-b");
