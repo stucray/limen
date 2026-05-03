@@ -13,7 +13,7 @@
             <h1>Applications</h1>
             <p>Application registrations and their roles, clients, and members.</p>
         </hgroup>
-        <a th:href="@{'/manage/t/' + ${slug} + '/applications/new'}" class="btn">New application</a>
+        <a th:href="@{'/manage/t/' + ${slug} + '/applications/new'}" class="btn" data-test-action="apps-new">New application</a>
     </div>
 
     <p class="form-error" th:if="${errorMessage}" th:text="${errorMessage}"></p>

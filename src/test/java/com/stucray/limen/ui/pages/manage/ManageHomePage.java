@@ -3,6 +3,7 @@ package com.stucray.limen.ui.pages.manage;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
+import com.stucray.limen.ui.pages.manage.applications.ManageApplicationsListPage;
 
 public final class ManageHomePage {
 
@@ -14,6 +15,12 @@ public final class ManageHomePage {
         this.page = page;
         this.baseUrl = baseUrl;
         this.slug = slug;
+    }
+
+    public ManageApplicationsListPage clickApplications() {
+        page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Applications")).click();
+        page.waitForURL(baseUrl + "/manage/t/" + slug + "/applications");
+        return new ManageApplicationsListPage(page, baseUrl, slug);
     }
 
     public ManageHomePage assertOnHomeForTenant(String tenantDisplayName) {
