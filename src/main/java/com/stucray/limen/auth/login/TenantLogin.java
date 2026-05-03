@@ -102,6 +102,15 @@ public final class TenantLogin {
         return rememberMeEnabled;
     }
 
+    /**
+     * Build a success handler that runs the registered intent chain for {@code scheme}.
+     * Reused by the OTT login filter so post-OTT dispatch shares the same
+     * email-verification / password-change / authorize-resume policy as form login.
+     */
+    public AuthenticationSuccessHandler successHandlerFor(TenantUrlScheme scheme) {
+        return new IntentChainSuccessHandler(intents, scheme);
+    }
+
     /** Build the form-login filter for {@code scheme}. */
     public AbstractAuthenticationProcessingFilter filter(TenantUrlScheme scheme) {
         TenantLoginFilter filter = new TenantLoginFilter(scheme, authenticationManager);

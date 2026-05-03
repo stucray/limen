@@ -219,7 +219,7 @@ class AuditEventEmitIntegrationTest {
         String email = "user-" + UUID.randomUUID().toString().substring(0, 8) + "@example.test";
         return userRepository.save(new User(
             null, tenantId, email, passwordEncoder.encode("oldPass1234"),
-            true, mustChangePassword, false, LocalDateTime.now()));
+            true, mustChangePassword, false, true, LocalDateTime.now()));
     }
 
     @SuppressWarnings("NullAway") // Spring Data convention
@@ -228,7 +228,7 @@ class AuditEventEmitIntegrationTest {
         String email = "actor-" + UUID.randomUUID().toString().substring(0, 8) + "@example.test";
         User admin = userRepository.save(new User(
             null, system.id(), email, passwordEncoder.encode("pw"),
-            true, false, false, LocalDateTime.now()));
+            true, false, false, true, LocalDateTime.now()));
         return admin.id();
     }
 

@@ -62,7 +62,7 @@ class RolesControllerIntegrationTest {
 
         tenantA = tenantRepository.save(new Tenant(null, "roles-corp-a", "Roles Corp A", TenantStatus.ACTIVE, LocalDateTime.now()));
         tenantB = tenantRepository.save(new Tenant(null, "roles-corp-b", "Roles Corp B", TenantStatus.ACTIVE, LocalDateTime.now()));
-        userRepository.save(new User(null, tenantA.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        userRepository.save(new User(null, tenantA.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, true, LocalDateTime.now()));
         appA = applicationRepository.save(new Application(null, tenantA.id(), "App A", "desc", LocalDateTime.now()));
 
         MvcResult login = mockMvc.perform(post("/manage/t/roles-corp-a/login")
@@ -195,7 +195,7 @@ class RolesControllerIntegrationTest {
     @Test
     @DisplayName("Tenant B session is force-redirected to tenant A's login when reaching tenant A's roles")
     void tenantBSessionCannotReachTenantARoles() throws Exception {
-        userRepository.save(new User(null, tenantB.id(), "ownerB@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        userRepository.save(new User(null, tenantB.id(), "ownerB@example.test", passwordEncoder.encode("pass"), true, false, true, true, LocalDateTime.now()));
         MvcResult loginB = mockMvc.perform(post("/manage/t/roles-corp-b/login")
                 .param("email", "ownerB@example.test").param("password", "pass").with(csrf()))
             .andReturn();

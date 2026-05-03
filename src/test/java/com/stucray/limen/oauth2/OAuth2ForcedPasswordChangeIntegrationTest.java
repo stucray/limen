@@ -109,7 +109,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
         userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
-            true, true, false, LocalDateTime.now()));
+            true, true, false, true, LocalDateTime.now()));
 
         MockHttpSession session = startAuthorize(newPkce().challenge());
 
@@ -129,7 +129,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
-            true, true, false, LocalDateTime.now()));
+            true, true, false, true, LocalDateTime.now()));
         ClientMembershipTestFixture.grant(
             applicationMembershipService, clientMembershipService,
             app.id(), tenant.id(), original.id(), original.id(),
@@ -169,7 +169,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
-            true, true, false, LocalDateTime.now()));
+            true, true, false, true, LocalDateTime.now()));
 
         MockHttpSession session = startAuthorize(newPkce().challenge());
 
@@ -193,7 +193,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
         userRepository.save(new User(
             null, tenant.id(), "bob@example.test",
             passwordEncoder.encode("password"),
-            true, false, false, LocalDateTime.now()));
+            true, false, false, true, LocalDateTime.now()));
 
         MockHttpSession session = startAuthorize(newPkce().challenge());
 
@@ -213,7 +213,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
-            true, true, false, LocalDateTime.now()));
+            true, true, false, true, LocalDateTime.now()));
 
         MockHttpSession session = startAuthorize(newPkce().challenge());
 
@@ -239,7 +239,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
-            true, true, false, LocalDateTime.now()));
+            true, true, false, true, LocalDateTime.now()));
 
         MockHttpSession session = new MockHttpSession();
         mockMvc.perform(post("/t/alpha-corp/login")
@@ -264,7 +264,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
         userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
-            true, true, false, LocalDateTime.now()));
+            true, true, false, true, LocalDateTime.now()));
 
         MockHttpSession session = new MockHttpSession();
         mockMvc.perform(post("/t/alpha-corp/login")

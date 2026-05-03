@@ -71,8 +71,8 @@ class MembersControllerIntegrationTest {
 
         tenantA = tenantRepository.save(new Tenant(null, "members-corp-a", "Members Corp A", TenantStatus.ACTIVE, LocalDateTime.now()));
         tenantB = tenantRepository.save(new Tenant(null, "members-corp-b", "Members Corp B", TenantStatus.ACTIVE, LocalDateTime.now()));
-        ownerA = userRepository.save(new User(null, tenantA.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
-        aliceA = userRepository.save(new User(null, tenantA.id(), "alice@example.test", passwordEncoder.encode("pass"), true, false, false, LocalDateTime.now()));
+        ownerA = userRepository.save(new User(null, tenantA.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, true, LocalDateTime.now()));
+        aliceA = userRepository.save(new User(null, tenantA.id(), "alice@example.test", passwordEncoder.encode("pass"), true, false, false, true, LocalDateTime.now()));
         appA = applicationRepository.save(new Application(null, tenantA.id(), "App A", "desc", LocalDateTime.now()));
 
         MvcResult login = mockMvc.perform(post("/manage/t/members-corp-a/login")
@@ -219,7 +219,7 @@ class MembersControllerIntegrationTest {
     @Test
     @DisplayName("Tenant B session is force-redirected to tenant A's login when reaching tenant A's members")
     void tenantBSessionCannotReachTenantAMembers() throws Exception {
-        userRepository.save(new User(null, tenantB.id(), "ownerB@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        userRepository.save(new User(null, tenantB.id(), "ownerB@example.test", passwordEncoder.encode("pass"), true, false, true, true, LocalDateTime.now()));
         MvcResult loginB = mockMvc.perform(post("/manage/t/members-corp-b/login")
                 .param("email", "ownerB@example.test").param("password", "pass").with(csrf()))
             .andReturn();

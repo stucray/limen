@@ -1,5 +1,6 @@
 package com.stucray.limen.management.signup;
 
+import com.stucray.limen.auth.ott.EmailVerificationService;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
@@ -27,21 +28,24 @@ public class SignupService {
     private final TenantProvisioningService tenantProvisioningService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailVerificationService emailVerificationService;
 
     public SignupService(
         TenantRepository tenantRepository,
         TenantProvisioningService tenantProvisioningService,
         UserRepository userRepository,
-        PasswordEncoder passwordEncoder
+        PasswordEncoder passwordEncoder,
+        EmailVerificationService emailVerificationService
     ) {
         this.tenantRepository = tenantRepository;
         this.tenantProvisioningService = tenantProvisioningService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailVerificationService = emailVerificationService;
     }
 
     public sealed interface SignupResult {
-        record Success(String slug) implements SignupResult {}
+        record Success(String slug, String email) implements SignupResult {}
         record Error(String field, String message) implements SignupResult {}
     }
 
@@ -84,12 +88,14 @@ public class SignupService {
         }
 
         Tenant tenant = tenantProvisioningService.createTenant(slug, orgName);
-        userRepository.save(new User(
+        User savedOwner = userRepository.save(new User(
             null, tenant.id(), email,
             Objects.requireNonNull(passwordEncoder.encode(form.password())),
-            true, false, true, LocalDateTime.now()
+            true, false, true, false, LocalDateTime.now()
         ));
 
-        return new SignupResult.Success(slug);
+        emailVerificationService.issueVerification(tenant, savedOwner);
+
+        return new SignupResult.Success(slug, email);
     }
 }

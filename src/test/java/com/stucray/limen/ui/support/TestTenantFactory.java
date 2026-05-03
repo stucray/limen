@@ -135,7 +135,7 @@ public class TestTenantFactory {
         String email = "forcechange-" + suffix + "@example.test";
         String hash = passwordEncoder.encode(SHARED_TEST_PASSWORD);
         userRepository.save(new User(
-            null, tenant.tenantId(), email, hash, true, true, false, LocalDateTime.now()));
+            null, tenant.tenantId(), email, hash, true, true, false, true, LocalDateTime.now()));
         return new SeededForcedChangeUser(email, SHARED_TEST_PASSWORD);
     }
 
@@ -150,9 +150,9 @@ public class TestTenantFactory {
         Tenant tenant = tenantProvisioningService.createTenant(slug, displayName);
         String hash = passwordEncoder.encode(SHARED_TEST_PASSWORD);
         userRepository.save(new User(
-            null, tenant.id(), adminEmail, hash, true, false, true, LocalDateTime.now()));
+            null, tenant.id(), adminEmail, hash, true, false, true, true, LocalDateTime.now()));
         userRepository.save(new User(
-            null, tenant.id(), endUserEmail, hash, true, false, false, LocalDateTime.now()));
+            null, tenant.id(), endUserEmail, hash, true, false, false, true, LocalDateTime.now()));
 
         return new SeededTenant(
             tenant.id(), slug, displayName,
@@ -168,7 +168,7 @@ public class TestTenantFactory {
             .orElseThrow(() -> new IllegalStateException("system tenant not bootstrapped"));
         String hash = passwordEncoder.encode(SHARED_TEST_PASSWORD);
         userRepository.save(new User(
-            null, systemTenant.id(), email, hash, true, false, false, LocalDateTime.now()));
+            null, systemTenant.id(), email, hash, true, false, false, true, LocalDateTime.now()));
         return new SeededSystemAdmin(email, SHARED_TEST_PASSWORD);
     }
 

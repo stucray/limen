@@ -5,6 +5,9 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.nio.charset.StandardCharsets;
 
 @Controller
 public class SignupController {
@@ -33,7 +36,16 @@ public class SignupController {
         SignupService.SignupResult result = signupService.signup(form);
 
         if (result instanceof SignupService.SignupResult.Success success) {
-            return "redirect:/manage/t/" + success.slug() + "/login?registered";
+            // Land on the check-inbox page so the new tenant owner sees the
+            // verification email instructions before they try to log in.
+            // The forwarder /login is also tenant-aware, so we encode the slug
+            // explicitly here rather than relying on it.
+            return "redirect:" + UriComponentsBuilder
+                .fromPath("/t/" + success.slug() + "/check-inbox")
+                .queryParam("email", success.email())
+                .build()
+                .encode(StandardCharsets.UTF_8)
+                .toUriString();
         }
 
         SignupService.SignupResult.Error error = (SignupService.SignupResult.Error) result;

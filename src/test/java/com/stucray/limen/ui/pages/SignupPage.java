@@ -1,7 +1,6 @@
 package com.stucray.limen.ui.pages;
 
 import com.microsoft.playwright.Page;
-import com.stucray.limen.ui.pages.manage.ManageLoginPage;
 
 public final class SignupPage {
 
@@ -21,9 +20,9 @@ public final class SignupPage {
         return this;
     }
 
-    public ManageLoginPage submit(String expectedSlug) {
+    public CheckInboxPage submit(String expectedSlug) {
         page.getByTestId("signup-submit").click();
-        page.waitForURL(baseUrl + "/manage/t/" + expectedSlug + "/login**");
-        return new ManageLoginPage(page, baseUrl, expectedSlug);
+        page.waitForURL(baseUrl + "/t/" + expectedSlug + "/check-inbox**");
+        return new CheckInboxPage(page, baseUrl, expectedSlug);
     }
 }

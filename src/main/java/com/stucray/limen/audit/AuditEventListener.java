@@ -1,11 +1,14 @@
 package com.stucray.limen.audit;
 
 import com.stucray.limen.audit.events.ClientSecretRotatedEvent;
+import com.stucray.limen.audit.events.EmailVerifiedEvent;
 import com.stucray.limen.audit.events.PasswordChangedEvent;
 import com.stucray.limen.audit.events.TenantCreatedEvent;
 import com.stucray.limen.audit.events.TenantDeletedEvent;
 import com.stucray.limen.audit.events.TenantSuspendedEvent;
 import com.stucray.limen.audit.events.TenantUnsuspendedEvent;
+import com.stucray.limen.audit.events.VerificationOttIssuedEvent;
+import com.stucray.limen.audit.events.VerificationResentEvent;
 import com.stucray.limen.auth.TenantUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import org.jspecify.annotations.Nullable;
@@ -151,6 +154,47 @@ public class AuditEventListener {
             currentIp(), currentUserAgent(),
             LocalDateTime.now(ZoneId.systemDefault()),
             Map.of()));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onVerificationOttIssued(VerificationOttIssuedEvent event) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("email", event.email());
+        safeWrite(new AuditEvent(
+            null, event.tenantId(), event.userId(),
+            "verification_ott_issued",
+            "user", String.valueOf(event.userId()),
+            currentIp(), currentUserAgent(),
+            LocalDateTime.now(ZoneId.systemDefault()),
+            details));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onEmailVerified(EmailVerifiedEvent event) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("email", event.email());
+        safeWrite(new AuditEvent(
+            null, event.tenantId(), event.userId(),
+            "email_verified",
+            "user", String.valueOf(event.userId()),
+            currentIp(), currentUserAgent(),
+            LocalDateTime.now(ZoneId.systemDefault()),
+            details));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onVerificationResent(VerificationResentEvent event) {
+        Map<String, Object> details = new HashMap<>();
+        details.put("email", event.email());
+        details.put("delivered", event.delivered());
+        safeWrite(new AuditEvent(
+            null, event.tenantId(), event.userId(),
+            "verification_resent",
+            event.userId() == null ? null : "user",
+            event.userId() == null ? null : String.valueOf(event.userId()),
+            currentIp(), currentUserAgent(),
+            LocalDateTime.now(ZoneId.systemDefault()),
+            details));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

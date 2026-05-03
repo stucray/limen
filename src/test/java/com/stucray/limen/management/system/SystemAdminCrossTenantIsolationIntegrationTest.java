@@ -59,7 +59,7 @@ class SystemAdminCrossTenantIsolationIntegrationTest {
         userRepository.save(new User(
             null, systemTenant.id(), "sysadmin@example.test",
             passwordEncoder.encode("syspass"),
-            true, false, false, LocalDateTime.now()
+            true, false, false, true, LocalDateTime.now()
         ));
 
         acme = tenantRepository.save(new Tenant(

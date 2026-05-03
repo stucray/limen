@@ -62,9 +62,9 @@ class TenantPersistentTokenBasedRememberMeServicesIntegrationTest {
         beta = tenantRepository.save(new Tenant(null, "beta-rm", "Beta", TenantStatus.ACTIVE, LocalDateTime.now()));
 
         userRepository.save(new User(null, alpha.id(), "alice@example.test",
-            passwordEncoder.encode("alpha-pwd"), true, false, false, LocalDateTime.now()));
+            passwordEncoder.encode("alpha-pwd"), true, false, false, true, LocalDateTime.now()));
         userRepository.save(new User(null, beta.id(), "alice@example.test",
-            passwordEncoder.encode("beta-pwd"), true, false, false, LocalDateTime.now()));
+            passwordEncoder.encode("beta-pwd"), true, false, false, true, LocalDateTime.now()));
     }
 
     @Test

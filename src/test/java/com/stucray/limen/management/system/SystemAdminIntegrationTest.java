@@ -53,7 +53,7 @@ class SystemAdminIntegrationTest {
         jdbcTemplate.execute("DELETE FROM users WHERE tenant_id = (SELECT id FROM tenants WHERE slug = 'system')");
 
         Tenant systemTenant = tenantRepository.findBySlug("system").orElseThrow();
-        userRepository.save(new User(null, systemTenant.id(), "sysadmin@example.test", passwordEncoder.encode("syspass"), true, false, false, LocalDateTime.now()));
+        userRepository.save(new User(null, systemTenant.id(), "sysadmin@example.test", passwordEncoder.encode("syspass"), true, false, false, true, LocalDateTime.now()));
 
         MvcResult login = mockMvc.perform(post("/manage/t/system/login")
                 .param("email", "sysadmin@example.test").param("password", "syspass").with(csrf()))
@@ -84,7 +84,7 @@ class SystemAdminIntegrationTest {
     @Test
     @DisplayName("Login at a suspended tenant fails (redirects to ?error)")
     void suspendedTenantLoginIsBlocked() throws Exception {
-        userRepository.save(new User(null, customerTenant.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        userRepository.save(new User(null, customerTenant.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, true, LocalDateTime.now()));
         tenantRepository.save(customerTenant.withStatus(TenantStatus.SUSPENDED));
 
         mockMvc.perform(post("/manage/t/customer/login")
@@ -141,7 +141,7 @@ class SystemAdminIntegrationTest {
     @DisplayName("A tenant owner can view their tenant settings and update its display name")
     void tenantOwnerCanViewAndUpdateTenantDetails() throws Exception {
         Tenant corp = tenantRepository.save(new Tenant(null, "my-corp", "My Corp", TenantStatus.ACTIVE, LocalDateTime.now()));
-        userRepository.save(new User(null, corp.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        userRepository.save(new User(null, corp.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, true, LocalDateTime.now()));
         MvcResult login = mockMvc.perform(post("/manage/t/my-corp/login")
                 .param("email", "owner@example.test").param("password", "pass").with(csrf()))
             .andReturn();

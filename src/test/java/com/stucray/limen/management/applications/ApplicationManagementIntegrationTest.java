@@ -56,7 +56,7 @@ class ApplicationManagementIntegrationTest {
 
         tenantA = tenantRepository.save(new Tenant(null, "corp-a", "Corp A", TenantStatus.ACTIVE, LocalDateTime.now()));
         tenantB = tenantRepository.save(new Tenant(null, "corp-b", "Corp B", TenantStatus.ACTIVE, LocalDateTime.now()));
-        userRepository.save(new User(null, tenantA.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        userRepository.save(new User(null, tenantA.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, true, LocalDateTime.now()));
 
         MvcResult login = mockMvc.perform(post("/manage/t/corp-a/login")
                 .param("email", "owner@example.test").param("password", "pass").with(csrf()))
@@ -167,7 +167,7 @@ class ApplicationManagementIntegrationTest {
     @DisplayName("Tenant A's applications are not visible to a tenant B session — TenantAccessFilter forces logout")
     void tenantAApplicationsNotVisibleToTenantBSession() throws Exception {
         Application appA = applicationRepository.save(new Application(null, tenantA.id(), "App A", null, LocalDateTime.now()));
-        userRepository.save(new User(null, tenantB.id(), "ownerB@example.test", passwordEncoder.encode("pass"), true, false, true, LocalDateTime.now()));
+        userRepository.save(new User(null, tenantB.id(), "ownerB@example.test", passwordEncoder.encode("pass"), true, false, true, true, LocalDateTime.now()));
         MvcResult loginB = mockMvc.perform(post("/manage/t/corp-b/login")
                 .param("email", "ownerB@example.test").param("password", "pass").with(csrf()))
             .andReturn();

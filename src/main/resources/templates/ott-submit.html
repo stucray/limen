@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout(~{::title}, ~{::main})}">
+<head><title>Sign in with magic link — Limen</title></head>
+<body>
+<main>
+    <article class="card card--auth">
+        <hgroup>
+            <h1>Sign in with your magic link</h1>
+            <p>Click the button to complete sign-in.</p>
+        </hgroup>
+        <form method="post" th:action="@{/t/{slug}/login/ott(slug=${slug})}" class="stack">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" name="token" th:value="${token}"/>
+            <button type="submit" class="btn--block" data-test-action="ott-submit"
+                    autofocus>Sign in</button>
+        </form>
+    </article>
+</main>
+</body>
+</html>

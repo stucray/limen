@@ -109,7 +109,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
         userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
-            true, true, false, LocalDateTime.now()));
+            true, true, false, true, LocalDateTime.now()));
 
         MvcResult loginResult = mockMvc.perform(post("/manage/t/alpha-corp/login")
                 .param("email", "alice@example.test").param("password", "temp")
@@ -127,7 +127,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
         userRepository.save(new User(
             null, tenant.id(), "owner@example.test",
             passwordEncoder.encode("password"),
-            true, false, false, LocalDateTime.now()));
+            true, false, false, true, LocalDateTime.now()));
 
         MockHttpSession session = startAuthorize(newPkce().challenge());
 
@@ -149,7 +149,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
-            true, true, false, LocalDateTime.now()));
+            true, true, false, true, LocalDateTime.now()));
 
         MockHttpSession session = startAuthorize(newPkce().challenge());
 
@@ -176,7 +176,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
-            true, true, false, LocalDateTime.now()));
+            true, true, false, true, LocalDateTime.now()));
 
         MockHttpSession session = new MockHttpSession();
         mockMvc.perform(post("/manage/t/alpha-corp/login")
@@ -199,7 +199,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
-            true, true, false, LocalDateTime.now()));
+            true, true, false, true, LocalDateTime.now()));
 
         MockHttpSession session = new MockHttpSession();
         mockMvc.perform(post("/manage/t/alpha-corp/login")
@@ -221,7 +221,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
         User original = userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
-            true, true, false, LocalDateTime.now()));
+            true, true, false, true, LocalDateTime.now()));
 
         MockHttpSession session = new MockHttpSession();
         mockMvc.perform(post("/manage/t/alpha-corp/login")
@@ -246,7 +246,7 @@ class ManagementForcedPasswordChangeIntegrationTest {
         userRepository.save(new User(
             null, tenant.id(), "alice@example.test",
             passwordEncoder.encode("temp"),
-            true, true, false, LocalDateTime.now()));
+            true, true, false, true, LocalDateTime.now()));
 
         MockHttpSession session = new MockHttpSession();
         mockMvc.perform(post("/manage/t/alpha-corp/login")

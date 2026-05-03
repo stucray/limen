@@ -53,7 +53,7 @@ class PostLoginIntentsUnitTest {
     @BeforeEach
     void setUp() {
         alpha = new Tenant(1L, "alpha", "Alpha", TenantStatus.ACTIVE, LocalDateTime.now());
-        aliceFresh = new User(10L, 1L, "alice", "hash", true, false, false, LocalDateTime.now());
+        aliceFresh = new User(10L, 1L, "alice", "hash", true, false, false, true, LocalDateTime.now());
         aliceMustChange = aliceFresh.withMustChangePassword(true);
         freshPrincipal = new TenantUserDetails(aliceFresh, alpha);
         mustChangePrincipal = new TenantUserDetails(aliceMustChange, alpha);
