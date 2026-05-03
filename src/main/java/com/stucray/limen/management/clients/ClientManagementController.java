@@ -143,7 +143,7 @@ public class ClientManagementController {
         @AuthenticationPrincipal TenantUserDetails principal,
         RedirectAttributes redirectAttributes
     ) {
-        ClientManagementService.SecretRotationResult result = clientManagementService.rotateSecret(registeredClientId, principal.tenantId());
+        ClientManagementService.SecretRotationResult result = clientManagementService.rotateSecret(registeredClientId, principal.tenantId(), principal.userId());
         redirectAttributes.addFlashAttribute("clientSecret", result.rawSecret());
         redirectAttributes.addFlashAttribute("clientId", registeredClientId);
         return "redirect:/manage/t/" + slug + "/applications/" + appId + "/clients";
