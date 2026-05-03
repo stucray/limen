@@ -5,6 +5,7 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
 import com.stucray.limen.ui.pages.manage.applications.clients.ManageApplicationClientsListPage;
+import com.stucray.limen.ui.pages.manage.applications.roles.ManageApplicationRolesListPage;
 
 public final class ManageApplicationsListPage {
 
@@ -45,5 +46,14 @@ public final class ManageApplicationsListPage {
             .click();
         page.waitForURL(baseUrl + "/manage/t/" + slug + "/applications/*/clients");
         return new ManageApplicationClientsListPage(page, baseUrl, slug);
+    }
+
+    public ManageApplicationRolesListPage clickRolesForApplication(String applicationName) {
+        page.locator("tr")
+            .filter(new Locator.FilterOptions().setHasText(applicationName))
+            .getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Roles"))
+            .click();
+        page.waitForURL(baseUrl + "/manage/t/" + slug + "/applications/*/roles");
+        return new ManageApplicationRolesListPage(page, baseUrl, slug);
     }
 }

@@ -15,7 +15,7 @@
             <h1>Roles</h1>
             <p>Application roles for <strong th:text="${app.name()}">app</strong>.</p>
         </hgroup>
-        <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/roles/new'}" class="btn">New role</a>
+        <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/roles/new'}" class="btn" data-test-action="roles-new">New role</a>
     </div>
 
     <p class="form-error" th:if="${errorMessage}" th:text="${errorMessage}"></p>
