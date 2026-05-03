@@ -27,7 +27,12 @@ public final class SystemTenantsListPage {
     }
 
     public SystemTenantsListPage assertTenantSlugVisible(String slug) {
-        PlaywrightAssertions.assertThat(page.getByText(slug)).isVisible();
+        // setExact(true) targets the <code>{slug}</code> cell directly. The
+        // post-create flash message ("Created tenant {slug}.") would otherwise
+        // also match and trip Playwright's strict-mode duplicate guard.
+        PlaywrightAssertions.assertThat(
+            page.getByText(slug, new Page.GetByTextOptions().setExact(true))
+        ).isVisible();
         return this;
     }
 }

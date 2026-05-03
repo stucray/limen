@@ -1,17 +1,11 @@
 package com.stucray.limen.management.signup;
 
-import com.stucray.limen.auth.ott.EmailVerificationService;
-import com.stucray.limen.tenant.Tenant;
-import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
-import com.stucray.limen.user.User;
-import com.stucray.limen.user.UserRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import com.stucray.limen.tenant.TenantUserBootstrap;
+import com.stucray.limen.tenant.TenantUserBootstrap.OwnerCredentials;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -25,23 +19,14 @@ public class SignupService {
     );
 
     private final TenantRepository tenantRepository;
-    private final TenantProvisioningService tenantProvisioningService;
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final EmailVerificationService emailVerificationService;
+    private final TenantUserBootstrap tenantUserBootstrap;
 
     public SignupService(
         TenantRepository tenantRepository,
-        TenantProvisioningService tenantProvisioningService,
-        UserRepository userRepository,
-        PasswordEncoder passwordEncoder,
-        EmailVerificationService emailVerificationService
+        TenantUserBootstrap tenantUserBootstrap
     ) {
         this.tenantRepository = tenantRepository;
-        this.tenantProvisioningService = tenantProvisioningService;
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.emailVerificationService = emailVerificationService;
+        this.tenantUserBootstrap = tenantUserBootstrap;
     }
 
     public sealed interface SignupResult {
@@ -49,11 +34,40 @@ public class SignupService {
         record Error(String field, String message) implements SignupResult {}
     }
 
-    @Transactional
-    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     public SignupResult signup(SignupForm form) {
         String slug = form.slug() == null ? "" : form.slug().trim();
+        SignupResult.Error slugError = validateSlug(slug, tenantRepository);
+        if (slugError != null) {
+            return slugError;
+        }
 
+        String orgName = form.organizationName() == null ? "" : form.organizationName().trim();
+        if (orgName.isBlank()) {
+            return new SignupResult.Error("organizationName", "Organization name is required");
+        }
+
+        String email = form.email() == null ? "" : form.email().trim();
+        SignupResult.Error emailError = validateEmail(email);
+        if (emailError != null) {
+            return emailError;
+        }
+
+        if (form.password() == null || form.password().isBlank()) {
+            return new SignupResult.Error("password", "Password is required");
+        }
+
+        tenantUserBootstrap.bootstrap(
+            slug, orgName, email, new OwnerCredentials.Provided(form.password()));
+        return new SignupResult.Success(slug, email);
+    }
+
+    /**
+     * Slug-validation rules, exposed as a static helper so the system-admin
+     * tenant-create form can apply identical checks (PRD #120 acceptance:
+     * "Slug validation reuses the rules from {@code SignupService}").
+     * Returns null when the slug is acceptable.
+     */
+    public static SignupResult.@Nullable Error validateSlug(String slug, TenantRepository tenantRepository) {
         if (slug.length() < 3 || slug.length() > 48) {
             return new SignupResult.Error("slug", "Slug must be between 3 and 48 characters");
         }
@@ -66,13 +80,15 @@ public class SignupService {
         if (tenantRepository.existsBySlug(slug)) {
             return new SignupResult.Error("slug", "That slug is already taken");
         }
+        return null;
+    }
 
-        String orgName = form.organizationName() == null ? "" : form.organizationName().trim();
-        if (orgName.isBlank()) {
-            return new SignupResult.Error("organizationName", "Organization name is required");
-        }
-
-        String email = form.email() == null ? "" : form.email().trim();
+    /**
+     * Email-validation rules. Mirrors {@link #validateSlug} so the sysadmin
+     * tenant-create form gets the same length / format checks. Returns null
+     * when the email is acceptable.
+     */
+    public static SignupResult.@Nullable Error validateEmail(String email) {
         if (email.isBlank()) {
             return new SignupResult.Error("email", "Email is required");
         }
@@ -82,20 +98,6 @@ public class SignupService {
         if (!EMAIL_FORMAT.matcher(email).matches()) {
             return new SignupResult.Error("email", "Email must be a valid email address");
         }
-
-        if (form.password() == null || form.password().isBlank()) {
-            return new SignupResult.Error("password", "Password is required");
-        }
-
-        Tenant tenant = tenantProvisioningService.createTenant(slug, orgName);
-        User savedOwner = userRepository.save(new User(
-            null, tenant.id(), email,
-            Objects.requireNonNull(passwordEncoder.encode(form.password())),
-            true, false, true, false, LocalDateTime.now()
-        ));
-
-        emailVerificationService.issueVerification(tenant, savedOwner);
-
-        return new SignupResult.Success(slug, email);
+        return null;
     }
 }

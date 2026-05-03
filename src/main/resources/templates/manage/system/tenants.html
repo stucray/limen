@@ -13,6 +13,10 @@
         <p>Manage tenants across the system.</p>
     </hgroup>
 
+    <p class="actions">
+        <a class="btn--primary" th:href="@{/manage/system/tenants/new}" data-test-action="new-tenant">New tenant</a>
+    </p>
+
     <p class="form-error" th:if="${errorMessage}" th:text="${errorMessage}"></p>
     <p class="form-info" th:if="${successMessage}" th:text="${successMessage}"></p>
 
