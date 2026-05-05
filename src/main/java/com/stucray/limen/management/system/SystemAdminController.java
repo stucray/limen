@@ -1,13 +1,11 @@
 package com.stucray.limen.management.system;
 
 import com.stucray.limen.auth.TenantUserDetails;
-import com.stucray.limen.management.signup.SignupService;
-import com.stucray.limen.management.signup.SignupService.SignupResult;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
-import com.stucray.limen.tenant.TenantUserBootstrap;
-import com.stucray.limen.tenant.TenantUserBootstrap.OwnerCredentials;
+import com.stucray.limen.tenant.provisioning.TenantProvisioner;
+import com.stucray.limen.tenant.provisioning.TenantProvisioner.NewTenantRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -26,16 +24,16 @@ public class SystemAdminController {
 
     private final TenantRepository tenantRepository;
     private final TenantProvisioningService tenantProvisioningService;
-    private final TenantUserBootstrap tenantUserBootstrap;
+    private final TenantProvisioner tenantProvisioner;
 
     public SystemAdminController(
         TenantRepository tenantRepository,
         TenantProvisioningService tenantProvisioningService,
-        TenantUserBootstrap tenantUserBootstrap
+        TenantProvisioner tenantProvisioner
     ) {
         this.tenantRepository = tenantRepository;
         this.tenantProvisioningService = tenantProvisioningService;
-        this.tenantUserBootstrap = tenantUserBootstrap;
+        this.tenantProvisioner = tenantProvisioner;
     }
 
     @GetMapping("/tenants")
@@ -60,33 +58,22 @@ public class SystemAdminController {
         Model model,
         RedirectAttributes redirectAttributes
     ) {
-        String trimmedSlug = slug == null ? "" : slug.trim();
-        String trimmedName = displayName == null ? "" : displayName.trim();
-        String trimmedEmail = ownerEmail == null ? "" : ownerEmail.trim();
-        TenantCreateForm form = new TenantCreateForm(trimmedSlug, trimmedName, trimmedEmail);
-
-        SignupResult.Error slugError = SignupService.validateSlug(trimmedSlug, tenantRepository);
-        if (slugError != null) {
-            return renderFormWithError(model, form, slugError);
-        }
-        if (trimmedName.isBlank()) {
-            return renderFormWithError(model, form,
-                new SignupResult.Error("displayName", "Display name is required"));
-        }
-        SignupResult.Error emailError = SignupService.validateEmail(trimmedEmail);
-        if (emailError != null) {
-            // Helper reports the field as "email" (what /signup uses); this form's
-            // input is named "ownerEmail" so we rebind to the matching template key.
-            return renderFormWithError(model, form,
-                new SignupResult.Error("ownerEmail", emailError.message()));
-        }
-
-        Tenant tenant = tenantUserBootstrap.bootstrap(
-            trimmedSlug, trimmedName, trimmedEmail, new OwnerCredentials.GenerateRandom());
-        redirectAttributes.addFlashAttribute("successMessage",
-            "Created tenant " + tenant.slug() + ". A verification email has been sent to "
-                + trimmedEmail + ".");
-        return "redirect:/manage/system/tenants";
+        return switch (tenantProvisioner.provision(
+            NewTenantRequest.fromSystemAdminForm(slug, displayName, ownerEmail))) {
+            case TenantProvisioner.Result.Provisioned p -> {
+                redirectAttributes.addFlashAttribute("successMessage",
+                    "Created tenant " + p.tenant().slug() + ". A verification email has been sent to "
+                        + p.ownerEmail() + ".");
+                yield "redirect:/manage/system/tenants";
+            }
+            case TenantProvisioner.Result.Rejected r -> {
+                model.addAttribute("form", new TenantCreateForm(
+                    trim(slug), trim(displayName), trim(ownerEmail)));
+                model.addAttribute("errorField", r.field());
+                model.addAttribute("errorMessage", r.message());
+                yield "manage/system/tenant-new";
+            }
+        };
     }
 
     @PostMapping("/tenants/{tenantId}/suspend")
@@ -133,13 +120,8 @@ public class SystemAdminController {
         return "redirect:/manage/system/tenants";
     }
 
-    private static String renderFormWithError(
-        Model model, TenantCreateForm form, SignupResult.Error error
-    ) {
-        model.addAttribute("form", form);
-        model.addAttribute("errorField", error.field());
-        model.addAttribute("errorMessage", error.message());
-        return "manage/system/tenant-new";
+    private static String trim(String value) {
+        return value == null ? "" : value.trim();
     }
 
     public record TenantCreateForm(String slug, String displayName, String ownerEmail) {}
