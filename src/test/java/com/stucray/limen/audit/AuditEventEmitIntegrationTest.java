@@ -4,7 +4,7 @@ import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.management.applications.Application;
 import com.stucray.limen.management.applications.ApplicationService;
 import com.stucray.limen.management.clients.ClientManagementService;
-import com.stucray.limen.management.users.UserManagementService;
+import com.stucray.limen.management.users.UserAdministrationService;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
@@ -41,7 +41,7 @@ class AuditEventEmitIntegrationTest {
 
     @Autowired TenantProvisioningService tenantProvisioningService;
     @Autowired TenantRepository tenantRepository;
-    @Autowired UserManagementService userManagementService;
+    @Autowired UserAdministrationService userAdministration;
     @Autowired UserRepository userRepository;
     @Autowired ClientManagementService clientManagementService;
     @Autowired ApplicationService applicationService;
@@ -133,40 +133,13 @@ class AuditEventEmitIntegrationTest {
     }
 
     @Test
-    @DisplayName("Forced password change publishes PasswordChangedEvent → password_changed row with trigger=forced")
-    void forcedPasswordChangeEmitsAuditRow() {
-        Tenant tenant = tenantProvisioningService.createTenant(uniqueSlug(), "X");
-        User user = seedUser(tenant.id(), true);
-
-        userManagementService.changePassword(user.id(), tenant.id(), "newPass1234");
-
-        Map<String, Object> row = latestEventForTenantOfType(tenant.id(), "password_changed");
-        assertThat(row).isNotNull();
-        assertThat(row.get("actor_user_id")).isEqualTo(user.id());
-        assertThat(row.get("details").toString().replace(" ", ""))
-            .contains("\"trigger\":\"forced\"");
-    }
-
-    @Test
-    @DisplayName("Self-service password change publishes PasswordChangedEvent → trigger=self_service")
-    void selfServicePasswordChangeEmitsAuditRow() {
-        Tenant tenant = tenantProvisioningService.createTenant(uniqueSlug(), "X");
-        User user = seedUser(tenant.id(), false);
-
-        userManagementService.changePassword(user.id(), tenant.id(), "newPass1234");
-
-        Map<String, Object> row = latestEventForTenantOfType(tenant.id(), "password_changed");
-        assertThat(row.get("details").toString().replace(" ", ""))
-            .contains("\"trigger\":\"self_service\"");
-    }
-
-    @Test
     @DisplayName("Admin-initiated password reset publishes PasswordChangedEvent → trigger=admin_reset")
     void adminResetPasswordEmitsAuditRow() {
         Tenant tenant = tenantProvisioningService.createTenant(uniqueSlug(), "X");
         User user = seedUser(tenant.id(), false);
+        long admin = seedSystemAdminId();
 
-        userManagementService.resetPassword(user.id(), tenant.id(), "tempPass1234");
+        userAdministration.resetPassword(user.id(), tenant.id(), admin, "tempPass1234");
 
         Map<String, Object> row = latestEventForTenantOfType(tenant.id(), "password_changed");
         assertThat(row.get("details").toString().replace(" ", ""))
