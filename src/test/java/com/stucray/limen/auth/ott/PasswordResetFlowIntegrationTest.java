@@ -55,7 +55,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       {@code delivered=true} for known emails and {@code delivered=false} for
  *       unknown) and {@code password_reset_completed} appear after the matching
  *       events. The {@code password_changed} row from
- *       {@code UserManagementService.changePassword} also lands.</li>
+ *       {@code TenantPasswordChangeFlow.changeAndRedirect} also lands.</li>
  * </ul>
  */
 @Import(TestcontainersConfiguration.class)

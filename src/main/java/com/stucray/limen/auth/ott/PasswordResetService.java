@@ -26,7 +26,7 @@ import java.util.Optional;
  *   <li>{@link #completeReset(Long, Long)} — emits
  *       {@link PasswordResetCompletedEvent} after the user submits their new
  *       password. The hash rotation itself is owned by
- *       {@code UserManagementService.changePassword}, which fires its own
+ *       {@code TenantPasswordChangeFlow.changeAndRedirect}, which fires its own
  *       {@code PasswordChangedEvent}; this is the "the reset journey is done"
  *       marker that lets audit correlate the issue → consume → completion arc.</li>
  * </ul>

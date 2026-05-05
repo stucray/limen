@@ -10,8 +10,14 @@ import com.stucray.limen.audit.events.PasswordResetOttIssuedEvent;
 import com.stucray.limen.audit.events.RateLimitHitEvent;
 import com.stucray.limen.audit.events.TenantCreatedEvent;
 import com.stucray.limen.audit.events.TenantDeletedEvent;
+import com.stucray.limen.audit.events.TenantOwnershipGrantedEvent;
+import com.stucray.limen.audit.events.TenantOwnershipRevokedEvent;
 import com.stucray.limen.audit.events.TenantSuspendedEvent;
 import com.stucray.limen.audit.events.TenantUnsuspendedEvent;
+import com.stucray.limen.audit.events.UserCreatedEvent;
+import com.stucray.limen.audit.events.UserDeletedEvent;
+import com.stucray.limen.audit.events.UserDisabledEvent;
+import com.stucray.limen.audit.events.UserEnabledEvent;
 import com.stucray.limen.audit.events.VerificationOttIssuedEvent;
 import com.stucray.limen.audit.events.VerificationResentEvent;
 import com.stucray.limen.auth.TenantUserDetails;
@@ -139,6 +145,36 @@ public class AuditRegistry {
             event -> AuditRule.Projection.ofUser(
                 event.tenantId(), event.userId(), event.userId(),
                 Map.of("trigger", event.trigger().name().toLowerCase()))),
+
+        new AuditRule<>(UserCreatedEvent.class, "user_created", AFTER_COMMIT,
+            event -> AuditRule.Projection.ofUser(
+                event.tenantId(), event.actorUserId(), event.userId(),
+                Map.of("email", event.email()))),
+
+        new AuditRule<>(UserEnabledEvent.class, "user_enabled", AFTER_COMMIT,
+            event -> AuditRule.Projection.ofUser(
+                event.tenantId(), event.actorUserId(), event.userId(),
+                Map.of("email", event.email()))),
+
+        new AuditRule<>(UserDisabledEvent.class, "user_disabled", AFTER_COMMIT,
+            event -> AuditRule.Projection.ofUser(
+                event.tenantId(), event.actorUserId(), event.userId(),
+                Map.of("email", event.email()))),
+
+        new AuditRule<>(UserDeletedEvent.class, "user_deleted", AFTER_COMMIT,
+            event -> AuditRule.Projection.ofUser(
+                event.tenantId(), event.actorUserId(), event.userId(),
+                Map.of("email", event.email()))),
+
+        new AuditRule<>(TenantOwnershipGrantedEvent.class, "tenant_ownership_granted", AFTER_COMMIT,
+            event -> AuditRule.Projection.ofUser(
+                event.tenantId(), event.actorUserId(), event.userId(),
+                Map.of("email", event.email()))),
+
+        new AuditRule<>(TenantOwnershipRevokedEvent.class, "tenant_ownership_revoked", AFTER_COMMIT,
+            event -> AuditRule.Projection.ofUser(
+                event.tenantId(), event.actorUserId(), event.userId(),
+                Map.of("email", event.email()))),
 
         // Pre-auth event: the request is rejected before any controller runs,
         // so there's no servlet request-context the dispatcher can read. The

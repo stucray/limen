@@ -2,23 +2,33 @@ package com.stucray.limen.management.users;
 
 import com.stucray.limen.auth.TenantUserDetails;
 import com.stucray.limen.management.memberships.UserMembershipPortfolioQuery;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.Map;
 
 @Controller
 @RequestMapping("/manage/t/{slug}/users")
 public class UserManagementController {
 
-    private final UserManagementService userManagementService;
+    private final UserAdministrationService userAdministration;
     private final UserMembershipPortfolioQuery userMembershipPortfolioQuery;
 
     public UserManagementController(
-        UserManagementService userManagementService,
+        UserAdministrationService userAdministration,
         UserMembershipPortfolioQuery userMembershipPortfolioQuery
     ) {
-        this.userManagementService = userManagementService;
+        this.userAdministration = userAdministration;
         this.userMembershipPortfolioQuery = userMembershipPortfolioQuery;
     }
 
@@ -29,7 +39,7 @@ public class UserManagementController {
         Model model
     ) {
         model.addAttribute("slug", slug);
-        model.addAttribute("users", userManagementService.listUsers(principal.tenantId()));
+        model.addAttribute("users", userAdministration.listUsers(principal.tenantId()));
         return "manage/users/list";
     }
 
@@ -48,7 +58,7 @@ public class UserManagementController {
         Model model
     ) {
         try {
-            userManagementService.createUser(principal.tenantId(), email, temporaryPassword);
+            userAdministration.createUser(principal.tenantId(), principal.userId(), email, temporaryPassword);
             return "redirect:/manage/t/" + slug + "/users";
         } catch (IllegalArgumentException e) {
             model.addAttribute("slug", slug);
@@ -64,7 +74,7 @@ public class UserManagementController {
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal
     ) {
-        userManagementService.setEnabled(userId, principal.tenantId(), true);
+        userAdministration.enable(userId, principal.tenantId(), principal.userId());
         return "redirect:/manage/t/" + slug + "/users";
     }
 
@@ -74,7 +84,7 @@ public class UserManagementController {
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal
     ) {
-        userManagementService.setEnabled(userId, principal.tenantId(), false);
+        userAdministration.disable(userId, principal.tenantId(), principal.userId());
         return "redirect:/manage/t/" + slug + "/users";
     }
 
@@ -84,7 +94,7 @@ public class UserManagementController {
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal
     ) {
-        userManagementService.deleteUser(userId, principal.tenantId());
+        userAdministration.deleteUser(userId, principal.tenantId(), principal.userId());
         return "redirect:/manage/t/" + slug + "/users";
     }
 
@@ -96,7 +106,7 @@ public class UserManagementController {
         Model model
     ) {
         model.addAttribute("slug", slug);
-        model.addAttribute("user", userManagementService.getUser(userId, principal.tenantId()));
+        model.addAttribute("user", userAdministration.getUser(userId, principal.tenantId()));
         model.addAttribute("appMemberships", userMembershipPortfolioQuery.portfolioFor(userId, principal.tenantId()));
         return "manage/users/detail";
     }
@@ -109,7 +119,7 @@ public class UserManagementController {
         Model model
     ) {
         model.addAttribute("slug", slug);
-        model.addAttribute("user", userManagementService.getUser(userId, principal.tenantId()));
+        model.addAttribute("user", userAdministration.getUser(userId, principal.tenantId()));
         return "manage/users/reset-password";
     }
 
@@ -120,7 +130,7 @@ public class UserManagementController {
         @AuthenticationPrincipal TenantUserDetails principal,
         @RequestParam String temporaryPassword
     ) {
-        userManagementService.resetPassword(userId, principal.tenantId(), temporaryPassword);
+        userAdministration.resetPassword(userId, principal.tenantId(), principal.userId(), temporaryPassword);
         return "redirect:/manage/t/" + slug + "/users";
     }
 
@@ -130,7 +140,7 @@ public class UserManagementController {
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal
     ) {
-        userManagementService.unlockAccount(userId, principal.tenantId(), principal.userId());
+        userAdministration.unlockAccount(userId, principal.tenantId(), principal.userId());
         return "redirect:/manage/t/" + slug + "/users/" + userId;
     }
 
@@ -140,7 +150,7 @@ public class UserManagementController {
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal
     ) {
-        userManagementService.setTenantOwner(userId, principal.tenantId(), true);
+        userAdministration.grantTenantOwnership(userId, principal.tenantId(), principal.userId());
         return "redirect:/manage/t/" + slug + "/users";
     }
 
@@ -150,7 +160,31 @@ public class UserManagementController {
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal
     ) {
-        userManagementService.setTenantOwner(userId, principal.tenantId(), false);
+        userAdministration.revokeTenantOwnership(userId, principal.tenantId(), principal.userId());
+        return "redirect:/manage/t/" + slug + "/users";
+    }
+
+    /**
+     * Single catch-all for invariant violations from {@link UserAdministrationService}.
+     * Flash-redirects to the users list with the human-readable message rendered as
+     * {@code errorMessage} on the next request. Sealed exception means a future
+     * handler can pattern-match the four kinds (e.g. for HTTP-status discrimination)
+     * with compile-time exhaustiveness.
+     */
+    @ExceptionHandler(UserAdminException.class)
+    public String onUserAdminFailure(
+        UserAdminException ex,
+        HttpServletRequest request,
+        RedirectAttributes flash
+    ) {
+        // @PathVariable on @ExceptionHandler args is not resolved reliably in
+        // this Spring MVC version, so read the slug straight from the request's
+        // URI-template-variables attribute (set by RequestMappingHandlerMapping).
+        @SuppressWarnings("unchecked")
+        Map<String, String> uriVars = (Map<String, String>)
+            request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
+        String slug = uriVars == null ? "" : uriVars.getOrDefault("slug", "");
+        flash.addFlashAttribute("errorMessage", ex.userMessage);
         return "redirect:/manage/t/" + slug + "/users";
     }
 }

@@ -16,6 +16,8 @@
         <a th:href="@{'/manage/t/' + ${slug} + '/users/new'}" class="btn" data-test-action="users-new">Add user</a>
     </div>
 
+    <p class="form-error" th:if="${errorMessage}" th:text="${errorMessage}" data-test-action="users-error"></p>
+
     <table>
         <thead>
             <tr>

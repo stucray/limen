@@ -10,4 +10,5 @@ public interface UserRepository extends CrudRepository<User, Long> {
     Optional<User> findByIdAndTenantId(Long id, Long tenantId);
     List<User> findAllByTenantId(Long tenantId);
     boolean existsByEmailAndTenantId(String email, Long tenantId);
+    long countByTenantIdAndTenantOwnerTrueAndEnabledTrue(Long tenantId);
 }
