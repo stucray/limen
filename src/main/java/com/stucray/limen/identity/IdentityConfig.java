@@ -26,7 +26,7 @@ public class IdentityConfig {
         ProviderManager providerManager = new ProviderManager(tenantAuthProvider);
         // ProviderManager defaults to NullEventPublisher — without this hookup,
         // AuthenticationSuccessEvent / AuthenticationFailureEvent are never
-        // fired, and AuditEventListener (slice 3) + LoginAttemptTracker (this
+        // fired, and AuditDispatcher + LoginAttemptTracker (this
         // slice) both silently never run for the login surface.
         providerManager.setAuthenticationEventPublisher(
             new DefaultAuthenticationEventPublisher(applicationEventPublisher));

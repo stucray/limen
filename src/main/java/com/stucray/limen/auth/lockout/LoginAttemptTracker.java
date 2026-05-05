@@ -28,11 +28,11 @@ import java.util.Optional;
  * {@code now() + window} so the next attempt is rejected by
  * {@code TenantAuthProvider}'s pre-check.
  *
- * <p>Coexists with {@code AuditEventListener}: Spring dispatches every event
- * to all subscribers, so the audit listener's {@code login_failure} row and
+ * <p>Coexists with {@code AuditDispatcher}: Spring dispatches every event
+ * to all subscribers, so the dispatcher's {@code login_failure} row and
  * this tracker's counter increment are independent. The deliberate decision
  * to keep this listener's emit (`AccountLockedEvent`) separate from the audit
- * row write means the audit listener doesn't need to know what triggered a
+ * row write means the audit dispatcher doesn't need to know what triggered a
  * lockout — it just records that an account_locked event happened.
  *
  * <p>Failure cases the tracker silently ignores (no row exists to mutate):
