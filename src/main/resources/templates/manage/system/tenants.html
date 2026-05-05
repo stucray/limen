@@ -20,6 +20,10 @@
     <p class="form-error" th:if="${errorMessage}" th:text="${errorMessage}"></p>
     <p class="form-info" th:if="${successMessage}" th:text="${successMessage}"></p>
 
+    <p class="empty-state" th:if="${#lists.size(tenants) == 1 && tenants[0].isSystem()}">
+        Tenants self-register at <code>/signup</code>. Once another tenant exists, lifecycle actions (suspend, delete) will appear here.
+    </p>
+
     <table>
         <thead>
             <tr>
