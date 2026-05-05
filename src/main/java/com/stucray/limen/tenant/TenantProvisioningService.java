@@ -15,6 +15,26 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+/**
+ * Tenant lifecycle service: create / suspend / unsuspend / delete. The
+ * {@code createTenant} entry point is intentionally narrow — it inserts the
+ * tenant row, seeds a per-tenant signing key (skipped for the system tenant),
+ * and emits {@code TenantCreatedEvent}. It does <em>not</em> bootstrap an
+ * owner user or issue a verification OTT.
+ *
+ * <p>For the production "tenant + owner + verification" provisioning path
+ * driven by {@code /signup} or {@code /manage/system/tenants/new}, go through
+ * {@code tenant.provisioning.TenantProvisioner} — that's the deep module that
+ * owns input normalisation, validation, and atomic orchestration. This class
+ * is its private collaborator for the tenant-row + signing-key + audit-event
+ * step.
+ *
+ * <p>{@code createTenant} stays {@code public} (rather than dropping to
+ * package-private) for two callers that legitimately want a bare tenant
+ * without an owner: the {@code identity.UserBootstrap} startup runner that
+ * seeds the system tenant, and integration-test fixtures that need an
+ * isolated tenant for some other feature's test scenario.
+ */
 @Service
 @Transactional
 public class TenantProvisioningService {
