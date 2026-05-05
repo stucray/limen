@@ -1,10 +1,12 @@
 package com.stucray.limen.auth.login;
 
 import com.stucray.limen.auth.TenantUserDetails;
-import com.stucray.limen.auth.ott.PasswordResetSessionMarker;
+import com.stucray.limen.auth.ott.OttIntent;
+import com.stucray.limen.auth.ott.TenantOttAuthentication;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,10 +16,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.savedrequest.SavedRequest;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,6 +66,11 @@ class PostLoginIntentsUnitTest {
         mustChangePrincipal = new TenantUserDetails(aliceMustChange, alpha);
         req = new MockHttpServletRequest();
         res = new MockHttpServletResponse();
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -123,9 +134,10 @@ class PostLoginIntentsUnitTest {
     }
 
     @Test
-    @DisplayName("passwordChangeAfterReset: redirects to change-password when the password-reset session marker is present")
-    void passwordChangeAfterResetRedirectsWhenMarkerPresent() {
-        req.getSession(true).setAttribute(PasswordResetSessionMarker.ATTRIBUTE_NAME, Boolean.TRUE);
+    @DisplayName("passwordChangeAfterReset: redirects to change-password when the current Authentication is a TenantOttAuthentication carrying PASSWORD_RESET")
+    void passwordChangeAfterResetRedirectsWhenAuthIsResetIntent() {
+        setSecurityContext(new TenantOttAuthentication(
+            freshPrincipal, List.of(), OttIntent.PASSWORD_RESET));
         PostLoginIntent intent = PostLoginIntents.passwordChangeAfterReset();
 
         String url = intent.resolve(req, res, freshPrincipal, OAUTH2);
@@ -134,8 +146,10 @@ class PostLoginIntentsUnitTest {
     }
 
     @Test
-    @DisplayName("passwordChangeAfterReset: returns null (falls through) when no session exists")
-    void passwordChangeAfterResetFallsThroughWhenNoSession() {
+    @DisplayName("passwordChangeAfterReset: returns null when the TenantOttAuthentication carries VERIFY_EMAIL — only the reset intent triggers the redirect")
+    void passwordChangeAfterResetFallsThroughForVerifyEmailIntent() {
+        setSecurityContext(new TenantOttAuthentication(
+            freshPrincipal, List.of(), OttIntent.VERIFY_EMAIL));
         PostLoginIntent intent = PostLoginIntents.passwordChangeAfterReset();
 
         String url = intent.resolve(req, res, freshPrincipal, OAUTH2);
@@ -144,9 +158,19 @@ class PostLoginIntentsUnitTest {
     }
 
     @Test
-    @DisplayName("passwordChangeAfterReset: returns null when session exists but marker is unset")
-    void passwordChangeAfterResetFallsThroughWhenMarkerAbsent() {
-        req.getSession(true);
+    @DisplayName("passwordChangeAfterReset: returns null when the current Authentication is a plain UsernamePasswordAuthenticationToken — covers the post-rotation case")
+    void passwordChangeAfterResetFallsThroughForPlainAuth() {
+        setSecurityContext(new UsernamePasswordAuthenticationToken(freshPrincipal, null, List.of()));
+        PostLoginIntent intent = PostLoginIntents.passwordChangeAfterReset();
+
+        String url = intent.resolve(req, res, freshPrincipal, OAUTH2);
+
+        assertThat(url).isNull();
+    }
+
+    @Test
+    @DisplayName("passwordChangeAfterReset: returns null when no Authentication is set on the SecurityContext")
+    void passwordChangeAfterResetFallsThroughWhenNoAuth() {
         PostLoginIntent intent = PostLoginIntents.passwordChangeAfterReset();
 
         String url = intent.resolve(req, res, freshPrincipal, OAUTH2);
@@ -162,5 +186,11 @@ class PostLoginIntentsUnitTest {
         String url = intent.resolve(req, res, freshPrincipal, OAUTH2);
 
         assertThat(url).isEqualTo("/t/alpha/");
+    }
+
+    private static void setSecurityContext(org.springframework.security.core.Authentication auth) {
+        SecurityContext ctx = SecurityContextHolder.createEmptyContext();
+        ctx.setAuthentication(auth);
+        SecurityContextHolder.setContext(ctx);
     }
 }

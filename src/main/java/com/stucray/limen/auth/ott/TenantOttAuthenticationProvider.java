@@ -7,7 +7,6 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ott.InvalidOneTimeTokenException;
 import org.springframework.security.authentication.ott.OneTimeToken;
-import org.springframework.security.authentication.ott.OneTimeTokenAuthentication;
 import org.springframework.security.authentication.ott.OneTimeTokenAuthenticationToken;
 import org.springframework.security.authentication.ott.OneTimeTokenService;
 import org.springframework.security.core.Authentication;
@@ -38,11 +37,14 @@ import java.util.Set;
  *       second consume).</li>
  *   <li>{@link OttIntent#PASSWORD_RESET} — also flips {@code email_verified=true}
  *       (clicking a link delivered to the address proves control of it, same
- *       guarantee as the verify-email flow), and sets a session breadcrumb via
- *       {@link PasswordResetSessionMarker} so {@code passwordChangeAfterReset()}
- *       can route the just-authenticated user through change-password ahead of
- *       any saved /oauth2/authorize request.</li>
+ *       guarantee as the verify-email flow).</li>
  * </ul>
+ *
+ * <p>The intent of the consumed token rides on the returned
+ * {@link TenantOttAuthentication}, not on the HTTP session — readers in the
+ * post-login pipeline (intent chain, change-password flow) match on the
+ * authentication type and call {@link TenantOttAuthentication#intent()} rather
+ * than fishing for a session attribute.
  */
 @Component
 public class TenantOttAuthenticationProvider implements AuthenticationProvider {
@@ -102,15 +104,10 @@ public class TenantOttAuthenticationProvider implements AuthenticationProvider {
         principal = new TenantUserDetails(
             principal.user().withEmailVerified(true), principal.tenant());
 
-        if (row.intent() == OttIntent.PASSWORD_RESET) {
-            // Set the session breadcrumb that passwordChangeAfterReset() reads
-            // and TenantPasswordChangeFlow clears on successful submission.
-            PasswordResetSessionMarker.setOnCurrentRequest();
-        }
-
         Set<GrantedAuthority> authorities = new HashSet<>(principal.getAuthorities());
         authorities.add(FactorGrantedAuthority.fromAuthority(FactorGrantedAuthority.OTT_AUTHORITY));
-        OneTimeTokenAuthentication authenticated = new OneTimeTokenAuthentication(principal, authorities);
+        TenantOttAuthentication authenticated =
+            new TenantOttAuthentication(principal, authorities, row.intent());
         authenticated.setDetails(otpToken.getDetails());
         return authenticated;
     }
