@@ -16,7 +16,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -138,14 +140,19 @@ class PasswordResetFlowIntegrationTest {
 
             String location = ottResult.getResponse().getHeader("Location");
             assertThat(location).endsWith("/t/" + slug + "/change-password");
-            // The session marker survived the redirect — the change-password
-            // POST step will read it and emit the completed event.
-            assertThat(session.getAttribute(PasswordResetSessionMarker.ATTRIBUTE_NAME))
-                .isEqualTo(Boolean.TRUE);
+            // The TenantOttAuthentication carrying PASSWORD_RESET landed on the
+            // session-stored SecurityContext — that's how the change-password
+            // POST step will recognise the journey tail and fire completion.
+            SecurityContext stored = (SecurityContext) session.getAttribute(
+                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+            assertThat(stored).isNotNull();
+            assertThat(stored.getAuthentication()).isInstanceOf(TenantOttAuthentication.class);
+            assertThat(((TenantOttAuthentication) stored.getAuthentication()).intent())
+                .isEqualTo(OttIntent.PASSWORD_RESET);
         }
 
         @Test
-        @DisplayName("Submitting the new password clears the marker and emits password_reset_completed + password_changed audit rows")
+        @DisplayName("Submitting the new password rotates the SecurityContext to a plain authenticated principal and emits password_reset_completed + password_changed audit rows")
         void submittingNewPasswordCompletesResetAndAuditsBothEvents() throws Exception {
             String suffix = uniqueSuffix();
             String slug = "rst2-" + suffix;
@@ -169,7 +176,15 @@ class PasswordResetFlowIntegrationTest {
                     .session(session).with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
-            assertThat(session.getAttribute(PasswordResetSessionMarker.ATTRIBUTE_NAME)).isNull();
+            // Rotation: the OTT-intent authentication has been replaced by a
+            // plain authenticated token, so a refresh of the form will not be
+            // routed back into change-password and will not double-fire the
+            // completion event.
+            SecurityContext stored = (SecurityContext) session.getAttribute(
+                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+            assertThat(stored).isNotNull();
+            assertThat(stored.getAuthentication()).isNotInstanceOf(TenantOttAuthentication.class);
+            assertThat(stored.getAuthentication().isAuthenticated()).isTrue();
 
             Map<String, Object> resetCompleted = jdbcTemplate.queryForMap(
                 "SELECT actor_user_id, target_id FROM audit_event "
@@ -185,6 +200,47 @@ class PasswordResetFlowIntegrationTest {
                     + "ORDER BY occurred_at DESC LIMIT 1",
                 tenant.id());
             assertThat(passwordChanged.get("details").toString()).contains("self_service");
+        }
+
+        @Test
+        @DisplayName("Re-submitting the change-password form after a successful reset does not fire a second password_reset_completed — context rotation guards against double-emit")
+        void resubmittingChangePasswordDoesNotDoubleFireCompletion() throws Exception {
+            String suffix = uniqueSuffix();
+            String slug = "rst3-" + suffix;
+            String email = "owner-" + suffix + "@example.test";
+            String newPassword = "new-secret-" + suffix;
+            Tenant tenant = tenantProvisioningService.createTenant(slug, "Reset3 " + suffix);
+            userRepository.save(activeUser(tenant.id(), email));
+
+            TenantOneTimeToken issued = TenantScope.call(tenant.slug(), tenant.id(), () ->
+                tokenService.generateForIntent(email, OttIntent.PASSWORD_RESET));
+
+            MockHttpSession session = new MockHttpSession();
+            mockMvc.perform(post("/t/" + slug + "/login/ott")
+                    .param("token", issued.tokenValue())
+                    .session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+
+            mockMvc.perform(post("/t/" + slug + "/change-password")
+                    .param("newPassword", newPassword)
+                    .param("confirmPassword", newPassword)
+                    .session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+
+            // Refresh: same session, same form, second POST. The reset journey
+            // is over (context rotated) so this should look like a vanilla
+            // self-service password change, not a reset completion.
+            mockMvc.perform(post("/t/" + slug + "/change-password")
+                    .param("newPassword", newPassword)
+                    .param("confirmPassword", newPassword)
+                    .session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+
+            Integer completedCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM audit_event "
+                    + "WHERE event_type = 'password_reset_completed' AND tenant_id = ?",
+                Integer.class, tenant.id());
+            assertThat(completedCount).isEqualTo(1);
         }
     }
 

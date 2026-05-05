@@ -1,6 +1,9 @@
 package com.stucray.limen.auth.login;
 
-import com.stucray.limen.auth.ott.PasswordResetSessionMarker;
+import com.stucray.limen.auth.ott.OttIntent;
+import com.stucray.limen.auth.ott.TenantOttAuthentication;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.savedrequest.SavedRequest;
@@ -18,10 +21,9 @@ import java.net.URI;
  *       OAuth2-resume so an unverified principal cannot complete an authorize
  *       flow before clicking the magic link.</li>
  *   <li>{@link #passwordChangeAfterReset()} — redirect to change-password when
- *       the just-authenticated session carries the password-reset breadcrumb
- *       set by {@code TenantOttAuthenticationProvider} on a {@code password-reset}
- *       OTT consume. Ahead of OAuth2-resume so a reset interrupts any saved
- *       authorize.</li>
+ *       the just-authenticated session is a {@link TenantOttAuthentication} with
+ *       {@code intent=PASSWORD_RESET}. Ahead of OAuth2-resume so a reset
+ *       interrupts any saved authorize.</li>
  *   <li>{@link #passwordChangeRequired()} — redirect when {@code mustChangePassword} is set.</li>
  *   <li>{@link #resumeOAuth2Authorize()} — consume a saved {@code /oauth2/authorize} request.</li>
  *   <li>{@link #tenantHome()} — terminal default; always returns the tenant home URL.</li>
@@ -55,16 +57,21 @@ public final class PostLoginIntents {
     }
 
     /**
-     * If the just-completed login was an OTT consume with intent=password-reset,
-     * route to change-password. The marker is read here, cleared by
-     * {@code TenantPasswordChangeFlow} after a successful submission so a reload
-     * of the form does not fall back to tenant home before the user has actually
-     * set a new password.
+     * If the current {@code Authentication} is a {@link TenantOttAuthentication}
+     * carrying {@link OttIntent#PASSWORD_RESET}, route to change-password. The
+     * intent rides on the authentication itself (persisted across requests via
+     * the security context), so a reload of the change-password form keeps
+     * routing here until {@code TenantPasswordChangeFlow} rotates the context
+     * to a plain authenticated principal on successful submission.
      */
     public static PostLoginIntent passwordChangeAfterReset() {
-        return (req, res, principal, scheme) -> PasswordResetSessionMarker.isPresent(req)
-            ? scheme.changePasswordUrl(principal.tenantSlug())
-            : null;
+        return (req, res, principal, scheme) -> {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            return auth instanceof TenantOttAuthentication tott
+                && tott.intent() == OttIntent.PASSWORD_RESET
+                    ? scheme.changePasswordUrl(principal.tenantSlug())
+                    : null;
+        };
     }
 
     public static PostLoginIntent resumeOAuth2Authorize() {

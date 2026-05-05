@@ -1,12 +1,19 @@
 package com.stucray.limen.auth.login;
 
 import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.auth.ott.OttIntent;
 import com.stucray.limen.auth.ott.PasswordResetService;
-import com.stucray.limen.auth.ott.PasswordResetSessionMarker;
+import com.stucray.limen.auth.ott.TenantOttAuthentication;
 import com.stucray.limen.management.users.UserManagementService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.jspecify.annotations.Nullable;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.stereotype.Component;
@@ -29,6 +36,7 @@ public class TenantPasswordChangeFlow {
     private final UserManagementService userManagementService;
     private final PasswordResetService passwordResetService;
     private final HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
+    private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
     public TenantPasswordChangeFlow(
         UserManagementService userManagementService,
@@ -60,15 +68,24 @@ public class TenantPasswordChangeFlow {
         userManagementService.changePassword(
             principal.userId(), principal.tenantId(), newPassword);
 
-        // If the marker is present, this submission is the tail of a
-        // password-reset journey. Clear it (so a refresh of the form does not
-        // double-fire completion) and emit the reset-completed audit event,
-        // before computing the redirect target. The PasswordChangedEvent fired
-        // by changePassword above covers the hash-rotation audit row; this is
-        // the additional "the reset journey is done" marker.
-        if (PasswordResetSessionMarker.isPresent(request)) {
-            PasswordResetSessionMarker.clear(request);
+        // If the current Authentication is a TenantOttAuthentication carrying
+        // PASSWORD_RESET, this submission is the tail of a reset journey. Emit
+        // the reset-completed audit event and rotate the SecurityContext to a
+        // plain authenticated principal — that ends the journey in code, so a
+        // refresh of the form cannot re-fire completeReset and cannot keep the
+        // user routed at change-password by passwordChangeAfterReset(). The
+        // PasswordChangedEvent fired by changePassword above covers the
+        // hash-rotation audit row; this is the additional "reset journey done"
+        // marker.
+        Authentication current = SecurityContextHolder.getContext().getAuthentication();
+        if (current instanceof TenantOttAuthentication tott
+            && tott.intent() == OttIntent.PASSWORD_RESET) {
             passwordResetService.completeReset(principal.userId(), principal.tenantId());
+            SecurityContext rotated = SecurityContextHolder.createEmptyContext();
+            rotated.setAuthentication(new UsernamePasswordAuthenticationToken(
+                principal, null, principal.getAuthorities()));
+            SecurityContextHolder.setContext(rotated);
+            securityContextRepository.saveContext(rotated, request, response);
         }
 
         SavedRequest saved = requestCache.getRequest(request, response);
