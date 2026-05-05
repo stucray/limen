@@ -22,9 +22,11 @@
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **User** | A single entity type representing any authenticated identity, always scoped to exactly one Tenant | Principal, account, member |
-| **Username** | The unique string a User uses to identify themselves at login within their Tenant | Login name, email, identifier |
+| **Email** | The User's identifier, unique within a Tenant — `UNIQUE(tenant_id, email)`. The same email may identify two distinct Users in two different Tenants | Username, login name, identifier |
 | **Password Hash** | The BCrypt-encoded form of a User's password stored in the database | Encrypted password |
 | **Enabled** | A flag indicating whether a User may authenticate | Active, unlocked |
+| **Email Verified** | A state, signalled by the `email_verified` flag on a User, recording that the User has consumed a verification One-Time Token. Required before first login | Confirmed, activated |
+| **Account Lockout** | A state, signalled by `locked_until` being set in the future on a User, that rejects logins with an explicit "account locked" message rather than "wrong password". Triggered automatically by `LoginAttemptTracker` after a configured number of consecutive failures; cleared by a Tenant Owner via the **Unlock account** action | Account suspension, account block |
 
 ## Applications and Clients
 
@@ -78,6 +80,8 @@
 | **Management Login** | The login surface at `/manage/t/{slug}/login` used by Tenant Owners and System Admins to access the management console | Console login, admin login |
 | **End-User Login** | The login surface at `/t/{slug}/login` used by OAuth2 end-users during the authorization code flow | OAuth2 login, app login |
 | **Forced Password Change** | The state, signalled by the `must_change_password` flag on a User, requiring a new password to be set before any other authenticated action proceeds | Password reset, mandatory change |
+| **One-Time Token** | A short-lived, single-use token delivered by email. Limen issues two intents off one mechanism: **verify-email** (gate first login) and **password-reset** (drop into Forced Password Change). Tenant-isolated — a token issued under Tenant A is unusable under Tenant B | OTT, magic link, verification link |
+| **Magic Link** | The URL form of a **One-Time Token** as delivered to the User's email. Synonym used in user-facing copy | — |
 
 ## Sessions & Persistent Authentication
 
@@ -103,9 +107,12 @@
 - **Tenant Isolation** applies across credentials, **Sessions**, **Persistent Logins**, OAuth2 **Authorizations**, and **Authorization Consents** — none of these may cross **Tenant** boundaries
 - A **User** belongs to exactly one **Tenant** (including the **System Tenant**)
 - The **Landing Page** at `/` is the only public, non-tenant-scoped surface other than `/signup`. Bare `/login` is a slug-aware forwarder, not a login surface: with `?slug=X` it 302s to `/manage/t/X/login`, otherwise to the **Landing Page**
-- **Management Login** and **End-User Login** both validate against the **User** pool of the named **Tenant** — the same **Username** in two **Tenants** authenticates two different **Users**
+- **Management Login** and **End-User Login** both validate against the **User** pool of the named **Tenant** — the same **Email** in two **Tenants** authenticates two different **Users**
 - A **Persistent Login** is bound to one **Tenant**; presenting its cookie at another **Tenant**'s URL is rejected
 - A **User** with **Forced Password Change** set must complete it before any **Session** or **Authorization** proceeds
+- A **User** whose **Email Verified** flag is false cannot complete login — the auth backend rejects the attempt with a "verify your email" message and a "Resend verification" link, which issues a fresh **verify-email One-Time Token**
+- A **User** in **Account Lockout** is rejected at login *before* the password is checked, so a locked account does not leak whether the supplied password was correct
+- A **password-reset One-Time Token**, once consumed, drops the User into **Forced Password Change** — both flows share the same change-password orchestrator
 - A **Tenant** contains zero or more **Applications**
 - An **Application** contains zero or more **Clients** and defines the **Roles** assignable as either **App Roles** or **Client Roles** under it
 - A **User** may have an **Application Membership** in an Application and/or a **Client Membership** in individual Clients within it
@@ -141,16 +148,25 @@
 
 > **Domain expert:** "Each **Tenant** has its own **Signing Key**, generated when the **Tenant** is provisioned. The private half is stored encrypted under the deployment's **Key Encryption Key**; the public half is served from the **JWK Set**."
 
-> **Dev:** "If two **Tenants** both have a **User** named `alice`, what stops the wrong **User** from authenticating?"
+> **Dev:** "If two **Tenants** both have a **User** with **Email** `alice@example.com`, what stops the wrong **User** from authenticating?"
 
-> **Domain expert:** "**Tenant Isolation**. **Management Login** and **End-User Login** both carry the **Slug** from the URL into the auth backend, so credentials are validated against `(tenant_id, username)`, not `username` alone. A **Persistent Login** for tenant A presented at tenant B's URL is also rejected — the cookie is bound to the **Tenant** that issued it."
+> **Domain expert:** "**Tenant Isolation**. **Management Login** and **End-User Login** both carry the **Slug** from the URL into the auth backend, so credentials are validated against `(tenant_id, email)`, not `email` alone. A **Persistent Login** for tenant A presented at tenant B's URL is also rejected — the cookie is bound to the **Tenant** that issued it."
 
 > **Dev:** "And **Forced Password Change**?"
 
 > **Domain expert:** "Set the flag on a **User** and their next successful authentication — either surface — diverts to a change-password form before any **Session** is fully established or any **Authorization** can resume."
 
+> **Dev:** "How does the User reset their password if they've forgotten it?"
+
+> **Domain expert:** "They submit their email at `/t/{slug}/forgot-password`. Limen issues a `password-reset` **One-Time Token** and emails the **Magic Link**. Clicking it logs them in just long enough to drop them into **Forced Password Change**. The same OTT mechanism, with a different `intent`, also delivers the verify-email link new Users get at signup — both flows share one primitive but stay tenant-isolated, so a token issued under Tenant A is unusable at Tenant B."
+
+> **Dev:** "What happens if someone keeps trying the wrong password?"
+
+> **Domain expert:** "After a configured threshold of consecutive failures, the **User** enters **Account Lockout** — `locked_until` is set in the future. Subsequent login attempts are rejected *before* the password check runs, so a locked account doesn't leak whether the password was correct. A **Tenant Owner** can clear the lockout from the User detail page; otherwise it expires automatically."
+
 ## Flagged ambiguities
 
+- **"Username"** is the term Spring Security uses for the identity field on `UserDetails` (the `getUsername()` accessor). In Limen, the value carried in that slot is always an **Email**. Avoid "username" in domain conversations and user-facing copy — use **Email**. The Spring API name persists in code (and necessarily so), but the domain term is **Email**.
 - **"User"** was previously used only for management-level identities. It now covers all authenticated identities — management users and OAuth2 end-users are the **same entity type**, differentiated by **Role** and **Membership**, not by entity type. Do not introduce separate entity types for these personas.
 - **"Principal"** must be avoided — it has a specific meaning in Spring Security (`java.security.Principal`) and will cause confusion in a Spring Boot codebase.
 - **"Registered Client"** is a Spring implementation term (`RegisteredClient`). Use **Client** in all domain conversations and documentation.

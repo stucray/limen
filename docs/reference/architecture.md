@@ -67,11 +67,14 @@ erDiagram
     USER {
         uuid id PK
         uuid tenant_id FK
-        string username
+        string email
         string password_hash
         bool enabled
         bool must_change_password
         bool tenant_owner
+        bool email_verified
+        int failed_login_attempts
+        timestamptz locked_until
     }
     APPLICATION {
         uuid id PK
@@ -138,7 +141,8 @@ erDiagram
 
 A few things worth calling out:
 
-- **`User.username` is unique within a Tenant**, not globally. The same username can exist in multiple Tenants.
+- **`User.email` is unique within a Tenant**, not globally — `UNIQUE(tenant_id, email)`. The same email can identify two distinct Users in two different Tenants (the user-pool-per-Tenant model used by Auth0 / AWS Cognito).
+- **`email_verified`, `failed_login_attempts`, `locked_until` are operational columns** added by V8 / V9. `email_verified` gates first login (verification OTT must be consumed); the lockout pair is managed by `LoginAttemptTracker` and reset by an admin "Unlock account" action (see §4.9).
 - **`client_metadata` joins to `oauth2_registered_client` 1:1** via a UNIQUE foreign key. The SAS table holds the OAuth2-wire fields (client id/secret, grant types, redirect URIs); `client_metadata` holds Limen-specific fields (display name, owning Application, owning Tenant). This split keeps Limen's tenant model from leaking into Spring's schema.
 - **`tenant_signing_key` enforces "at most one ACTIVE key per Tenant"** with a partial unique index: `UNIQUE(tenant_id) WHERE status = 'ACTIVE'`. This is the enforcement point for key rotation.
 - **`role` is per-Application.** The same row can be assigned as either an App Role (via `application_membership_role`) or a Client Role (via `client_membership_role`). `ON DELETE RESTRICT` from both join tables means you cannot delete a Role that is still in use — admin must unassign first.
@@ -280,7 +284,7 @@ Properties:
 
 There are two tenant-scoped login surfaces — an OAuth2 end-user login at `/t/{slug}/login` and a management-console login at `/manage/t/{slug}/login` — plus a forced-password-change overlay that fires on both. They share one auth backend and one login pipeline.
 
-**Unified tenant-aware backend.** Both login URLs go through the same `TenantAuthProvider` (in `com.stucray.limen.auth`), against a `TenantAuthToken` whose slug is captured from the URL path before authentication runs. The provider loads the User by `(tenant_id, username)` and returns a `TenantUserDetails` whose `tenantSlug()`/`tenantId()` are used downstream. There is no silent fallback to the System Tenant — a missing-or-mismatched slug fails the request loudly.
+**Unified tenant-aware backend.** Both login URLs go through the same `TenantAuthProvider` (in `com.stucray.limen.auth`), against a `TenantAuthToken` whose slug is captured from the URL path before authentication runs. The provider loads the User by `(tenant_id, email)` and returns a `TenantUserDetails` whose `tenantSlug()`/`tenantId()` are used downstream. There is no silent fallback to the System Tenant — a missing-or-mismatched slug fails the request loudly.
 
 **One login deep module, two surfaces.** Form-filter wiring, success dispatch, remember-me, and cross-tenant defence all live in one immutable bean — `TenantLogin` (in `com.stucray.limen.auth.login`). Each surface is described by a `TenantUrlScheme` record (login pattern + slug regex + login/home/change-password URL templates); two scheme beans are registered out of the box (`oauth2UrlScheme`, `managementUrlScheme`). Each security chain wires its surface in one line: `login.applyTo(http, scheme)`. The form-login filter itself is a private inner class parameterised by the scheme — there is no `AbstractTenantAuthFilter` hierarchy any more.
 
@@ -297,6 +301,8 @@ There are two tenant-scoped login surfaces — an OAuth2 end-user login at `/t/{
 Order matters: the password-change check fires **before** OAuth2-resume so a User with an expired password cannot complete an authorize flow before updating it. New policies are added by registering an `@Bean PostLoginIntent` with an `@Order` value; user-supplied intents are prepended to the defaults via `ObjectProvider#orderedStream()`.
 
 **Forced password change.** Two trigger paths share one orchestrator. On a fresh login, the `passwordChangeRequired()` intent (above) catches a User whose `must_change_password` flag is set and redirects them to the surface's change-password URL. Inside the management console — for example, after an admin clicks **Reset password** mid-session — `PasswordChangeRequiredInterceptor` (in `management.users`) catches subsequent requests and does the same redirect. Both change-password controllers (`oauth2.EndUserPasswordChangeController` and `management.users.PasswordChangeController`) delegate to a shared `TenantPasswordChangeFlow` (in `auth.login`) for validation, persistence, and OAuth2-authorize-resume. The resume target is always tenant-prefixed under `/t/{slug}/oauth2/authorize` regardless of which surface the User changed their password on, because the authorize endpoint only lives on the OAuth2 surface.
+
+**Account lockout.** A pre-authentication check in `TenantAuthProvider` rejects logins for Users whose `locked_until` is in the future, throwing `LockedException` *before* the password is verified — so a locked account does not leak whether the supplied password was right. `LoginAttemptTracker` is an `@EventListener` on `AuthenticationFailureEvent` / `AuthenticationSuccessEvent` that increments `failed_login_attempts` on failure, sets `locked_until` once the threshold (default 5) is reached, and clears both columns on success. Tenant Owners reset the counters via `POST /manage/t/{slug}/users/{userId}/unlock` on the User detail page (`UserManagementController.unlock()` → `UserManagementService.unlockAccount(...)` → `AccountUnlockedEvent` for the audit log). Threshold and lockout window are configured via `LockoutProperties`.
 
 ```mermaid
 sequenceDiagram
@@ -319,7 +325,87 @@ sequenceDiagram
     SR-->>U: continue OAuth2 flow
 ```
 
-### 4.6 Authorization — Roles, Memberships, and the JWT `roles` claim
+### 4.6 One-Time Tokens — email verification + self-service password reset
+
+Both flows are built on Spring Security 7's One-Time Token Login primitive (`OneTimeTokenService`, `oneTimeTokenLogin()` DSL, `JdbcOneTimeTokenService`). One OTT mechanism serves both flows; the row's `intent` column distinguishes them.
+
+```mermaid
+flowchart LR
+    subgraph "Issue paths"
+      SU["/signup or sysadmin tenant-create"] --> EVS[EmailVerificationService.issueVerification]
+      RV["/t/{slug}/resend-verification"] --> EVS
+      FP["/t/{slug}/forgot-password"] --> PRS[PasswordResetService]
+      EVS --> SVC[TenantAwareOneTimeTokenService.generateForIntent]
+      PRS --> SVC
+      SVC --> ROW[(one_time_tokens row)]
+      SVC --> NOT[OttEmailNotifier]
+      NOT --> ES[EmailSender]
+    end
+    subgraph "Consume paths"
+      LINK[Magic link] --> SUB["/t/{slug}/login/ott"]
+      SUB --> CON[TenantAwareOneTimeTokenService.consume]
+      CON --> ROW
+      CON --> CHECK{intent?}
+      CHECK -->|verify-email| MV[markEmailVerified] --> HOME["/t/{slug}/"]
+      CHECK -->|password-reset| TPCF[TenantPasswordChangeFlow]
+    end
+```
+
+Properties:
+
+- **`TenantAwareOneTimeTokenService` is a tenant decorator** mirroring the OAuth2 storage pattern (§4.3). Generation requires an active `TenantScope`; `consume()` returns `null` if the token's `tenant_id` does not match the current scope. Tokens issued under Tenant A are invisible / unusable from Tenant B.
+- **One row, two intents.** The `one_time_tokens` table carries an `intent` column constrained to `('verify-email', 'password-reset')`. The `OttIntent` enum + `generateForIntent(username, intent)` API surface this distinction; the bare `OneTimeTokenService.generate(...)` defaults to `VERIFY_EMAIL`.
+- **Consume routing.** `OttSubmitController` (`GET /t/{slug}/login/ott`) is the single submit endpoint. After consume, the controller branches on intent: `verify-email` flips `users.email_verified=true` (via `EmailVerificationService.markEmailVerified`) and lands the User on the end-user home; `password-reset` drops the User into the existing `TenantPasswordChangeFlow` (§4.5) so the same validation, persistence, and OAuth2-resume logic applies.
+- **Verification is required before first login.** Newly provisioned Users have `email_verified=false`; `TenantAuthProvider` rejects unverified-account login with a dedicated message and a "Resend verification" link. `ResendVerificationController` deliberately emits `VerificationResentEvent` regardless of whether the email matches a real User — the response is identical either way to avoid a user-existence oracle.
+- **`/t/{slug}/check-inbox`** is a public landing shown after `/signup` or after a forgot-password submission so the User has somewhere to go before clicking the magic link.
+
+### 4.7 Email infrastructure
+
+`EmailSender` (in `com.stucray.limen.email`) is a single-method interface (`void send(EmailMessage message)`) with two implementations selected by `limen.email.driver`:
+
+| Driver | Implementation | When |
+|---|---|---|
+| `logging` (default) | `LoggingEmailSender` | Dev: writes the rendered message to slf4j; click the magic link straight from the log. No outbound network. |
+| `smtp` | `SmtpEmailSender` | Test profile (Mailpit Testcontainer) and production (real SMTP host). |
+
+There is intentionally no third "real provider" implementation in v3 — Resend / Brevo / SendGrid wiring is a deferred config swap on top of this abstraction (see §6 v4). All callers are OTT generation success handlers and audit-driven notifications; the rest of the codebase never names a concrete sender.
+
+### 4.8 Audit log
+
+A new `audit_event` table (V7) is written by **event listeners**, not by direct service calls. Action sites publish via `ApplicationEventPublisher`; the audit module decides whether to listen. Code that performs an action never names `AuditService`.
+
+```mermaid
+flowchart LR
+    subgraph "Emit sites"
+      AS[Spring Security<br/>AuthenticationSuccessEvent]
+      AF[Spring Security<br/>AuthenticationFailureEvent]
+      DOM["Domain events<br/>(TenantCreatedEvent,<br/>EmailVerifiedEvent,<br/>AccountLockedEvent,<br/>RateLimitHitEvent, ...)"]
+    end
+    AEL[AuditEventListener]
+    AS -->|@EventListener| AEL
+    AF -->|@EventListener| AEL
+    DOM -->|@TransactionalEventListener<br/>AFTER_COMMIT| AEL
+    AEL --> AEW[AuditEventWriter] --> DB[(audit_event<br/>jsonb details)]
+```
+
+Properties:
+
+- **Two listener bindings.** Spring Security's auth events fire synchronously (no enclosing transaction), so they use plain `@EventListener`. Custom domain events use `@TransactionalEventListener(phase = AFTER_COMMIT)` so a failed audit write never rolls back the user-facing action, and a rolled-back domain action never produces a misleading audit row.
+- **Event types currently emitted:** `login_success`, `login_failure`, `tenant_created` / `tenant_suspended` / `tenant_unsuspended` / `tenant_deleted`, `client_secret_rotated`, `verification_ott_issued` / `email_verified` / `verification_resent`, `account_locked` / `account_unlocked`, `password_reset_ott_issued` / `password_reset_completed` / `password_changed`, `rate_limit_hit`.
+- **Schema-shaped for forward compatibility.** `audit_event` carries `tenant_id` (nullable, `ON DELETE SET NULL` so deleting a Tenant does not delete its history), `actor_user_id` (same nullability rule), `event_type`, optional `target_type` / `target_id`, request context (`ip_address`, `user_agent`), `occurred_at`, and a `jsonb details` payload for event-specific fields. Indexed by `(tenant_id, occurred_at DESC)` for the per-tenant timeline view.
+- **Best-effort delivery.** A JVM crash between transaction commit and listener execution loses that one event. At-least-once is the Spring Modulith adoption story — the publication registry persists events before listener execution and replays on restart. Switching to it is an annotation swap on the listener; emit sites are unchanged. (See §6 v3.5.)
+
+### 4.9 Rate limiting
+
+`RateLimitFilter` (in `com.stucray.limen.security.ratelimit`) sits at `Ordered.HIGHEST_PRECEDENCE` so it evaluates before routing and security chains.
+
+- **Backend:** Bucket4j in-memory (`bucket4j-core`), per-process state in a `ConcurrentHashMap<RuleKey, Bucket>`. Postgres-backed Bucket4j is a deferred swap for when horizontal scaling matters (§6 v3.5); the filter interface is designed to accept either backend.
+- **Configuration:** `RateLimitProperties` lists rules. Each rule has a Java regex `pathPattern`, a `KeyType` (`IP` or `CLIENT_ID`), and a Bucket4j spec (`capacity` + `refillTokens` per `refillPeriod`, using greedy refill for fractional/continuous replenishment).
+- **Key extraction:** `IP` reads `request.getRemoteAddr()`; `CLIENT_ID` extracts from the `client_id` form parameter (client_secret_post) or the Basic-auth header (client_secret_basic) for `/oauth2/token` traffic.
+- **Response:** 429 with `Retry-After` (seconds until the bucket has at least one token), and the filter publishes `RateLimitHitEvent` so the rule firing lands in the audit log.
+- **Test posture:** disabled by default in unit tests via `limen.rate-limit.enabled=false` so suite timing is not bucket-bound; integration tests that exercise the filter set the property explicitly.
+
+### 4.10 Authorization — Roles, Memberships, and the JWT `roles` claim
 
 v1 left the `roles` JWT claim hardcoded to `[]`. v2 replaces that with a query against the new Membership tables and adds an explicit gate at `/oauth2/authorize` that rejects authenticated Users without a Client Membership.
 
@@ -392,7 +478,7 @@ Both apply the explicit `tenant_id` predicate. `UserMembershipPortfolioQuery` is
 
 There is intentionally no second write path on the User detail page — all editing happens from the Application screens.
 
-### 4.7 Database schema
+### 4.11 Database schema
 
 | Migration | Purpose |
 |---|---|
@@ -401,16 +487,20 @@ There is intentionally no second write path on the User detail page — all edit
 | `V3__role_catalogue.sql` | Adds the per-Application `role` table (`UNIQUE(application_id, name)`). Discrete rows replace freeform strings: typo-proof assignment, safe renames, room for future metadata, and a natural surface for the "Manage Roles" screen. `ON DELETE CASCADE` from `applications`; the role-assignment join tables in V4/V5 reference `role` with `ON DELETE RESTRICT` so an in-use Role cannot be silently removed |
 | `V4__application_membership.sql` | Adds `application_membership` (`UNIQUE(user_id, application_id)`) and `application_membership_role`. App Memberships govern management-console authority over the Application; their Roles never travel in JWTs |
 | `V5__client_membership.sql` | Adds `client_membership` (`UNIQUE(user_id, client_metadata_id)`) and `client_membership_role`. Hard FK + `ON DELETE CASCADE` from `client_membership.application_membership_id` to `application_membership(id)` enforces the eligibility-gate semantic at the schema level: revoking an App Membership cascades the Client Memberships under it. The cross-table invariant (Client Membership's App Membership must reference the same Application as the Client Membership's Client) is enforced in the service layer rather than via a DB trigger |
+| `V6__email_as_identity.sql` | Replaces `users.username` with `users.email` (`UNIQUE(tenant_id, email)`); also renames `persistent_logins.username` → `email` and recreates its `(tenant_id, email)` index. Per-tenant uniqueness preserves the user-pool-per-Tenant model — the same email can identify two distinct Users in two different Tenants. Existing dev rows were dropped at migration time; there are no real customers yet |
+| `V7__audit_event.sql` | Adds `audit_event` table (`tenant_id` nullable `ON DELETE SET NULL`, `actor_user_id` nullable `ON DELETE SET NULL`, `event_type`, optional `target_type` / `target_id`, `ip_address`, `user_agent`, `occurred_at`, `jsonb details`). Indexed by `(tenant_id, occurred_at DESC)` |
+| `V8__one_time_tokens_and_email_verification.sql` | Adds `one_time_tokens` (token-keyed PK, `tenant_id` `ON DELETE CASCADE`, `intent` constrained to `('verify-email', 'password-reset')`) and `users.email_verified` (boolean, default false) |
+| `V9__account_lockout.sql` | Adds `users.failed_login_attempts` (integer, default 0) and `users.locked_until` (timestamp nullable). Managed by `LoginAttemptTracker` (see §4.5) |
 
 Future migrations must be **additive** (`ALTER TABLE ADD COLUMN ... NULL` → backfill → `ALTER ... NOT NULL`) — never `DROP TABLE` on the tenant-scoped OAuth2 tables, since they will hold live grants and consents.
 
-### 4.8 HTTP route map
+### 4.12 HTTP route map
 
 | Surface | Pattern | Notes |
 |---|---|---|
 | Public | `GET /` | Public landing page (sign-in by slug, sign-up CTA) |
 | Public | `GET /login` | Slug-aware forwarder: `?slug=X` → `/manage/t/X/login`; otherwise → `/`. There is no bare `POST /login` — every login submission is tenant-scoped under `/t/{slug}/login` or `/manage/t/{slug}/login` |
-| Public | `GET /signup`, `POST /signup` | Self-service Tenant creation |
+| Public | `GET /signup`, `POST /signup` | Self-service Tenant creation; sends a verification OTT and lands the Owner on `/t/{slug}/check-inbox` |
 | OAuth2 | `GET /t/{slug}/.well-known/openid-configuration` | Per-tenant discovery |
 | OAuth2 | `GET /t/{slug}/.well-known/jwks.json` | Per-tenant JWKS |
 | OAuth2 | `GET /t/{slug}/oauth2/authorize` | Authorization endpoint |
@@ -419,6 +509,11 @@ Future migrations must be **additive** (`ALTER TABLE ADD COLUMN ... NULL` → ba
 | OAuth2 | `GET /t/{slug}/userinfo` | OIDC UserInfo |
 | OAuth2 | `GET /t/{slug}/login`, `POST /t/{slug}/login` | End-User Login |
 | OAuth2 | `GET /t/{slug}/change-password`, `POST /t/{slug}/change-password` | End-user forced password change, with SavedRequest resume |
+| End-user | `GET /t/{slug}/` | End-user home (post-verification landing) |
+| End-user | `GET /t/{slug}/check-inbox` | Public landing shown after sign-up or forgot-password submission so the User has somewhere to wait for the magic link |
+| End-user | `GET /t/{slug}/login/ott` | OTT consume endpoint — branches on `intent` to email-verification success or password-reset (drops into `TenantPasswordChangeFlow`) |
+| End-user | `GET /t/{slug}/forgot-password`, `POST /t/{slug}/forgot-password` | Self-service password reset request — issues a `password-reset` OTT |
+| End-user | `GET /t/{slug}/resend-verification`, `POST /t/{slug}/resend-verification` | Re-sends a `verify-email` OTT; emits the same response whether the email matches a real User to avoid a user-existence oracle |
 | Management | `GET /manage/t/{slug}/login`, `POST /manage/t/{slug}/login` | Tenant Owner / System Admin login |
 | Management | `GET /manage/t/{slug}/` | Dashboard |
 | Management | `GET /manage/t/{slug}/settings`, `POST /manage/t/{slug}/settings/display-name` | Tenant Owner edits Display Name |
@@ -427,19 +522,23 @@ Future migrations must be **additive** (`ALTER TABLE ADD COLUMN ... NULL` → ba
 | Management | `/manage/t/{slug}/applications/{appId}/members/**` | Application Membership + App Role assignment |
 | Management | `/manage/t/{slug}/applications/{appId}/clients/**` | Client CRUD; `POST .../clients/{registeredClientId}/rotate-secret` rotates the secret |
 | Management | `/manage/t/{slug}/applications/{appId}/clients/{registeredClientId}/members/**` | Client Membership + Client Role assignment |
-| Management | `/manage/t/{slug}/users/**` | User CRUD plus per-User actions: `enable`, `disable`, `reset-password`, `grant-owner`, `revoke-owner`, `delete`. `GET /users/{userId}` shows the User's read-only Membership portfolio |
+| Management | `/manage/t/{slug}/users/**` | User CRUD plus per-User actions: `enable`, `disable`, `reset-password`, `unlock`, `grant-owner`, `revoke-owner`, `delete`. `GET /users/{userId}` shows the User's read-only Membership portfolio; `POST /users/{userId}/unlock` clears `failed_login_attempts` + `locked_until` |
 | Management | `/manage/t/{slug}/change-password` | In-console forced password change |
-| System | `/manage/system/tenants`, `POST /manage/system/tenants/{tenantId}/{suspend\|unsuspend\|delete}` | System Admin cross-tenant operations. System Admins log in via the standard management surface at `/manage/t/system/login` (the System Tenant slug is `system`) |
+| System | `GET /manage/system/tenants` | System Admin cross-tenant tenants list |
+| System | `GET /manage/system/tenants/new`, `POST /manage/system/tenants/new` | System Admin Tenant creation form (delegates to `TenantUserBootstrap`, the same service `/signup` uses); Owner is provisioned with a random placeholder password + `mustChangePassword=true` and sets a real one through the existing forced-change flow after clicking the verification link |
+| System | `POST /manage/system/tenants/{tenantId}/{suspend\|unsuspend\|delete}` | Tenant lifecycle. System Admins log in via the standard management surface at `/manage/t/system/login` (the System Tenant slug is `system`) |
 
-### 4.9 Tests
+### 4.13 Tests
 
 The suite is integration-heavy and runs against real Postgres via Testcontainers. The OAuth2 storage decorators each have a tenant-isolation contract test that proves a row written under Tenant A is invisible to Tenant B. The end-to-end OAuth2 flow has an integration test that exercises the full per-tenant issuer / JWKS / authorize / token chain. The v2 Membership work added an end-to-end test that drives the full Membership-to-JWT path (`OAuth2JwtRolesClaimIntegrationTest`) and a gate test that asserts `access_denied` for an authenticated User without a Client Membership (`OAuth2AuthorizeMembershipGateIntegrationTest`). Cross-tenant isolation is pinned by explicit tests on both the login backend (`CrossTenantLoginIsolationIntegrationTest`) and the System Admin console (`SystemAdminCrossTenantIsolationIntegrationTest`).
 
 The login deep module (`auth.login`) is exercised by both unit tests (`TenantLoginUnitTest`, `PostLoginIntentsUnitTest`, `TenantUrlSchemeUnitTest`) and a synthetic-scheme integration test that registers a third `TenantUrlScheme` to prove `applyTo` is surface-agnostic.
 
-There is currently no separation between unit and integration tests — the fast path is `mvn test`, which boots Testcontainers for everything. Test method names follow `@DisplayName` conventions established in PR #75.
+A second integration suite drives the full HTTP surface through a real browser via Playwright: end-user login, tenant signup, sysadmin login + tenant lifecycle, application / client / role / membership / user CRUD, sysadmin tenant create, forced password change, and the OAuth2 authorize flow. Each journey has a Page Object under `com.stucray.limen.ui.pages` and a `*JourneyUiIT` test under `com.stucray.limen.ui.journey`.
 
-### 4.10 Static analysis & CI
+UI tests live under `*IT` filenames and run in the `failsafe` (integration) phase; everything else runs in `surefire` under `mvn test`. Both surfaces boot Testcontainers for Postgres. Test method names follow `@DisplayName` conventions established in PR #75.
+
+### 4.14 Static analysis & CI
 
 Static analysis runs in two postures:
 
@@ -450,27 +549,25 @@ CI is a single GitHub Actions workflow (`.github/workflows/ci.yml`) with one `ve
 
 ## 5. Current Gaps and Shortcomings
 
-These are known limitations of the current surface. None of them block the product working; all of them are fair targets for follow-up work. Items marked **→ PRD #120** are closed by the production-credibility PRD currently in progress (see §6 v3).
+These are known limitations of the current surface. None of them block the product working; all of them are fair targets for follow-up work. The production-credibility PRD #120 closed five gaps from this list (email capability, account lockout, rate limiting, audit log, system-admin tenant-create UI) — those items have been removed; see §6 v3 for the shipped detail.
 
 ### Authentication and identity
 
-- **No MFA, no WebAuthn, no social login.** The PRD scoped v1 to username + password.
-- **→ PRD #120 — No email capability.** Forced password change exists, but there is no password-reset-via-email flow, no signup confirmation, and no notification on suspicious login. Tenant Owners must hand out temporary passwords out-of-band.
-- **→ PRD #120 — No account lockout or brute-force protection** on either the management login or the end-user login.
+- **No MFA, no WebAuthn, no social login.** The PRD scoped v1 to email + password.
 - **No session management UI.** Users cannot list or revoke their active sessions, and Tenant Owners cannot terminate a User's sessions.
 
 ### Operational concerns
 
-- **→ PRD #120 — No rate limiting** on `/oauth2/token`, `/oauth2/authorize`, `/login`, or `/signup`. A single attacker can hammer the token endpoint or sign up reserved-looking slugs without friction.
-- **→ PRD #120 — No audit log.** Login attempts (success or failure), token issuance, client secret rotation, and Tenant lifecycle events are not recorded.
-- **No metrics / observability.** Spring Boot Actuator is on the classpath but no Micrometer dashboards or counters are wired beyond defaults.
+- **No metrics / observability.** Spring Boot Actuator is on the classpath but no Micrometer dashboards or counters are wired beyond defaults. (A spike in 2026-05-01/02 was rolled back; lessons retained for the v3.5 attempt.)
 - **No signing-key rotation job.** The schema supports it; nothing schedules it.
 - **No consent revocation UI.** Consents are persisted per Tenant but end-users have no way to view or revoke them; only direct DB or admin action would clear them.
+- **Rate-limit state is per-process.** Bucket4j in-memory is the right call for a single-container deployment; horizontal scaling will need the Postgres-backed swap (§6 v3.5).
+- **Audit delivery is best-effort.** A JVM crash between transaction commit and listener execution loses that one event. Spring Modulith's publication registry will close this to at-least-once (§6 v3.5); the listener annotation swap is the only audit-side change required.
+- **No real email provider wired.** `EmailSender` has `logging` (default) and `smtp` drivers. Resend / Brevo / SendGrid / SES is a config swap deferred to v4.
 
 ### Code-level
 
 - **No CSRF / origin checks on Client redirect URIs** beyond what Spring's `RegisteredClient` already enforces. The management UI does not validate that user-supplied redirect URIs use HTTPS, are not localhost, or are not open redirectors.
-- **→ PRD #120 — System Admin console is partial.** Suspend / unsuspend / delete endpoints exist; the surrounding Thymeleaf UI is thin compared to the Tenant Owner console — notably, there is no UI for *creating* a Tenant outside the public `/signup` path.
 
 ### Schema and data model
 
@@ -482,20 +579,20 @@ Roughly grouped by horizon. None of these are committed to dates.
 
 ### ~~v2 — close the authorization hole~~ (shipped 2026-04-28)
 
-1. ~~**Roles, Memberships, Scopes** — the v1 PRD explicitly deferred these.~~ Shipped: per-Application `role` catalogue, split `application_membership` / `client_membership` tables with role-join tables, real `roles` JWT claim from Client Memberships, `/oauth2/authorize` Membership gate. Scopes intentionally untouched (still on `oauth2_registered_client.scopes`); see §4.6 for the wiring. PRD #39, slices #40–#46.
+1. ~~**Roles, Memberships, Scopes** — the v1 PRD explicitly deferred these.~~ Shipped: per-Application `role` catalogue, split `application_membership` / `client_membership` tables with role-join tables, real `roles` JWT claim from Client Memberships, `/oauth2/authorize` Membership gate. Scopes intentionally untouched (still on `oauth2_registered_client.scopes`); see §4.10 for the wiring. PRD #39, slices #40–#46.
 2. ~~**Application + Client membership UI** in the Tenant Owner console.~~ Shipped: per-Application Members and Roles screens, per-Client Members screen, read-only Membership portfolio on the User detail page (rows link back to the Application screens for editing).
 
-### v3 — production credibility (PRD #120, in progress)
+### ~~v3 — production credibility~~ (PRD #120 shipped 2026-05-03)
 
-A single PRD covering five gaps that block Limen being credible as a hosted IdP. Eight tracer-bullet slices; sequencing in the PRD.
+A single PRD covering five gaps that blocked Limen being credible as a hosted IdP. Eight tracer-bullet slices, all merged 2026-05-03.
 
-3. **Email-as-identity.** Drops `username` in favour of `email` with `UNIQUE(tenant_id, email)`. The per-tenant uniqueness scope preserves the user-pool-per-Tenant model (Auth0 / AWS Cognito shape) — the same email can identify two distinct Users in two different Tenants. Existing dev data is dropped at migration time; there are no real customers yet.
-4. **`EmailSender` infrastructure.** Provider-agnostic interface with two implementations: `LoggingEmailSender` (default and dev profile, writes message to slf4j — click the magic link from the log) and `SmtpEmailSender` (test profile, wired to a Mailpit Testcontainer; later, production profile pointing at a real SMTP host). No real provider in this PRD — that's a deferred config swap (see v4).
-5. **Audit log — event-driven.** A new `audit_event` Postgres table written by **event listeners**, not by direct service calls. Spring's existing `AuthenticationSuccessEvent` / `AuthenticationFailureEvent` are subscribed natively; small `record`-based custom event types cover OTT lifecycle, Tenant lifecycle, secret rotation, password change, rate-limit hits. Listeners use `@TransactionalEventListener(phase = AFTER_COMMIT)` so a failed audit write never rolls back the user-facing action. Loose coupling: code paths that perform actions never name `AuditService` — they `applicationEventPublisher.publishEvent(...)` and the audit module decides whether to listen. Future consumers (metrics, webhooks, SIEM forwarders) add listeners without touching emit sites. No admin UI in v3 — the schema is designed so the UI is a pure-additive follow-up (see v3.5). Best-effort delivery for now: a JVM crash between transaction commit and listener execution loses that event; at-least-once is the Modulith adoption story below.
-6. **Email verification + self-service password reset.** Both built on Spring Security 7's One-Time Token Login (`OneTimeTokenService`, `oneTimeTokenLogin()` DSL, `JdbcOneTimeTokenService`) — one OTT primitive serves both flows, distinguished by an `intent` column on the OTT row. A `TenantAwareOneTimeTokenService` decorator mirrors the existing `TenantAware*` storage decorators (§4.3): tokens generated under Tenant A are invisible / unusable from Tenant B. A custom `OneTimeTokenGenerationSuccessHandler` calls into `EmailSender` to deliver the magic link. Verification is required before first login. Password-reset OTT consumption drops the User into the existing `TenantPasswordChangeFlow` (§4.5) for forced change.
-7. **Account lockout.** A new event listener subscribes to `AuthenticationFailureEvent` and `AuthenticationSuccessEvent`, increments / resets `failed_login_attempts` on `users`, and sets `locked_until` when a threshold is reached. A pre-authentication check rejects logins for locked users with an explicit "account locked" message rather than "wrong password". Tenant-admin unlock UI on the User detail page closes the loop.
-8. **Rate limiting.** Bucket4j in-memory, single-process. A high-precedence `RateLimitFilter` is configured per-endpoint with key extractors (per-IP, per-client, per-email as appropriate) and returns 429 + `Retry-After` when a bucket is dry. State is per-process — fine for the current single-container deployment; Postgres-backed Bucket4j is a deferred swap (see v3.5) for when horizontal scaling matters.
-9. **System-admin tenant-create UI.** Exposes the existing `TenantProvisioningService` via `/manage/system/tenants/new`. A new `TenantUserBootstrap` wraps Tenant creation + Owner User insert + verification-OTT send into one atomic operation, reused both by the new system-admin form and by the public `/signup` path so both bootstrap flows stay consistent.
+3. ~~**Email-as-identity.**~~ Shipped (V6, slice #122). `username` dropped in favour of `email` with `UNIQUE(tenant_id, email)`. See §3 for the schema and §4.5 for how the auth pipeline carries email through `TenantAuthToken` / `TenantUserDetails`.
+4. ~~**`EmailSender` infrastructure.**~~ Shipped (slice #123). `logging` (default) + `smtp` drivers behind `limen.email.driver`; integration tests use Mailpit Testcontainers. See §4.7.
+5. ~~**Audit log — event-driven.**~~ Shipped (V7, slice #124). `audit_event` table written by `@TransactionalEventListener(phase = AFTER_COMMIT)` plus `@EventListener` for Spring Security auth events. See §4.8.
+6. ~~**Email verification + self-service password reset.**~~ Shipped (V8, slices #125 + #126). One OTT primitive, two intents, tenant-decorated. See §4.6.
+7. ~~**Account lockout.**~~ Shipped (V9, slice #127). `LoginAttemptTracker` event listener manages `failed_login_attempts` / `locked_until`; pre-auth check rejects with `LockedException`; Tenant-admin unlock at `POST /manage/t/{slug}/users/{userId}/unlock`. See §4.5.
+8. ~~**Rate limiting.**~~ Shipped (slice #128). High-precedence `RateLimitFilter` with Bucket4j in-memory; per-rule path regex + key extractor. See §4.9.
+9. ~~**System-admin tenant-create UI.**~~ Shipped (slice #129). `GET/POST /manage/system/tenants/new` delegates to `TenantUserBootstrap`, which is also the entry point used by `/signup` so both bootstrap paths stay consistent. See §4.12 and §4.6.
 
 ### v3.5 — operational hardening (post-PRD-#120)
 
