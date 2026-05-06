@@ -1,14 +1,5 @@
-# Auto-closes a parent issue (typically a PRD) when its last open sub-issue
-# is closed. Uses GitHub's native sub-issue feature, not title-trailer parsing.
-#
-# Trigger: any issue close. The workflow looks up the closed issue's parent
-# (via GraphQL `parent` field), lists the parent's sub-issues, and if every
-# one is closed, closes the parent with a summary comment. No-op if the
-# closed issue has no parent or the parent is already closed.
-#
-# Idempotency / concurrency: a workflow-level concurrency group serialises
-# runs across the repo, and the parent-state check before closing means a
-# second concurrent close attempt is a no-op rather than a duplicate comment.
+# Auto-closes a PRD when its last sub-issue is closed. Thin caller — the
+# behaviour lives in stucray/workflows/.github/workflows/close-completed-parent-issue.yml.
 
 name: Auto-close PRD when all sub-issues are closed
 
@@ -19,66 +10,6 @@ on:
 permissions:
   issues: write
 
-concurrency:
-  group: close-prd
-  cancel-in-progress: false
-
 jobs:
-  close-parent-if-children-done:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Close parent if all sub-issues are closed
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: |
-          set -euo pipefail
-          OWNER="${REPO%/*}"
-          NAME="${REPO#*/}"
-
-          # Find the parent issue (if any).
-          PARENT=$(gh api graphql -f query="
-            query { repository(owner: \"$OWNER\", name: \"$NAME\") {
-                issue(number: $ISSUE_NUMBER) { parent { number state } }
-            } }" --jq '.data.repository.issue.parent')
-
-          if [ -z "$PARENT" ] || [ "$PARENT" = "null" ]; then
-            echo "::notice::Issue #$ISSUE_NUMBER has no parent; nothing to do."
-            exit 0
-          fi
-
-          PARENT_NUMBER=$(echo "$PARENT" | jq -r '.number')
-          PARENT_STATE=$(echo "$PARENT" | jq -r '.state')
-
-          if [ "$PARENT_STATE" = "CLOSED" ]; then
-            echo "::notice::Parent #$PARENT_NUMBER is already closed; nothing to do."
-            exit 0
-          fi
-
-          # All open sub-issues must be empty for us to close the parent.
-          OPEN_COUNT=$(gh api "repos/$REPO/issues/$PARENT_NUMBER/sub_issues" \
-            --jq '[.[] | select(.state == "open")] | length')
-
-          if [ "$OPEN_COUNT" -gt 0 ]; then
-            echo "::notice::Parent #$PARENT_NUMBER still has $OPEN_COUNT open sub-issue(s); not closing."
-            exit 0
-          fi
-
-          # Build a child summary for the closing comment.
-          CHILDREN=$(gh api "repos/$REPO/issues/$PARENT_NUMBER/sub_issues" \
-            --jq 'map("- #\(.number) — \(.title)") | join("\n")')
-
-          {
-            echo "All sub-issues are closed; auto-closing this issue."
-            echo
-            echo "Closed sub-issues:"
-            echo
-            echo "$CHILDREN"
-            echo
-            echo "_Triggered by the close of #$ISSUE_NUMBER. Auto-closed by \`.github/workflows/close-prd.yml\`._"
-          } > /tmp/close-comment.md
-
-          gh issue close "$PARENT_NUMBER" --repo "$REPO" --comment "$(cat /tmp/close-comment.md)"
-          echo "::notice::Closed parent #$PARENT_NUMBER."
+  close:
+    uses: stucray/workflows/.github/workflows/close-completed-parent-issue.yml@v1
