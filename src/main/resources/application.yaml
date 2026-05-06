@@ -5,12 +5,13 @@ limen:
     # 14 days
     remember-me-validity-seconds: 1209600
   email:
-    # logging | smtp. Default writes outbound emails to slf4j INFO so a developer
-    # can read magic links from the application log without running mail
-    # infrastructure. Set to `smtp` (and configure spring.mail.*) in any
-    # deployment that should actually deliver mail. For local dev with the
-    # Mailpit container, run with `--spring.profiles.active=mailpit` — see
-    # application-mailpit.yaml.
+    # logging | smtp. Base default is `logging` — outbound emails land at
+    # slf4j INFO. The spring-boot-maven-plugin is configured to auto-activate
+    # the `mailpit` profile on `mvn spring-boot:run`, which flips this to
+    # `smtp` and points spring.mail at the Mailpit container in
+    # docker-compose.yml (web inbox at http://localhost:8025). The base
+    # default still applies to `mvn test`/`verify` and the production image,
+    # which override via env vars in real deployments.
     driver: logging
   lockout:
     # Consecutive failed-login attempts before the account is locked. Small
