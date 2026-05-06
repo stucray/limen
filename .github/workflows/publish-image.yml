@@ -1,15 +1,6 @@
-# Builds the application container image with Paketo buildpacks and pushes it
-# to GitHub Container Registry as a multi-arch manifest list (amd64 + arm64).
-# Triggered by every push to `main` (rolling `:main` image), every release
-# tag `v*.*.*` (versioned tags + `:latest`), or manually.
-#
-# To re-publish a past release as multi-arch (e.g. one that was tagged before
-# this workflow shipped), dispatch from `main` with the `version_ref` input:
-#   gh workflow run publish-image.yml --ref main -f version_ref=v0.1.0
-#
-# Strategy: a per-arch matrix builds each architecture natively on its own
-# runner (no QEMU), pushes a transient `tmp-<run-id>-<arch>` tag, then a
-# final job stitches both into a manifest list under the public tag set.
+# Publishes the application container image to GHCR. Thin caller — the
+# multi-arch build/stitch behaviour lives in
+# stucray/workflows/.github/workflows/publish-image-spring-boot-maven.yml.
 
 name: Publish image
 
@@ -23,130 +14,8 @@ on:
         description: 'Republish a past release: tag (e.g. `v0.1.0`) or sha to build from. Leave blank to build the workflow ref.'
         required: false
 
-# Needs `packages: write` to push to ghcr.io; everything else stays read-only.
-permissions:
-  contents: read
-  packages: write
-
-# Serialise pushes per ref: don't cancel an in-flight publish — letting it
-# finish avoids leaving the registry in a half-tagged state.
-concurrency:
-  group: publish-image-${{ inputs.version_ref || github.ref }}
-  cancel-in-progress: false
-
 jobs:
-  # Build one image per architecture on a native runner, push it under a
-  # transient run-scoped tag. We don't pass digests between jobs — the
-  # manifest job resolves these tags to per-arch digests at stitch time.
-  build:
-    name: build ${{ matrix.arch }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-latest
-          - arch: arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 25
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.version_ref || github.ref }}
-
-      # Java 26 is required by the Paketo build (BP_JVM_VERSION=26 below).
-      # Temurin publishes both amd64 and arm64 builds, so the same step works
-      # on either runner.
-      - name: Set up JDK 26 (Temurin)
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '26'
-          cache: maven
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Paketo builds for the runner's host arch. Tests are skipped here —
-      # CI already ran them; this step is purely packaging.
-      - name: Build image with Paketo buildpacks
-        run: |
-          ./mvnw -B -ntp spring-boot:build-image \
-            -Dmaven.test.skip=true \
-            -Dspring-boot.build-image.imageName=ghcr.io/${{ github.repository }}:tmp-${{ github.run_id }}-${{ matrix.arch }} \
-            -Dspring-boot.build-image.env.BP_JVM_VERSION=26
-
-      - name: Push single-arch image
-        run: docker push ghcr.io/${{ github.repository }}:tmp-${{ github.run_id }}-${{ matrix.arch }}
-
-  # Combine the two single-arch images into a multi-arch manifest list and
-  # publish it under the public-facing tag set.
-  manifest:
-    name: stitch multi-arch manifest
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      # Checkout the same ref the build jobs used so the short-sha tag below
-      # refers to the commit the image was actually built from.
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.version_ref || github.ref }}
-
-      # Derive the public-facing tag set:
-      # - semver tag (auto push of `refs/tags/vX.Y.Z`, or `version_ref` set):
-      #     `:X.Y.Z`, `:X.Y`, `:latest`, `:sha-<short>`
-      # - main branch push: `:main`, `:sha-<short>`
-      # - anything else (manual dispatch from a feature branch, etc.):
-      #     `:sha-<short>` only
-      - name: Compute image tags
-        id: meta
-        run: |
-          set -euo pipefail
-          IMG="ghcr.io/${{ github.repository }}"
-          REF="${{ inputs.version_ref || github.ref }}"
-          SHORT_SHA=$(git rev-parse --short=7 HEAD)
-          if [[ "$REF" =~ ^(refs/tags/)?v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            VER="${REF#refs/tags/}"; VER="${VER#v}"
-            IFS=. read -r MAJOR MINOR _ <<<"$VER"
-            TAGS=("$IMG:$VER" "$IMG:$MAJOR.$MINOR" "$IMG:latest" "$IMG:sha-$SHORT_SHA")
-          elif [ "$REF" = "refs/heads/main" ]; then
-            TAGS=("$IMG:main" "$IMG:sha-$SHORT_SHA")
-          else
-            TAGS=("$IMG:sha-$SHORT_SHA")
-          fi
-          {
-            echo "tags<<EOF"
-            printf '%s\n' "${TAGS[@]}"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # `docker buildx imagetools create` resolves each input tag to its
-      # platform-specific manifest and assembles a manifest list — no rebuild,
-      # no pull. Output tags reference both per-arch manifests by digest, so
-      # deleting the tmp tags afterwards (or letting them be pruned) won't
-      # break the published list.
-      - name: Create and push multi-arch manifest
-        run: |
-          set -euo pipefail
-          AMD64="ghcr.io/${{ github.repository }}:tmp-${{ github.run_id }}-amd64"
-          ARM64="ghcr.io/${{ github.repository }}:tmp-${{ github.run_id }}-arm64"
-          while IFS= read -r tag; do
-            [ -z "$tag" ] && continue
-            echo "Stitching $tag from $AMD64 + $ARM64"
-            docker buildx imagetools create -t "$tag" "$AMD64" "$ARM64"
-          done <<< '${{ steps.meta.outputs.tags }}'
+  publish:
+    uses: stucray/workflows/.github/workflows/publish-image-spring-boot-maven.yml@feat/publish-image-spring-boot-maven
+    with:
+      version_ref: ${{ inputs.version_ref }}
