@@ -1,0 +1,11 @@
+# Activate with `--spring.profiles.active=mailpit` (or
+# `SPRING_PROFILES_ACTIVE=mailpit`) to deliver outbound email through the
+# Mailpit container declared in docker-compose.yml. Inspect captured
+# messages at http://localhost:8025.
+limen:
+  email:
+    driver: smtp
+spring:
+  mail:
+    host: localhost
+    port: 1025

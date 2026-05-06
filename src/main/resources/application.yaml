@@ -8,7 +8,9 @@ limen:
     # logging | smtp. Default writes outbound emails to slf4j INFO so a developer
     # can read magic links from the application log without running mail
     # infrastructure. Set to `smtp` (and configure spring.mail.*) in any
-    # deployment that should actually deliver mail.
+    # deployment that should actually deliver mail. For local dev with the
+    # Mailpit container, run with `--spring.profiles.active=mailpit` — see
+    # application-mailpit.yaml.
     driver: logging
   lockout:
     # Consecutive failed-login attempts before the account is locked. Small
