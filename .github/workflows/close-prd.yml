@@ -12,4 +12,4 @@ permissions:
 
 jobs:
   close:
-    uses: stucray/workflows/.github/workflows/close-completed-parent-issue.yml@feat/close-completed-parent-issue
+    uses: stucray/workflows/.github/workflows/close-completed-parent-issue.yml@v1
