@@ -15,5 +15,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # Mailpit captures every outbound email (SMTP on 1025) and exposes a web
+  # inbox at http://localhost:8025. Lightweight (~25MB image, single Go
+  # binary) so it's always-on alongside Postgres. Captured messages live in
+  # memory only — restart wipes the inbox, which matches the dev workflow.
+  # To deliver to it, run with `--spring.profiles.active=mailpit` (see
+  # src/main/resources/application-mailpit.yaml). Default profile keeps
+  # `limen.email.driver: logging` so emails go to the application log.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # web UI / API
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8025/api/v1/info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   auth_postgres_data:
