@@ -33,6 +33,7 @@ Concretely, Limen provides:
 | Build | Maven |
 | Static analysis | Error Prone (compile-time bug detection); NullAway in `ERROR` mode (JSpecify, production code only — disabled on test compile); PMD report-only (complexity rules in `pmd-ruleset.xml`); JaCoCo coverage; Maven JXR for source cross-references |
 | CI | GitHub Actions: a single `verify` job on push and PR to `main` runs `./mvnw -B -ntp verify` (compile + Error Prone + NullAway + Testcontainers tests + JaCoCo + PMD report). PMD HTML/XML + JXR uploaded as a 30-day artifact; JaCoCo HTML uploaded on failure |
+| Container image | Paketo buildpacks via `spring-boot:build-image` (no Dockerfile); multi-arch `linux/amd64` + `linux/arm64`; published to `ghcr.io/stucray/limen` (private). See §4.16. |
 
 ## 3. Domain Model
 
@@ -606,6 +607,22 @@ Other sub-packages (e.g. `audit.dispatch`, `auth.lockout`, `security.ratelimit`)
 **Cross-module dependency policy.** Modulith's open default: any module may depend on any other module's top-level package or its named interfaces. There are no `@ApplicationModule(allowedDependencies = ...)` whitelists. The verifier still enforces no cycles and no sub-package leaks; tightening to per-module allowed-dependency declarations is a future option if evidence warrants it.
 
 **Build dependencies.** `spring-modulith-api` (compile scope) provides `@NamedInterface` for the `package-info.java` annotations; `spring-modulith-starter-test` (test scope) provides `ApplicationModules.verify()` for the verifier test; `spring-modulith-starter-jdbc` (runtime scope) wires the JDBC publication registry that backs `@ApplicationModuleListener` (used by `AuditDispatcher.onAfterCommit`). The `event_publication` table is owned by Flyway V10, not the framework's own initializer.
+
+### 4.16 Container image
+
+The application is packaged as a multi-arch (`linux/amd64` + `linux/arm64`) container image at `ghcr.io/stucray/limen`. Builds use Paketo buildpacks via Spring Boot's `spring-boot:build-image` Maven goal — no Dockerfile.
+
+`.github/workflows/publish-image.yml` builds each architecture natively on its own runner (`ubuntu-latest` for amd64, `ubuntu-24.04-arm` for arm64), pushes a transient `tmp-<run-id>-<arch>` tag, then `docker buildx imagetools create` stitches the per-arch manifests into a manifest list under the public tag set. No QEMU emulation in the build path.
+
+**Triggers and tag set:**
+
+| Trigger | Tags emitted |
+|---|---|
+| Push to `main` | `:main`, `:sha-<short>` |
+| Push of a `vX.Y.Z` tag (from `release.yml`) | `:X.Y.Z`, `:X.Y`, `:latest`, `:sha-<short>` |
+| Manual `workflow_dispatch` with `version_ref=vX.Y.Z` | Same as the tag-push set, but built from the named source ref using main's workflow definition. Used to back-fill multi-arch images for releases tagged before this workflow shipped. |
+
+The package is private; pull instructions and PAT setup are in `docs/process/container.md`. The release workflow itself (`.github/workflows/release.yml`) only handles version-bump + tag-push; image publish is decoupled and triggered by the tag-push side-effect, so image build failures don't roll back a release tag.
 
 ## 5. Current Gaps and Shortcomings
 
