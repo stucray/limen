@@ -18,4 +18,6 @@ jobs:
   publish:
     uses: stucray/workflows/.github/workflows/publish-image-spring-boot-maven.yml@feat/publish-image-spring-boot-maven
     with:
-      version_ref: ${{ inputs.version_ref }}
+      # Fallback to '' so non-dispatch triggers (push) and dispatches without
+      # a value pass a string (not null) through the with: block.
+      version_ref: ${{ inputs.version_ref || '' }}
