@@ -14,6 +14,10 @@ on:
         description: 'Republish a past release: tag (e.g. `v0.1.0`) or sha to build from. Leave blank to build the workflow ref.'
         required: false
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   publish:
     uses: stucray/workflows/.github/workflows/publish-image-spring-boot-maven.yml@feat/publish-image-spring-boot-maven
