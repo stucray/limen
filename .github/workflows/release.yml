@@ -1,13 +1,9 @@
-# One-click release workflow. From a -SNAPSHOT main, this:
-#   1. flips the pom to the release version, runs `mvn verify`, commits, tags `vX.Y.Z`
-#   2. flips the pom to the next -SNAPSHOT and commits
-#   3. atomically pushes both commits + the tag, then creates the GitHub Release
-# `dry_run: true` performs steps 1–2 locally and skips the push/Release.
+# One-click release. Thin caller — the version-bump / verify / commit /
+# tag / push / GitHub Release behaviour lives in
+# stucray/workflows/.github/workflows/release-spring-boot-maven.yml.
 
 name: Release
 
-# Manual trigger only. All three inputs are optional — sensible defaults are
-# computed from the current pom version.
 on:
   workflow_dispatch:
     inputs:
@@ -22,138 +18,18 @@ on:
         type: boolean
         default: false
 
-# Default GITHUB_TOKEN stays read-only; the actual push uses RELEASE_TOKEN
-# (a PAT) so the release commits can bypass branch protection on `main`.
 permissions:
   contents: read
 
-# Only one release at a time, and never cancel an in-flight one — interrupting
-# halfway through would leave main in an inconsistent state.
-concurrency:
-  group: release
-  cancel-in-progress: false
-
 jobs:
   release:
-    name: cut release
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    env:
-      # Used by `gh release create` at the end.
-      GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-      # --- PROJECT-SPECIFIC: test-time env vars ---
-      # Add any secrets your `mvn verify` needs. Leave the block empty if none.
-      LIMEN_SECURITY_KEK: ${{ secrets.LIMEN_SECURITY_KEK_TEST }}
-    steps:
-      # Use the PAT (not the workflow token) so the later push can write to
-      # protected `main`. Full history is needed so tags resolve correctly.
-      - name: Checkout main with PAT
-        uses: actions/checkout@v6
-        with:
-          ref: main
-          token: ${{ secrets.RELEASE_TOKEN }}
-          fetch-depth: 0
-
-      # Pull the project's Java version straight from pom.xml so the release
-      # build always matches what the project declares.
-      - name: Read Java version from pom
-        id: jv
-        run: |
-          set -euo pipefail
-          v=$(grep -m1 '<java.version>' pom.xml | sed 's/.*>\(.*\)<.*/\1/')
-          [ -n "$v" ] || { echo "::error::Could not find <java.version> property in pom.xml"; exit 1; }
-          echo "version=$v" >> "$GITHUB_OUTPUT"
-
-      # Install the JDK detected above with Maven dependency caching.
-      - name: Set up JDK (Temurin)
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: ${{ steps.jv.outputs.version }}
-          cache: maven
-
-      # Author the release commits as the github-actions bot.
-      - name: Configure git identity
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-
-      # Resolve the release/next versions and refuse to proceed if anything
-      # looks wrong: must currently be on -SNAPSHOT, next must end -SNAPSHOT,
-      # and the target tag must not already exist on origin. Writes a plan
-      # summary to the run page.
-      - name: Compute versions and guards
-        id: vers
-        run: |
-          set -euo pipefail
-          CURRENT=$(./mvnw -B -ntp help:evaluate -Dexpression=project.version -q -DforceStdout)
-          echo "Current pom version: $CURRENT"
-          [[ "$CURRENT" == *-SNAPSHOT ]] || { echo "::error::Current version $CURRENT is not a -SNAPSHOT; refusing to release."; exit 1; }
-          REL="${{ inputs.release_version }}"
-          [ -z "$REL" ] && REL="${CURRENT%-SNAPSHOT}"
-          NEXT="${{ inputs.next_version }}"
-          if [ -z "$NEXT" ]; then
-            IFS=. read -r MA MI PA <<<"$REL"
-            NEXT="${MA}.${MI}.$((PA+1))-SNAPSHOT"
-          fi
-          [[ "$NEXT" == *-SNAPSHOT ]] || { echo "::error::next_version $NEXT must end in -SNAPSHOT."; exit 1; }
-          if git ls-remote --tags origin "refs/tags/v$REL" | grep -q .; then
-            echo "::error::Tag v$REL already exists on origin."
-            exit 1
-          fi
-          echo "release=$REL" >> "$GITHUB_OUTPUT"
-          echo "next=$NEXT"   >> "$GITHUB_OUTPUT"
-          {
-            echo "## Plan"
-            echo "- Current: \`$CURRENT\`"
-            echo "- Release: \`$REL\`  (tag \`v$REL\`)"
-            echo "- Next:    \`$NEXT\`"
-            echo "- Dry run: \`${{ inputs.dry_run }}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      # Rewrite the pom to the release version (no backup poms, multi-module).
-      - name: Set release version
-        run: ./mvnw -B -ntp org.codehaus.mojo:versions-maven-plugin:2.16.2:set -DnewVersion=${{ steps.vers.outputs.release }} -DgenerateBackupPoms=false -DprocessAllModules=true
-
-      # Full build + tests against the release version — this is the gate that
-      # decides whether the release is shippable.
-      - name: Verify release build
-        run: ./mvnw -B -ntp verify
-
-      # Commit the release-version pom and create the annotated `vX.Y.Z` tag.
-      - name: Commit and tag release
-        run: |
-          git add pom.xml
-          git commit -m "Release ${{ steps.vers.outputs.release }}"
-          git tag -a "v${{ steps.vers.outputs.release }}" -m "Release ${{ steps.vers.outputs.release }}"
-
-      # Bump the pom to the next -SNAPSHOT so main is ready for ongoing work.
-      - name: Set next snapshot version
-        run: ./mvnw -B -ntp org.codehaus.mojo:versions-maven-plugin:2.16.2:set -DnewVersion=${{ steps.vers.outputs.next }} -DgenerateBackupPoms=false -DprocessAllModules=true
-
-      # Commit the snapshot bump (sits directly after the release commit).
-      - name: Commit next snapshot
-        run: |
-          git add pom.xml
-          git commit -m "Prepare for next development iteration: ${{ steps.vers.outputs.next }}"
-
-      # Atomic push: both new commits + the tag land together, or nothing
-      # does. Skipped on dry runs.
-      - name: Push (atomic)
-        if: ${{ !inputs.dry_run }}
-        run: git push --atomic origin main "v${{ steps.vers.outputs.release }}"
-
-      # Create the GitHub Release with auto-generated notes from PR titles.
-      - name: Create GitHub Release
-        if: ${{ !inputs.dry_run }}
-        run: gh release create "v${{ steps.vers.outputs.release }}" --generate-notes --title "v${{ steps.vers.outputs.release }}"
-
-      # On dry runs, leave a note in the run summary so it's obvious nothing
-      # was published — local commits/tags are thrown away with the runner.
-      - name: Dry-run summary
-        if: ${{ inputs.dry_run }}
-        run: |
-          {
-            echo "## Dry run complete — no push, no Release"
-            echo "Tag and commits exist locally only and will be discarded with the runner."
-          } >> "$GITHUB_STEP_SUMMARY"
+    uses: stucray/workflows/.github/workflows/release-spring-boot-maven.yml@feat/release-spring-boot-maven
+    with:
+      # Fallback to '' so undefined dispatch inputs pass strings (not nulls)
+      # through the with: block to the called workflow's typed string inputs.
+      release_version: ${{ inputs.release_version || '' }}
+      next_version:    ${{ inputs.next_version || '' }}
+      dry_run:         ${{ inputs.dry_run }}
+    secrets:
+      release_token: ${{ secrets.RELEASE_TOKEN }}
+      test_env_json: '{"LIMEN_SECURITY_KEK":"${{ secrets.LIMEN_SECURITY_KEK_TEST }}"}'
