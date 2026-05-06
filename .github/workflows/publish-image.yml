@@ -1,6 +1,11 @@
 # Builds the application container image with Paketo buildpacks and pushes it
-# to GitHub Container Registry. Triggered by every push to `main` (rolling
-# image), every release tag `v*.*.*` (versioned + `:latest`), or manually.
+# to GitHub Container Registry as a multi-arch manifest list (amd64 + arm64).
+# Triggered by every push to `main` (rolling image), every release tag
+# `v*.*.*` (versioned + `:latest`), or manually.
+#
+# Strategy: a per-arch matrix builds each architecture natively on its own
+# runner (no QEMU), pushes a transient `tmp-<run-id>-<arch>` tag, then a
+# final job stitches both into a manifest list under the public tag set.
 
 name: Publish image
 
@@ -22,16 +27,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: build and push to ghcr.io
-    runs-on: ubuntu-latest
+  # Build one image per architecture on a native runner, push it under a
+  # transient run-scoped tag. We don't pass digests between jobs — the
+  # manifest job resolves these tags to per-arch digests at stitch time.
+  build:
+    name: build ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
     steps:
-      # Fetch the commit / tag being published.
       - name: Checkout
         uses: actions/checkout@v6
 
       # Java 26 is required by the Paketo build (BP_JVM_VERSION=26 below).
+      # Temurin publishes both amd64 and arm64 builds, so the same step works
+      # on either runner.
       - name: Set up JDK 26 (Temurin)
         uses: actions/setup-java@v5
         with:
@@ -39,6 +56,33 @@ jobs:
           java-version: '26'
           cache: maven
 
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Paketo builds for the runner's host arch. Tests are skipped here —
+      # CI already ran them; this step is purely packaging.
+      - name: Build image with Paketo buildpacks
+        run: |
+          ./mvnw -B -ntp spring-boot:build-image \
+            -Dmaven.test.skip=true \
+            -Dspring-boot.build-image.imageName=ghcr.io/${{ github.repository }}:tmp-${{ github.run_id }}-${{ matrix.arch }} \
+            -Dspring-boot.build-image.env.BP_JVM_VERSION=26
+
+      - name: Push single-arch image
+        run: docker push ghcr.io/${{ github.repository }}:tmp-${{ github.run_id }}-${{ matrix.arch }}
+
+  # Combine the two single-arch images into a multi-arch manifest list and
+  # publish it under the public-facing tag set.
+  manifest:
+    name: stitch multi-arch manifest
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
       # Derive the set of image tags to push: branch name, short SHA, and on
       # release tags also `X.Y.Z`, `X.Y`, and `latest`.
       - name: Compute image tags
@@ -53,7 +97,6 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
-      # Authenticate Docker against GHCR using the workflow's own token.
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -61,22 +104,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build a single image with Paketo buildpacks (no Dockerfile). Tests are
-      # skipped here — CI already ran them; this step is purely packaging.
-      - name: Build image with Paketo buildpacks
-        run: |
-          ./mvnw -B -ntp spring-boot:build-image \
-            -Dmaven.test.skip=true \
-            -Dspring-boot.build-image.imageName=ghcr.io/${{ github.repository }}:build \
-            -Dspring-boot.build-image.env.BP_JVM_VERSION=26
-
-      # Re-tag the freshly built `:build` image with each computed tag and
-      # push them all to GHCR.
-      - name: Tag and push
+      # `docker buildx imagetools create` resolves each input tag to its
+      # platform-specific manifest and assembles a manifest list — no rebuild,
+      # no pull. Output tags reference both per-arch manifests by digest, so
+      # deleting the tmp tags afterwards (or letting them be pruned) won't
+      # break the published list.
+      - name: Create and push multi-arch manifest
         run: |
           set -euo pipefail
+          AMD64="ghcr.io/${{ github.repository }}:tmp-${{ github.run_id }}-amd64"
+          ARM64="ghcr.io/${{ github.repository }}:tmp-${{ github.run_id }}-arm64"
           while IFS= read -r tag; do
             [ -z "$tag" ] && continue
-            docker tag "ghcr.io/${{ github.repository }}:build" "$tag"
-            docker push "$tag"
+            echo "Stitching $tag from $AMD64 + $ARM64"
+            docker buildx imagetools create -t "$tag" "$AMD64" "$ARM64"
           done <<< '${{ steps.meta.outputs.tags }}'
