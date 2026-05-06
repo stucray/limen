@@ -1,5 +1,7 @@
 package com.stucray.limen.auth;
 
+import com.stucray.limen.user.TenantUserDetails;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

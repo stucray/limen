@@ -302,7 +302,7 @@ There are two tenant-scoped login surfaces — an OAuth2 end-user login at `/t/{
 
 Order matters: the password-change check fires **before** OAuth2-resume so a User with an expired password cannot complete an authorize flow before updating it. New policies are added by registering an `@Bean PostLoginIntent` with an `@Order` value; user-supplied intents are prepended to the defaults via `ObjectProvider#orderedStream()`.
 
-**Forced password change.** Two trigger paths share one orchestrator. On a fresh login, the `passwordChangeRequired()` intent (above) catches a User whose `must_change_password` flag is set and redirects them to the surface's change-password URL. Inside the management console — for example, after an admin clicks **Reset password** mid-session — `PasswordChangeRequiredInterceptor` (in `management.users`) catches subsequent requests and does the same redirect. Both change-password controllers (`oauth2.EndUserPasswordChangeController` and `management.users.PasswordChangeController`) delegate to a shared `TenantPasswordChangeFlow` (in `auth.login`) for validation, persistence, and OAuth2-authorize-resume. The resume target is always tenant-prefixed under `/t/{slug}/oauth2/authorize` regardless of which surface the User changed their password on, because the authorize endpoint only lives on the OAuth2 surface.
+**Forced password change.** Two trigger paths share one orchestrator. On a fresh login, the `passwordChangeRequired()` intent (above) catches a User whose `must_change_password` flag is set and redirects them to the surface's change-password URL. Inside the management console — for example, after an admin clicks **Reset password** mid-session — `PasswordChangeRequiredInterceptor` (in `users`) catches subsequent requests and does the same redirect. Both change-password controllers (`oauth2.EndUserPasswordChangeController` and `users.PasswordChangeController`) delegate to a shared `TenantPasswordChangeFlow` (in `auth.login`) for validation, persistence, and OAuth2-authorize-resume. The resume target is always tenant-prefixed under `/t/{slug}/oauth2/authorize` regardless of which surface the User changed their password on, because the authorize endpoint only lives on the OAuth2 surface.
 
 **Account lockout.** A pre-authentication check in `TenantAuthProvider` rejects logins for Users whose `locked_until` is in the future, throwing `LockedException` *before* the password is verified — so a locked account does not leak whether the supplied password was right. `LoginAttemptTracker` is an `@EventListener` on `AuthenticationFailureEvent` / `AuthenticationSuccessEvent` that increments `failed_login_attempts` on failure, sets `locked_until` once the threshold (default 5) is reached, and clears both columns on success. Tenant Owners reset the counters via `POST /manage/t/{slug}/users/{userId}/unlock` on the User detail page (`UserManagementController.unlock()` → `UserAdministrationService.unlockAccount(...)` → `AccountUnlockedEvent` for the audit log). Threshold and lockout window are configured via `LockoutProperties`.
 
@@ -552,6 +552,54 @@ Static analysis runs in two postures:
 
 CI is a single GitHub Actions workflow (`.github/workflows/ci.yml`) with one `verify` job on push and PR to `main`. The job sets up JDK 26 (Temurin, with Maven cache), runs `./mvnw -B -ntp verify`, and uploads the PMD bundle (30-day retention) and — on failure — the JaCoCo HTML report (14-day retention). The `LIMEN_SECURITY_KEK` is supplied as a GitHub Actions secret.
 
+### 4.15 Application modules
+
+Module boundaries are enforced mechanically via [Spring Modulith](https://spring.io/projects/spring-modulith). `LimenModuleArchitectureTest` calls `ApplicationModules.of(LimenApplication.class).verify()`, which fails the build on cycles between modules and on cross-module references into a module's internal sub-packages. The verifier runs as part of `./mvnw test` so every PR is checked.
+
+Each direct sub-package of `com.stucray.limen` is one application module. As of 2026-05-06 there are 19:
+
+| Module | Role |
+|---|---|
+| `applications` | Application entity + per-Application CRUD service and controller |
+| `audit` | `AuditEvent` row, dispatch rules, registry, writer; published events live in `audit.events` (named interface `events`) |
+| `auth` | Tenant-aware authentication: `TenantAuthProvider`, `TenantAuthToken`, `TenantUserDetailsService`, persistent remember-me, `TenantAccessFilter` defence-in-depth. Sub-features `auth.login` and `auth.ott` are named interfaces (`login`, `ott`) |
+| `clients` | TenantClient (the multi-tenant decoration of a SAS RegisteredClient) entity + repo + management UI |
+| `email` | `EmailSender` abstraction with `logging` + `smtp` drivers |
+| `enduser` | End-user web routes (post-OAuth2 home) |
+| `identity` | Bootstrap-admin properties + `UserBootstrap` startup runner |
+| `management` | Admin-console infrastructure: nav, login, home, model advice, and the admin Spring Security config (`management.web`, `management.auth`). Domain features that *appear* under `/manage/...` URLs (applications, clients, etc.) live in their own top-level modules |
+| `memberships` | ApplicationMembership + ClientMembership + Role-join entities, queries (`ClientMembershipQuery`, `UserMembershipPortfolioQuery`), services, and the per-app/per-client members UI |
+| `oauth2` | SAS integration: tenant-aware decorators, routing filter, issuer-context filter, JWK source, `SasConfig`, and end-user password-change controller |
+| `provisioning` | Tenant lifecycle orchestration: `TenantProvisioningService` (create/suspend/unsuspend/delete + signing-key seed) and `TenantProvisioner` (the deep module entered by `/signup` and `/manage/system/tenants/new`) |
+| `roles` | Per-Application `Role` catalogue + management UI |
+| `security` | Global Spring Security defaults, `SecurityProperties`, signing-key store, rate-limit filter (`security.ratelimit`) |
+| `signup` | Public self-service signup form + service |
+| `system` | Cross-tenant System Admin controllers (tenant suspend/unsuspend/delete, system-admin tenant-create) |
+| `tenant` | `Tenant` entity + repository, `TenantStatus`, `TenantScope` (the per-request `ScopedValue`) |
+| `user` | `User` entity + `UserRepository` + `TenantUserDetails` (the Spring Security `UserDetails` adapter wrapping `User` + `Tenant`) |
+| `users` | Tenant-Owner administration of Users: `UserAdministrationService`, `PasswordChangeController`, `PasswordChangeRequiredInterceptor` |
+| `web` | Top-level web routes: `RootController` (landing) and `RedirectLoginController` (slug-aware `/login` forwarder) |
+
+**Three module-shaping decisions worth calling out:**
+
+1. **`provisioning` is its own module, not nested under `tenant`.** Provisioning a Tenant atomically creates a Tenant row, seeds a signing key, creates the owner User, and triggers a verification email. That orchestration depends on `tenant`, `user`, `auth`, `email`, and `audit`; trying to keep it inside `tenant` produces a real cycle (tenant → auth → tenant). Promoting it surfaces the orchestrator's role and breaks the cycle.
+
+2. **`TenantAccessFilter` lives in `auth`, not `oauth2`.** The class historically lived under `oauth2/` but does cross-tenant authentication defence-in-depth (force-logout when the URL slug differs from the principal's tenant). It's installed in both UI filter chains. Auth is its actual home.
+
+3. **`TenantUserDetails` lives in `user`, not `auth`.** The Spring Security `UserDetails` adapter is a thin wrapper over `User` + `Tenant`. Audit, auth, oauth2, management, and provisioning all need it; if it lived in `auth`, audit's principal-extraction (in `AuditRegistry`) would create an `audit ↔ auth` cycle. Co-locating it with the `User` entity matches the conceptual mapping (user identity ⇒ user-as-principal) and lets every consumer depend on `user` instead.
+
+**Named interfaces.** Three sub-packages are explicitly part of their parent module's API via `@NamedInterface` on `package-info.java`:
+
+- `audit.events` — the audit event types other modules publish via `ApplicationEventPublisher`
+- `auth.login` — login pipeline integration points (`TenantUrlScheme`, `PostLoginIntent`, `TenantPasswordChangeFlow`)
+- `auth.ott` — OTT services consumed across modules (`EmailVerificationService`, `PasswordResetService`, `OttIntent`)
+
+Other sub-packages (e.g. `audit.dispatch`, `auth.lockout`, `security.ratelimit`) are internal to their module by Modulith default — outside callers cannot import them.
+
+**Cross-module dependency policy.** Modulith's open default: any module may depend on any other module's top-level package or its named interfaces. There are no `@ApplicationModule(allowedDependencies = ...)` whitelists. The verifier still enforces no cycles and no sub-package leaks; tightening to per-module allowed-dependency declarations is a future option if evidence warrants it.
+
+**Build dependencies.** `spring-modulith-api` (compile scope) provides `@NamedInterface` for the `package-info.java` annotations; `spring-modulith-starter-test` (test scope) provides `ApplicationModules.verify()` for the verifier test. No runtime Modulith behaviour is wired in this slice — that lands in v3.5 item 10's at-least-once audit work, which adds `spring-modulith-starter-jdbc` and the publication registry.
+
 ## 5. Current Gaps and Shortcomings
 
 These are known limitations of the current surface. None of them block the product working; all of them are fair targets for follow-up work. The production-credibility PRD #120 closed five gaps from this list (email capability, account lockout, rate limiting, audit log, system-admin tenant-create UI) — those items have been removed; see §6 v3 for the shipped detail.
@@ -601,7 +649,7 @@ A single PRD covering five gaps that blocked Limen being credible as a hosted Id
 
 ### v3.5 — operational hardening (post-PRD-#120)
 
-10. **Spring Modulith adoption.** Formalises the existing package boundaries (`auth`, `oauth2`, `management`, `tenant`, etc.) as application modules with explicit cross-module dependency rules. Brings two concrete wins: `@ApplicationModuleListener` (async + transactional event handling out of the box) and the `event_publication` registry, which **closes the at-least-once delivery gap** in the v3 audit design (events are persisted in the publication registry before listener execution and replayed on restart if the listener fails). Module boundaries are also verifiable by Modulith's built-in ArchUnit-style tests, replacing convention-based discipline with compile-time enforcement. Migration cost: map current packages to modules, decide cross-module dependency policy, add the publication registry table via Flyway. **Audit-side change at adoption time is a single annotation swap (`@TransactionalEventListener` → `@ApplicationModuleListener`); emit sites are unchanged.** The forward-compatibility was the design driver behind choosing event-driven audit in v3.
+10. **Spring Modulith adoption.** Tracked in PRD #151. **Slice 1 (boundary enforcement) shipped 2026-05-06 (#152).** 19 application modules at `com.stucray.limen.*`, verified by `LimenModuleArchitectureTest` calling `ApplicationModules.verify()` — see §4.15. Three named interfaces (`audit.events`, `auth.login`, `auth.ott`) demarcate published API; cycles at `auth ↔ tenant`, `auth ↔ oauth2`, `audit ↔ auth`, and `oauth2 ↔ security` were broken by mechanical re-homing (provisioning promoted to its own module, `TenantAccessFilter` → `auth`, `TenantUserDetails` → `user`, `SasConfig` → `oauth2`). **Slice 2 (#153) — at-least-once audit delivery — pending.** Adds `spring-modulith-starter-jdbc`, Flyway V10 for `event_publication`, and swaps the audit dispatcher's `@TransactionalEventListener(AFTER_COMMIT)` for `@ApplicationModuleListener`. Closes the at-least-once gap for *transactional* domain events; audit rows derived from Spring Security auth events (which fire outside a transaction) remain best-effort.
 11. **Audit admin UI.** List + filter views under `/manage/t/{slug}/audit` (Tenant-scoped) and `/manage/system/audit` (cross-tenant). CSV export. Pure-additive on top of the v3 schema.
 12. **Metrics.** Micrometer counters for login success / failure, token issuance, key rotation; latency histograms on the token endpoint.
 13. **Signing-key rotation job.** Scheduled, with overlap window so old tokens validate against the retired key during a grace period.

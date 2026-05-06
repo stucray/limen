@@ -1,6 +1,6 @@
 package com.stucray.limen.auth.ott;
 
-import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.user.TenantUserDetails;
 import com.stucray.limen.auth.TenantUserDetailsService;
 import com.stucray.limen.tenant.TenantScope;
 import org.springframework.security.authentication.AuthenticationProvider;

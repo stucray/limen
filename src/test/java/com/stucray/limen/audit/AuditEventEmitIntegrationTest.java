@@ -1,12 +1,12 @@
 package com.stucray.limen.audit;
 
 import com.stucray.limen.TestcontainersConfiguration;
-import com.stucray.limen.management.applications.Application;
-import com.stucray.limen.management.applications.ApplicationService;
-import com.stucray.limen.management.clients.ClientManagementService;
-import com.stucray.limen.management.users.UserAdministrationService;
+import com.stucray.limen.applications.Application;
+import com.stucray.limen.applications.ApplicationService;
+import com.stucray.limen.clients.ClientManagementService;
+import com.stucray.limen.users.UserAdministrationService;
 import com.stucray.limen.tenant.Tenant;
-import com.stucray.limen.tenant.TenantProvisioningService;
+import com.stucray.limen.provisioning.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;

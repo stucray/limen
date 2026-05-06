@@ -1,17 +1,17 @@
 package com.stucray.limen.auth.ott;
 
 import com.stucray.limen.TestcontainersConfiguration;
-import com.stucray.limen.management.applications.Application;
-import com.stucray.limen.management.applications.ApplicationRepository;
-import com.stucray.limen.management.clients.TenantClient;
-import com.stucray.limen.management.clients.TenantClientRepository;
-import com.stucray.limen.management.memberships.ApplicationMembershipService;
-import com.stucray.limen.management.memberships.ClientMembershipService;
-import com.stucray.limen.management.memberships.ClientMembershipTestFixture;
-import com.stucray.limen.management.signup.SignupForm;
-import com.stucray.limen.management.signup.SignupService;
+import com.stucray.limen.applications.Application;
+import com.stucray.limen.applications.ApplicationRepository;
+import com.stucray.limen.clients.TenantClient;
+import com.stucray.limen.clients.TenantClientRepository;
+import com.stucray.limen.memberships.ApplicationMembershipService;
+import com.stucray.limen.memberships.ClientMembershipService;
+import com.stucray.limen.memberships.ClientMembershipTestFixture;
+import com.stucray.limen.signup.SignupForm;
+import com.stucray.limen.signup.SignupService;
 import com.stucray.limen.tenant.Tenant;
-import com.stucray.limen.tenant.TenantProvisioningService;
+import com.stucray.limen.provisioning.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantScope;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;

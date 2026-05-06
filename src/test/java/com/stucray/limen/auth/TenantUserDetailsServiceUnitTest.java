@@ -1,5 +1,7 @@
 package com.stucray.limen.auth;
 
+import com.stucray.limen.user.TenantUserDetails;
+
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;

@@ -1,5 +1,7 @@
 package com.stucray.limen.auth;
 
+import com.stucray.limen.user.TenantUserDetails;
+
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 

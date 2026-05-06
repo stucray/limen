@@ -1,7 +1,7 @@
 package com.stucray.limen.oauth2;
 
-import com.stucray.limen.auth.TenantUserDetails;
-import com.stucray.limen.management.memberships.ClientMembershipQuery;
+import com.stucray.limen.user.TenantUserDetails;
+import com.stucray.limen.memberships.ClientMembershipQuery;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantScope;
 import com.stucray.limen.tenant.TenantStatus;

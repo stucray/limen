@@ -40,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Slice 3 of #67. Registers a synthetic third {@link TenantUrlScheme} via
  * {@link TestConfiguration} and proves that cross-tenant force-logout fires
- * for URLs matching the new surface — i.e. that {@link com.stucray.limen.oauth2.TenantAccessFilter}
+ * for URLs matching the new surface — i.e. that {@link com.stucray.limen.auth.TenantAccessFilter}
  * picks up newly-registered schemes through bean discovery without code
  * changes anywhere else.
  */
