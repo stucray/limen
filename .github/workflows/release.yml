@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   release:
-    uses: stucray/workflows/.github/workflows/release-spring-boot-maven.yml@feat/release-spring-boot-maven
+    uses: stucray/workflows/.github/workflows/release-spring-boot-maven.yml@v1
     with:
       # Fallback to '' so undefined dispatch inputs pass strings (not nulls)
       # through the with: block to the called workflow's typed string inputs.
