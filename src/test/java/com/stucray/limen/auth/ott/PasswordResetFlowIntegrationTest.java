@@ -23,12 +23,15 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -186,20 +189,27 @@ class PasswordResetFlowIntegrationTest {
             assertThat(stored.getAuthentication()).isNotInstanceOf(TenantOttAuthentication.class);
             assertThat(stored.getAuthentication().isAuthenticated()).isTrue();
 
-            Map<String, Object> resetCompleted = jdbcTemplate.queryForMap(
-                "SELECT actor_user_id, target_id FROM audit_event "
-                    + "WHERE event_type = 'password_reset_completed' AND tenant_id = ? "
-                    + "ORDER BY occurred_at DESC LIMIT 1",
-                tenant.id());
-            assertThat(resetCompleted.get("actor_user_id")).isEqualTo(user.id());
-            assertThat(resetCompleted.get("target_id")).isEqualTo(String.valueOf(user.id()));
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT actor_user_id, target_id FROM audit_event "
+                        + "WHERE event_type = 'password_reset_completed' AND tenant_id = ? "
+                        + "ORDER BY occurred_at DESC LIMIT 1",
+                    tenant.id());
+                assertThat(rows).isNotEmpty();
+                Map<String, Object> resetCompleted = rows.get(0);
+                assertThat(resetCompleted.get("actor_user_id")).isEqualTo(user.id());
+                assertThat(resetCompleted.get("target_id")).isEqualTo(String.valueOf(user.id()));
+            });
 
-            Map<String, Object> passwordChanged = jdbcTemplate.queryForMap(
-                "SELECT details::text AS details FROM audit_event "
-                    + "WHERE event_type = 'password_changed' AND tenant_id = ? "
-                    + "ORDER BY occurred_at DESC LIMIT 1",
-                tenant.id());
-            assertThat(passwordChanged.get("details").toString()).contains("self_service");
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT details::text AS details FROM audit_event "
+                        + "WHERE event_type = 'password_changed' AND tenant_id = ? "
+                        + "ORDER BY occurred_at DESC LIMIT 1",
+                    tenant.id());
+                assertThat(rows).isNotEmpty();
+                assertThat(rows.get(0).get("details").toString()).contains("self_service");
+            });
         }
 
         @Test
@@ -236,11 +246,18 @@ class PasswordResetFlowIntegrationTest {
                     .session(session).with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
-            Integer completedCount = jdbcTemplate.queryForObject(
+            // The first submit emits one password_reset_completed; the second must not.
+            // Wait for the first event to land, then assert the count stays at 1.
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                assertThat(passwordResetCompletedCount(tenant.id())).isEqualTo(1));
+            assertThat(passwordResetCompletedCount(tenant.id())).isEqualTo(1);
+        }
+
+        private Integer passwordResetCompletedCount(Long tenantId) {
+            return jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM audit_event "
                     + "WHERE event_type = 'password_reset_completed' AND tenant_id = ?",
-                Integer.class, tenant.id());
-            assertThat(completedCount).isEqualTo(1);
+                Integer.class, tenantId);
         }
     }
 
@@ -326,16 +343,20 @@ class PasswordResetFlowIntegrationTest {
                     .param("email", email).with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
-            Map<String, Object> row = jdbcTemplate.queryForMap(
-                "SELECT actor_user_id, target_id, details::text AS details FROM audit_event "
-                    + "WHERE event_type = 'password_reset_ott_issued' AND tenant_id = ? "
-                    + "ORDER BY occurred_at DESC LIMIT 1",
-                tenant.id());
-            assertThat(row.get("actor_user_id")).isEqualTo(user.id());
-            assertThat(row.get("target_id")).isEqualTo(String.valueOf(user.id()));
-            String details = row.get("details").toString().replace(" ", "");
-            assertThat(details).contains("\"delivered\":true");
-            assertThat(details).contains(email);
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT actor_user_id, target_id, details::text AS details FROM audit_event "
+                        + "WHERE event_type = 'password_reset_ott_issued' AND tenant_id = ? "
+                        + "ORDER BY occurred_at DESC LIMIT 1",
+                    tenant.id());
+                assertThat(rows).isNotEmpty();
+                Map<String, Object> row = rows.get(0);
+                assertThat(row.get("actor_user_id")).isEqualTo(user.id());
+                assertThat(row.get("target_id")).isEqualTo(String.valueOf(user.id()));
+                String details = row.get("details").toString().replace(" ", "");
+                assertThat(details).contains("\"delivered\":true");
+                assertThat(details).contains(email);
+            });
         }
 
         @Test
@@ -349,15 +370,19 @@ class PasswordResetFlowIntegrationTest {
                     .param("email", "ghost-" + suffix + "@example.test").with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
-            Map<String, Object> row = jdbcTemplate.queryForMap(
-                "SELECT actor_user_id, target_id, details::text AS details FROM audit_event "
-                    + "WHERE event_type = 'password_reset_ott_issued' AND tenant_id = ? "
-                    + "ORDER BY occurred_at DESC LIMIT 1",
-                tenant.id());
-            assertThat(row.get("actor_user_id")).isNull();
-            assertThat(row.get("target_id")).isNull();
-            assertThat(row.get("details").toString().replace(" ", ""))
-                .contains("\"delivered\":false");
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT actor_user_id, target_id, details::text AS details FROM audit_event "
+                        + "WHERE event_type = 'password_reset_ott_issued' AND tenant_id = ? "
+                        + "ORDER BY occurred_at DESC LIMIT 1",
+                    tenant.id());
+                assertThat(rows).isNotEmpty();
+                Map<String, Object> row = rows.get(0);
+                assertThat(row.get("actor_user_id")).isNull();
+                assertThat(row.get("target_id")).isNull();
+                assertThat(row.get("details").toString().replace(" ", ""))
+                    .contains("\"delivered\":false");
+            });
         }
     }
 

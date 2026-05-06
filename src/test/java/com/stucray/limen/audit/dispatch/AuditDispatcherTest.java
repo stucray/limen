@@ -2,6 +2,7 @@ package com.stucray.limen.audit.dispatch;
 
 import com.stucray.limen.audit.AuditEvent;
 import com.stucray.limen.audit.AuditEventWriter;
+import com.stucray.limen.audit.events.AuditedDomainEvent;
 import com.stucray.limen.audit.events.RateLimitHitEvent;
 import com.stucray.limen.audit.events.TenantCreatedEvent;
 import org.junit.jupiter.api.DisplayName;
@@ -95,8 +96,11 @@ class AuditDispatcherTest {
         AuditDispatcher dispatcher = new AuditDispatcher(writer, registry);
 
         dispatcher.onImmediate("some random event");
-        dispatcher.onAfterCommit(123);
+        dispatcher.onAfterCommit(new UnregisteredDomainEvent());
 
         verify(writer, never()).write(any());
     }
+
+    /** Implements the marker but has no rule in {@link AuditRegistry} — exercises the no-match path. */
+    private record UnregisteredDomainEvent() implements AuditedDomainEvent {}
 }

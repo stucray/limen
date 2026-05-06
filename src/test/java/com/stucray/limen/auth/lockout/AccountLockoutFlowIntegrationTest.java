@@ -19,11 +19,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -286,16 +289,20 @@ class AccountLockoutFlowIntegrationTest {
                     .andExpect(status().is3xxRedirection());
             }
 
-            Map<String, Object> row = jdbcTemplate.queryForMap(
-                "SELECT actor_user_id, target_id, details::text AS details FROM audit_event "
-                    + "WHERE event_type = 'account_locked' AND tenant_id = ? "
-                    + "ORDER BY occurred_at DESC LIMIT 1",
-                tenant.id());
-            assertThat(row.get("actor_user_id")).isEqualTo(user.id());
-            assertThat(row.get("target_id")).isEqualTo(String.valueOf(user.id()));
-            String details = row.get("details").toString();
-            assertThat(details).contains(email);
-            assertThat(details).contains("lockedUntil");
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT actor_user_id, target_id, details::text AS details FROM audit_event "
+                        + "WHERE event_type = 'account_locked' AND tenant_id = ? "
+                        + "ORDER BY occurred_at DESC LIMIT 1",
+                    tenant.id());
+                assertThat(rows).isNotEmpty();
+                Map<String, Object> row = rows.get(0);
+                assertThat(row.get("actor_user_id")).isEqualTo(user.id());
+                assertThat(row.get("target_id")).isEqualTo(String.valueOf(user.id()));
+                String details = row.get("details").toString();
+                assertThat(details).contains(email);
+                assertThat(details).contains("lockedUntil");
+            });
         }
     }
 

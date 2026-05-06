@@ -8,4 +8,4 @@ public record EmailVerifiedEvent(
     Long tenantId,
     Long userId,
     String email
-) {}
+) implements AuditedDomainEvent {}

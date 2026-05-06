@@ -2,14 +2,14 @@ package com.stucray.limen.audit.dispatch;
 
 import com.stucray.limen.audit.AuditEvent;
 import com.stucray.limen.audit.AuditEventWriter;
+import com.stucray.limen.audit.events.AuditedDomainEvent;
 import jakarta.servlet.http.HttpServletRequest;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -25,18 +25,23 @@ import java.util.Map;
  *
  * <p>Two listener methods, one per binding:
  * <ul>
- *   <li>{@link AuditBinding#AFTER_COMMIT} for events emitted from inside a
- *       {@code @Transactional} method — the row writes after commit so a
- *       write failure cannot roll back the user-facing action.</li>
+ *   <li>{@link AuditBinding#AFTER_COMMIT} via
+ *       {@link ApplicationModuleListener @ApplicationModuleListener} for events
+ *       emitted from inside a {@code @Transactional} method. The Modulith JDBC
+ *       publication registry persists a row at publish time and clears it once
+ *       the listener completes, giving at-least-once delivery: a JVM crash
+ *       between commit and listener execution is replayed on the next startup.
+ *       Duplicates are therefore possible on rare restart-after-failure (no
+ *       idempotency key in this slice).</li>
  *   <li>{@link AuditBinding#IMMEDIATE} for pre-transaction events
- *       (rate-limit hits, Spring Security auth events).</li>
+ *       (rate-limit hits, Spring Security auth events). These fire outside any
+ *       transaction so the publication registry can't engage; delivery is
+ *       best-effort.</li>
  * </ul>
  *
- * <p>Best-effort delivery — write failures are logged and swallowed.
- * At-least-once arrives with Spring Modulith adoption (architecture doc
- * §6 v3.5): the AFTER_COMMIT listener swaps to {@code @ApplicationModuleListener},
- * and event records gain ip / user-agent fields (since async listeners run
- * off-thread and {@link RequestContextHolder} is thread-local).
+ * <p>Write failures are logged and swallowed; for AFTER_COMMIT events Modulith
+ * still records the publication so a stuck listener can be inspected and
+ * resubmitted via the registry.
  */
 @Component
 public class AuditDispatcher {
@@ -51,8 +56,18 @@ public class AuditDispatcher {
         this.registry = registry;
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onAfterCommit(Object event) {
+    /**
+     * The parameter type is the {@link AuditedDomainEvent} marker rather than
+     * {@code Object}: Modulith's {@code PersistentApplicationEventMulticaster}
+     * persists every published event whose runtime type is assignable to the
+     * declared listener parameter. A bare {@code Object} would catch every
+     * Spring framework startup event ({@code ContextRefreshedEvent}, etc.) and
+     * try to JSON-serialize the source — which is the entire application
+     * context — into {@code event_publication}. Narrowing here scopes
+     * persistence to the events the registry actually has rules for.
+     */
+    @ApplicationModuleListener
+    public void onAfterCommit(AuditedDomainEvent event) {
         dispatch(event, AuditBinding.AFTER_COMMIT);
     }
 

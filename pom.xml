@@ -152,18 +152,33 @@
 		</dependency>
 
 		<!--
-			Spring Modulith — application-modules verifier.
-			Slice 1 (#152): `spring-modulith-api` is compile-scope so
-			`@NamedInterface` annotations on `package-info.java` resolve in
-			main sources; `spring-modulith-starter-test` is test-scope and
-			brings the `ApplicationModules` verifier API. No auto-config or
-			runtime behaviour added in this slice. The runtime publication-
-			registry starter (`spring-modulith-starter-jdbc`) lands in slice 2
-			(#153) when we close the audit at-least-once gap.
+			Spring Modulith — application-modules verifier (slice 1) plus the
+			JDBC publication registry that backs at-least-once delivery for
+			`@ApplicationModuleListener`-annotated handlers (slice 2).
+			`spring-modulith-api` is compile-scope so `@NamedInterface`
+			annotations on `package-info.java` resolve in main sources;
+			`spring-modulith-events-api` (compile) is needed for the
+			`@ApplicationModuleListener` annotation on `AuditDispatcher`
+			(2.0.x split it out of `spring-modulith-api`).
+			`spring-modulith-starter-test` is test-scope and brings the
+			`ApplicationModules` verifier API plus `Scenario`/`PublishedEvents`
+			helpers. `spring-modulith-starter-jdbc` is runtime-scope and wires
+			the JDBC `EventPublicationRegistry` against our existing
+			`spring-boot-starter-data-jdbc` DataSource — Flyway V10 creates the
+			`event_publication` table to the schema the registry expects.
 		-->
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>
 			<artifactId>spring-modulith-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.modulith</groupId>
+			<artifactId>spring-modulith-events-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.modulith</groupId>
+			<artifactId>spring-modulith-starter-jdbc</artifactId>
+			<scope>runtime</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>

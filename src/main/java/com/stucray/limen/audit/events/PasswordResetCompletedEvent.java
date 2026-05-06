@@ -10,4 +10,4 @@ package com.stucray.limen.audit.events;
 public record PasswordResetCompletedEvent(
     Long tenantId,
     Long userId
-) {}
+) implements AuditedDomainEvent {}

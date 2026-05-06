@@ -21,18 +21,26 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 /**
  * One assertion per emit source: the user-facing action triggers a row in
  * {@code audit_event} with the right shape, tenant_id, actor and target.
  * The {@code listenerFailureDoesNotRollBackParent} test pins the AFTER_COMMIT
  * contract — a thrown listener must not roll back the parent transaction.
+ *
+ * <p>Audit row reads are wrapped in Awaitility polling: under the Modulith
+ * publication registry the AFTER_COMMIT-bound listener runs asynchronously,
+ * so a {@code SELECT} immediately after the publishing call can race the
+ * dispatcher.
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -54,11 +62,12 @@ class AuditEventEmitIntegrationTest {
         String slug = uniqueSlug();
         Tenant tenant = tenantProvisioningService.createTenant(slug, "Display " + slug);
 
-        Map<String, Object> row = latestEventForTenant(tenant.id());
-        assertThat(row).isNotNull();
-        assertThat(row.get("event_type")).isEqualTo("tenant_created");
-        assertThat(row.get("target_type")).isEqualTo("tenant");
-        assertThat(row.get("target_id")).isEqualTo(String.valueOf(tenant.id()));
+        awaitAuditRow(() -> latestEventForTenant(tenant.id()), row -> {
+            assertThat(row).isNotNull();
+            assertThat(row.get("event_type")).isEqualTo("tenant_created");
+            assertThat(row.get("target_type")).isEqualTo("tenant");
+            assertThat(row.get("target_id")).isEqualTo(String.valueOf(tenant.id()));
+        });
     }
 
     @Test
@@ -69,9 +78,10 @@ class AuditEventEmitIntegrationTest {
 
         tenantProvisioningService.suspend(tenant, admin);
 
-        Map<String, Object> row = latestEventForTenantOfType(tenant.id(), "tenant_suspended");
-        assertThat(row).isNotNull();
-        assertThat(row.get("actor_user_id")).isEqualTo(admin);
+        awaitAuditRow(() -> latestEventForTenantOfType(tenant.id(), "tenant_suspended"), row -> {
+            assertThat(row).isNotNull();
+            assertThat(row.get("actor_user_id")).isEqualTo(admin);
+        });
         assertThat(tenantRepository.findById(tenant.id()).orElseThrow().status())
             .isEqualTo(TenantStatus.SUSPENDED);
     }
@@ -86,7 +96,8 @@ class AuditEventEmitIntegrationTest {
 
         tenantProvisioningService.unsuspend(suspended, admin);
 
-        assertThat(latestEventForTenantOfType(tenant.id(), "tenant_unsuspended")).isNotNull();
+        awaitAuditRow(() -> latestEventForTenantOfType(tenant.id(), "tenant_unsuspended"),
+            row -> assertThat(row).isNotNull());
         assertThat(tenantRepository.findById(tenant.id()).orElseThrow().status())
             .isEqualTo(TenantStatus.ACTIVE);
     }
@@ -101,13 +112,15 @@ class AuditEventEmitIntegrationTest {
         tenantProvisioningService.delete(tenant, admin);
 
         // tenant_id on the row is null (FK SET NULL); look up by event_type + target_id
-        Map<String, Object> row = jdbcTemplate.queryForMap(
-            "SELECT event_type, tenant_id, target_id, details::text AS details FROM audit_event "
-                + "WHERE event_type = 'tenant_deleted' AND target_id = ? ORDER BY occurred_at DESC LIMIT 1",
-            String.valueOf(originalId));
-        assertThat(row.get("tenant_id")).isNull();
-        assertThat(row.get("details").toString().replace(" ", ""))
-            .contains("\"originalTenantId\":" + originalId);
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            Map<String, Object> row = jdbcTemplate.queryForMap(
+                "SELECT event_type, tenant_id, target_id, details::text AS details FROM audit_event "
+                    + "WHERE event_type = 'tenant_deleted' AND target_id = ? ORDER BY occurred_at DESC LIMIT 1",
+                String.valueOf(originalId));
+            assertThat(row.get("tenant_id")).isNull();
+            assertThat(row.get("details").toString().replace(" ", ""))
+                .contains("\"originalTenantId\":" + originalId);
+        });
     }
 
     @Test
@@ -126,10 +139,11 @@ class AuditEventEmitIntegrationTest {
 
         clientManagementService.rotateSecret(registeredClientId, tenant.id(), actor);
 
-        Map<String, Object> row = latestEventForTenantOfType(tenant.id(), "client_secret_rotated");
-        assertThat(row).isNotNull();
-        assertThat(row.get("target_type")).isEqualTo("registered_client");
-        assertThat(row.get("target_id")).isEqualTo(registeredClientId);
+        awaitAuditRow(() -> latestEventForTenantOfType(tenant.id(), "client_secret_rotated"), row -> {
+            assertThat(row).isNotNull();
+            assertThat(row.get("target_type")).isEqualTo("registered_client");
+            assertThat(row.get("target_id")).isEqualTo(registeredClientId);
+        });
     }
 
     @Test
@@ -141,9 +155,9 @@ class AuditEventEmitIntegrationTest {
 
         userAdministration.resetPassword(user.id(), tenant.id(), admin, "tempPass1234");
 
-        Map<String, Object> row = latestEventForTenantOfType(tenant.id(), "password_changed");
-        assertThat(row.get("details").toString().replace(" ", ""))
-            .contains("\"trigger\":\"admin_reset\"");
+        awaitAuditRow(() -> latestEventForTenantOfType(tenant.id(), "password_changed"),
+            row -> assertThat(row.get("details").toString().replace(" ", ""))
+                .contains("\"trigger\":\"admin_reset\""));
     }
 
     @Nested
@@ -213,10 +227,21 @@ class AuditEventEmitIntegrationTest {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
-    private Map<String, Object> latestEventForTenantOfType(Long tenantId, String eventType) {
-        return jdbcTemplate.queryForMap(
+    private @org.jspecify.annotations.Nullable Map<String, Object> latestEventForTenantOfType(Long tenantId, String eventType) {
+        var rows = jdbcTemplate.queryForList(
             "SELECT event_type, tenant_id, actor_user_id, target_type, target_id, details::text AS details "
                 + "FROM audit_event WHERE tenant_id = ? AND event_type = ? ORDER BY occurred_at DESC LIMIT 1",
             tenantId, eventType);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    private static void awaitAuditRow(
+            java.util.function.Supplier<Map<String, Object>> rowSupplier,
+            Consumer<Map<String, Object>> assertion) {
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            Map<String, Object> row = rowSupplier.get();
+            assertThat(row).isNotNull();
+            assertion.accept(row);
+        });
     }
 }

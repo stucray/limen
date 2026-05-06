@@ -39,13 +39,16 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -194,14 +197,18 @@ class EmailVerificationFlowIntegrationTest {
                 signupService.signup(new SignupForm("Audit " + suffix, slug, email, "password"));
 
             assertThat(result).isInstanceOf(SignupService.SignupResult.Success.class);
-            Map<String, Object> row = jdbcTemplate.queryForMap(
-                "SELECT event_type, target_type, details::text AS details FROM audit_event "
-                    + "WHERE event_type = 'verification_ott_issued' "
-                    + "AND tenant_id = (SELECT id FROM tenants WHERE slug = ?) "
-                    + "ORDER BY occurred_at DESC LIMIT 1",
-                slug);
-            assertThat(row.get("target_type")).isEqualTo("user");
-            assertThat(row.get("details").toString()).contains(email);
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT event_type, target_type, details::text AS details FROM audit_event "
+                        + "WHERE event_type = 'verification_ott_issued' "
+                        + "AND tenant_id = (SELECT id FROM tenants WHERE slug = ?) "
+                        + "ORDER BY occurred_at DESC LIMIT 1",
+                    slug);
+                assertThat(rows).isNotEmpty();
+                Map<String, Object> row = rows.get(0);
+                assertThat(row.get("target_type")).isEqualTo("user");
+                assertThat(row.get("details").toString()).contains(email);
+            });
         }
 
         @Test
@@ -223,14 +230,18 @@ class EmailVerificationFlowIntegrationTest {
                     .with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
-            Map<String, Object> row = jdbcTemplate.queryForMap(
-                "SELECT actor_user_id, target_id, details::text AS details FROM audit_event "
-                    + "WHERE event_type = 'email_verified' AND tenant_id = ? "
-                    + "ORDER BY occurred_at DESC LIMIT 1",
-                tenant.id());
-            assertThat(row.get("actor_user_id")).isEqualTo(user.id());
-            assertThat(row.get("target_id")).isEqualTo(String.valueOf(user.id()));
-            assertThat(row.get("details").toString()).contains(email);
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT actor_user_id, target_id, details::text AS details FROM audit_event "
+                        + "WHERE event_type = 'email_verified' AND tenant_id = ? "
+                        + "ORDER BY occurred_at DESC LIMIT 1",
+                    tenant.id());
+                assertThat(rows).isNotEmpty();
+                Map<String, Object> row = rows.get(0);
+                assertThat(row.get("actor_user_id")).isEqualTo(user.id());
+                assertThat(row.get("target_id")).isEqualTo(String.valueOf(user.id()));
+                assertThat(row.get("details").toString()).contains(email);
+            });
         }
 
         @Test
@@ -245,15 +256,19 @@ class EmailVerificationFlowIntegrationTest {
                     .with(csrf()))
                 .andExpect(status().is3xxRedirection());
 
-            Map<String, Object> row = jdbcTemplate.queryForMap(
-                "SELECT actor_user_id, target_id, details::text AS details FROM audit_event "
-                    + "WHERE event_type = 'verification_resent' AND tenant_id = ? "
-                    + "ORDER BY occurred_at DESC LIMIT 1",
-                tenant.id());
-            assertThat(row.get("actor_user_id")).isNull();
-            assertThat(row.get("target_id")).isNull();
-            assertThat(row.get("details").toString().replace(" ", ""))
-                .contains("\"delivered\":false");
+            await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                    "SELECT actor_user_id, target_id, details::text AS details FROM audit_event "
+                        + "WHERE event_type = 'verification_resent' AND tenant_id = ? "
+                        + "ORDER BY occurred_at DESC LIMIT 1",
+                    tenant.id());
+                assertThat(rows).isNotEmpty();
+                Map<String, Object> row = rows.get(0);
+                assertThat(row.get("actor_user_id")).isNull();
+                assertThat(row.get("target_id")).isNull();
+                assertThat(row.get("details").toString().replace(" ", ""))
+                    .contains("\"delivered\":false");
+            });
         }
     }
 

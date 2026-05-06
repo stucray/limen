@@ -12,4 +12,4 @@ public record VerificationResentEvent(
     @Nullable Long userId,
     String email,
     boolean delivered
-) {}
+) implements AuditedDomainEvent {}
