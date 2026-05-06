@@ -11,6 +11,6 @@ on:
 
 jobs:
   ci:
-    uses: stucray/workflows/.github/workflows/ci-spring-boot-maven.yml@feat/ci-spring-boot-maven
+    uses: stucray/workflows/.github/workflows/ci-spring-boot-maven.yml@v1
     secrets:
       test_env_json: '{"LIMEN_SECURITY_KEK":"${{ secrets.LIMEN_SECURITY_KEK_TEST }}"}'
