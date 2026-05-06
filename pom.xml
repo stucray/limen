@@ -192,6 +192,20 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<!--
+						Auto-activate the `mailpit` Spring profile when running
+						the app via `mvn spring-boot:run` so emails are
+						captured by the Mailpit container declared in
+						docker-compose.yml (web inbox at http://localhost:8025).
+						Scoped to the run goal — `mvn test`/`verify` and the
+						`build-image` goal are unaffected, so the test suite
+						and production image keep the `logging` default.
+					-->
+					<profiles>
+						<profile>mailpit</profile>
+					</profiles>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

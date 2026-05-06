@@ -369,7 +369,7 @@ Properties:
 | Driver | Implementation | When |
 |---|---|---|
 | `logging` (default) | `LoggingEmailSender` | Dev: writes the rendered message to slf4j; click the magic link straight from the log. No outbound network. |
-| `smtp` | `SmtpEmailSender` | Test profile (Mailpit Testcontainer), local dev via the `mailpit` profile (Mailpit in `docker-compose.yml`, web inbox at http://localhost:8025), and production (real SMTP host). |
+| `smtp` | `SmtpEmailSender` | Test profile (Mailpit Testcontainer), local dev (the `mailpit` profile is auto-activated by `mvn spring-boot:run` via the spring-boot-maven-plugin's `<profiles>` config in `pom.xml`; Mailpit lives in `docker-compose.yml`, web inbox at http://localhost:8025), and production (real SMTP host). |
 
 There is intentionally no third "real provider" implementation in v3 — Resend / Brevo / SendGrid wiring is a deferred config swap on top of this abstraction (see §6 v4). All callers are OTT generation success handlers and audit-driven notifications; the rest of the codebase never names a concrete sender.
 

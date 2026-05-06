@@ -1,7 +1,8 @@
-# Activate with `--spring.profiles.active=mailpit` (or
-# `SPRING_PROFILES_ACTIVE=mailpit`) to deliver outbound email through the
-# Mailpit container declared in docker-compose.yml. Inspect captured
-# messages at http://localhost:8025.
+# Auto-activated by `mvn spring-boot:run` via spring-boot-maven-plugin's
+# <profiles> configuration in pom.xml. Also activates manually via
+# `--spring.profiles.active=mailpit` or `SPRING_PROFILES_ACTIVE=mailpit`.
+# Delivers outbound email through the Mailpit container in
+# docker-compose.yml; inspect captured messages at http://localhost:8025.
 limen:
   email:
     driver: smtp
