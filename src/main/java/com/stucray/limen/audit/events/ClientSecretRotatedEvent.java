@@ -4,4 +4,4 @@ public record ClientSecretRotatedEvent(
     Long tenantId,
     String registeredClientId,
     Long actorUserId
-) {}
+) implements AuditedDomainEvent {}

@@ -21,10 +21,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 /**
  * Playwright UI journey for slice 5: an existing tenant admin clicks "Forgot
@@ -103,13 +105,16 @@ class PasswordResetJourneyUiIT {
         page.waitForURL(baseUrl() + "/t/" + slug + "/");
 
         // The completed reset emitted password_reset_completed; confirm the
-        // audit row landed alongside the password_changed row.
-        Long count = jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM audit_event "
-                + "WHERE event_type = 'password_reset_completed' "
-                + "AND tenant_id = ?",
-            Long.class, tenant.tenantId());
-        assertThat(count).isEqualTo(1L);
+        // audit row landed alongside the password_changed row. Async dispatch
+        // via the Modulith publication registry means we poll until it lands.
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            Long count = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM audit_event "
+                    + "WHERE event_type = 'password_reset_completed' "
+                    + "AND tenant_id = ?",
+                Long.class, tenant.tenantId());
+            assertThat(count).isEqualTo(1L);
+        });
     }
 
     private String waitForResetLink(String recipientEmail) throws Exception {

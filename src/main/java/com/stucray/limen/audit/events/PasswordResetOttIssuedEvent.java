@@ -15,4 +15,4 @@ public record PasswordResetOttIssuedEvent(
     @Nullable Long userId,
     String email,
     boolean delivered
-) {}
+) implements AuditedDomainEvent {}

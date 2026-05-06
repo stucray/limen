@@ -11,4 +11,4 @@ public record UserCreatedEvent(
     Long actorUserId,
     Long userId,
     String email
-) {}
+) implements AuditedDomainEvent {}

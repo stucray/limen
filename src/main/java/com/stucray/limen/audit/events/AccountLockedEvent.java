@@ -14,4 +14,4 @@ public record AccountLockedEvent(
     Long userId,
     String email,
     LocalDateTime lockedUntil
-) {}
+) implements AuditedDomainEvent {}

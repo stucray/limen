@@ -381,13 +381,17 @@ flowchart LR
     subgraph "Emit sites"
       AS[Spring Security<br/>AuthenticationSuccessEvent]
       AF[Spring Security<br/>AuthenticationFailureEvent]
-      DOM["Domain events<br/>(TenantCreatedEvent,<br/>EmailVerifiedEvent,<br/>AccountLockedEvent,<br/>UserCreatedEvent,<br/>RateLimitHitEvent, ...)"]
+      RL[RateLimitHitEvent]
+      DOM["Domain events<br/>(TenantCreatedEvent,<br/>EmailVerifiedEvent,<br/>AccountLockedEvent,<br/>UserCreatedEvent, ...)"]
     end
     AR[("AuditRegistry<br/>declarative rules<br/>(event class → projection,<br/>binding)")]
     AD[AuditDispatcher]
+    EPR[("event_publication<br/>(Modulith JDBC<br/>publication registry)")]
     AS -->|@EventListener| AD
     AF -->|@EventListener| AD
-    DOM -->|@TransactionalEventListener<br/>AFTER_COMMIT| AD
+    RL -->|@EventListener| AD
+    DOM -->|@ApplicationModuleListener<br/>via publication registry| EPR
+    EPR -->|async after commit| AD
     AD -->|lookup matching rule| AR
     AD --> AEW[AuditEventWriter] --> DB[(audit_event<br/>jsonb details)]
 ```
@@ -395,10 +399,13 @@ flowchart LR
 Properties:
 
 - **Declarative rule registry.** `AuditRegistry` holds one `AuditRule` per audit-bearing event class (event type, projection lambda, binding kind). Adding a new audit row is one entry in the registry, not three places. `AuditDispatcher`'s two listener methods (one per binding) look up the matching rule, apply the projection, and call the writer. Subclass-aware lookup (with per-class cache) honours Spring's listener-subtype contract — the `AbstractAuthenticationFailureEvent` rule still matches `BadCredentialsException`, etc. Ambient context (event id, timestamp, IP / user-agent) and writer-failure swallowing live in one place rather than repeating per emit site.
-- **Two listener bindings.** Spring Security's auth events fire synchronously (no enclosing transaction), so the `@EventListener` method is used. Custom domain events use `@TransactionalEventListener(phase = AFTER_COMMIT)` so a failed audit write never rolls back the user-facing action, and a rolled-back domain action never produces a misleading audit row. The binding for each rule is encoded as data on `AuditRule.binding` rather than picked by the listener annotation.
+- **Two listener bindings.** Spring Security's auth events and `RateLimitHitEvent` fire synchronously and outside any transaction, so the `@EventListener` method handles them. Custom transactionally-sourced domain events flow through `@ApplicationModuleListener` (Spring Modulith): the publication registry persists each event in `event_publication` at publish time, the listener runs asynchronously after the publishing transaction commits, and the registry stamps `completion_date` once the listener returns. The binding for each rule is encoded as data on `AuditRule.binding` rather than picked by the listener annotation. The `@ApplicationModuleListener` parameter is typed as the `AuditedDomainEvent` marker interface (which every transactionally-sourced audit event record implements) rather than `Object`, so the publication registry only persists events the registry has rules for — a bare `Object` parameter would catch every Spring framework startup event and try to JSON-serialize the source.
+- **At-least-once for transactional events; best-effort for the rest.** A JVM crash between commit and listener execution leaves the `event_publication` row uncompleted; on the next startup Modulith replays the event and re-invokes the listener. Two scope notes follow from this:
+  - **Duplicates are possible** on rare restart-after-failure (no idempotency key on `audit_event` in this slice — adding one is a follow-up if duplicates are observed).
+  - **The guarantee is bounded.** It applies only to the `@ApplicationModuleListener` path. Audit rows derived from Spring Security auth events and `RateLimitHitEvent` go through the IMMEDIATE `@EventListener` path because those events fire outside any transaction; closing the gap for them needs an outbox-style approach (synchronous insert inside the publishing filter, async drain) and is out of scope here.
+- **Application-level write failures are still swallowed.** If the listener runs but the writer throws, the dispatcher logs and returns normally — the publication record is marked complete and not retried. The at-least-once guarantee here is specifically about *delivery* (the listener was invoked), not about *eventual write success*.
 - **Event types currently emitted:** `login_success`, `login_failure`, `tenant_created` / `tenant_suspended` / `tenant_unsuspended` / `tenant_deleted`, `client_secret_rotated`, `verification_ott_issued` / `email_verified` / `verification_resent`, `account_locked` / `account_unlocked`, `password_reset_ott_issued` / `password_reset_completed` / `password_changed`, `user_created` / `user_enabled` / `user_disabled` / `user_deleted`, `tenant_ownership_granted` / `tenant_ownership_revoked`, `rate_limit_hit`.
-- **Schema-shaped for forward compatibility.** `audit_event` carries `tenant_id` (nullable, `ON DELETE SET NULL` so deleting a Tenant does not delete its history), `actor_user_id` (same nullability rule), `event_type`, optional `target_type` / `target_id`, request context (`ip_address`, `user_agent`), `occurred_at`, and a `jsonb details` payload for event-specific fields. Indexed by `(tenant_id, occurred_at DESC)` for the per-tenant timeline view.
-- **Best-effort delivery.** A JVM crash between transaction commit and listener execution loses that one event. At-least-once is the Spring Modulith adoption story — the publication registry persists events before listener execution and replays on restart. Switching to it is an annotation swap on the listener; emit sites are unchanged. (See §6 v3.5.)
+- **Schema-shaped for forward compatibility.** `audit_event` carries `tenant_id` (nullable, `ON DELETE SET NULL` so deleting a Tenant does not delete its history), `actor_user_id` (same nullability rule), `event_type`, optional `target_type` / `target_id`, request context (`ip_address`, `user_agent`), `occurred_at`, and a `jsonb details` payload for event-specific fields. Indexed by `(tenant_id, occurred_at DESC)` for the per-tenant timeline view. The Modulith publication registry's own `event_publication` table is created by Flyway V10 (the framework's own initializer is left disabled; default `spring.modulith.events.jdbc.schema-initialization.enabled=false`).
 
 ### 4.9 Rate limiting
 
@@ -598,7 +605,7 @@ Other sub-packages (e.g. `audit.dispatch`, `auth.lockout`, `security.ratelimit`)
 
 **Cross-module dependency policy.** Modulith's open default: any module may depend on any other module's top-level package or its named interfaces. There are no `@ApplicationModule(allowedDependencies = ...)` whitelists. The verifier still enforces no cycles and no sub-package leaks; tightening to per-module allowed-dependency declarations is a future option if evidence warrants it.
 
-**Build dependencies.** `spring-modulith-api` (compile scope) provides `@NamedInterface` for the `package-info.java` annotations; `spring-modulith-starter-test` (test scope) provides `ApplicationModules.verify()` for the verifier test. No runtime Modulith behaviour is wired in this slice — that lands in v3.5 item 10's at-least-once audit work, which adds `spring-modulith-starter-jdbc` and the publication registry.
+**Build dependencies.** `spring-modulith-api` (compile scope) provides `@NamedInterface` for the `package-info.java` annotations; `spring-modulith-starter-test` (test scope) provides `ApplicationModules.verify()` for the verifier test; `spring-modulith-starter-jdbc` (runtime scope) wires the JDBC publication registry that backs `@ApplicationModuleListener` (used by `AuditDispatcher.onAfterCommit`). The `event_publication` table is owned by Flyway V10, not the framework's own initializer.
 
 ## 5. Current Gaps and Shortcomings
 
@@ -615,7 +622,7 @@ These are known limitations of the current surface. None of them block the produ
 - **No signing-key rotation job.** The schema supports it; nothing schedules it.
 - **No consent revocation UI.** Consents are persisted per Tenant but end-users have no way to view or revoke them; only direct DB or admin action would clear them.
 - **Rate-limit state is per-process.** Bucket4j in-memory is the right call for a single-container deployment; horizontal scaling will need the Postgres-backed swap (§6 v3.5).
-- **Audit delivery is best-effort.** A JVM crash between transaction commit and listener execution loses that one event. Spring Modulith's publication registry will close this to at-least-once (§6 v3.5); the listener annotation swap is the only audit-side change required.
+- **Audit delivery is at-least-once for transactional events only.** Domain events emitted from inside a transaction (every `tenant_*`, `user_*`, `client_*`, `password_*`, `email_*`, `account_*`, etc.) survive a JVM crash between commit and listener execution via the Modulith publication registry. Spring-Security-derived audit rows (`login_success`, `login_failure`) and `rate_limit_hit` still fire synchronously through `@EventListener` and remain best-effort — those events have no enclosing transaction the registry can attach to. Closing this last gap needs an outbox-style approach and is out of scope. (See §4.8.)
 - **No real email provider wired.** `EmailSender` has `logging` (default) and `smtp` drivers. Resend / Brevo / SendGrid / SES is a config swap deferred to v4.
 
 ### Code-level
@@ -649,7 +656,7 @@ A single PRD covering five gaps that blocked Limen being credible as a hosted Id
 
 ### v3.5 — operational hardening (post-PRD-#120)
 
-10. **Spring Modulith adoption.** Tracked in PRD #151. **Slice 1 (boundary enforcement) shipped 2026-05-06 (#152).** 19 application modules at `com.stucray.limen.*`, verified by `LimenModuleArchitectureTest` calling `ApplicationModules.verify()` — see §4.15. Three named interfaces (`audit.events`, `auth.login`, `auth.ott`) demarcate published API; cycles at `auth ↔ tenant`, `auth ↔ oauth2`, `audit ↔ auth`, and `oauth2 ↔ security` were broken by mechanical re-homing (provisioning promoted to its own module, `TenantAccessFilter` → `auth`, `TenantUserDetails` → `user`, `SasConfig` → `oauth2`). **Slice 2 (#153) — at-least-once audit delivery — pending.** Adds `spring-modulith-starter-jdbc`, Flyway V10 for `event_publication`, and swaps the audit dispatcher's `@TransactionalEventListener(AFTER_COMMIT)` for `@ApplicationModuleListener`. Closes the at-least-once gap for *transactional* domain events; audit rows derived from Spring Security auth events (which fire outside a transaction) remain best-effort.
+10. ~~**Spring Modulith adoption.**~~ Tracked in PRD #151; both slices shipped. **Slice 1 (boundary enforcement) shipped 2026-05-06 (#152).** 19 application modules at `com.stucray.limen.*`, verified by `LimenModuleArchitectureTest` calling `ApplicationModules.verify()` — see §4.15. Three named interfaces (`audit.events`, `auth.login`, `auth.ott`) demarcate published API; cycles at `auth ↔ tenant`, `auth ↔ oauth2`, `audit ↔ auth`, and `oauth2 ↔ security` were broken by mechanical re-homing (provisioning promoted to its own module, `TenantAccessFilter` → `auth`, `TenantUserDetails` → `user`, `SasConfig` → `oauth2`). **Slice 2 (at-least-once audit delivery) shipped 2026-05-06 (#153).** Adds `spring-modulith-starter-jdbc` (runtime) + Flyway V10 for `event_publication`; the audit dispatcher's AFTER_COMMIT listener swaps from `@TransactionalEventListener` to `@ApplicationModuleListener`, so transactionally-sourced domain events survive a JVM crash between commit and listener execution. Auth-event-derived audit rows and `rate_limit_hit` (no enclosing transaction) remain best-effort. See §4.8 for the bounded-guarantee framing and the duplicate-on-replay caveat.
 11. **Audit admin UI.** List + filter views under `/manage/t/{slug}/audit` (Tenant-scoped) and `/manage/system/audit` (cross-tenant). CSV export. Pure-additive on top of the v3 schema.
 12. **Metrics.** Micrometer counters for login success / failure, token issuance, key rotation; latency histograms on the token endpoint.
 13. **Signing-key rotation job.** Scheduled, with overlap window so old tokens validate against the retired key during a grace period.

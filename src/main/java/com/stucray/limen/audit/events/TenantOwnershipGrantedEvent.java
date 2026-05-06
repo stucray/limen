@@ -13,4 +13,4 @@ public record TenantOwnershipGrantedEvent(
     Long actorUserId,
     Long userId,
     String email
-) {}
+) implements AuditedDomainEvent {}

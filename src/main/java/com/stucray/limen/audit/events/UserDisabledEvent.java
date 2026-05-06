@@ -13,4 +13,4 @@ public record UserDisabledEvent(
     Long actorUserId,
     Long userId,
     String email
-) {}
+) implements AuditedDomainEvent {}

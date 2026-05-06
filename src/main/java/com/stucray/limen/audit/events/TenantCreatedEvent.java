@@ -15,4 +15,4 @@ public record TenantCreatedEvent(
     String slug,
     String displayName,
     @Nullable Long actorUserId
-) {}
+) implements AuditedDomainEvent {}

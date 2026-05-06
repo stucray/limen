@@ -10,4 +10,4 @@ public record VerificationOttIssuedEvent(
     Long tenantId,
     Long userId,
     String email
-) {}
+) implements AuditedDomainEvent {}

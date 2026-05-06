@@ -19,12 +19,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -188,8 +190,12 @@ class UserManagementIntegrationTest {
 
         User updated = userRepository.findById(alice.id()).orElseThrow();
         assertThat(updated.mustChangePassword()).isTrue();
-        Map<String, Object> row = latestEventOfType(tenant.id(), "password_changed");
-        assertThat(row.get("details").toString().replace(" ", "")).contains("\"trigger\":\"admin_reset\"");
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            Map<String, Object> row = latestEventOfType(tenant.id(), "password_changed");
+            assertThat(row).isNotNull();
+            assertThat(row.get("details").toString().replace(" ", ""))
+                .contains("\"trigger\":\"admin_reset\"");
+        });
     }
 
     @Test
@@ -380,8 +386,12 @@ class UserManagementIntegrationTest {
             .andExpect(status().is3xxRedirection());
 
         assertThat(userRepository.findById(newUser.id()).orElseThrow().mustChangePassword()).isFalse();
-        Map<String, Object> row = latestEventOfType(tenant.id(), "password_changed");
-        assertThat(row.get("details").toString().replace(" ", "")).contains("\"trigger\":\"forced\"");
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            Map<String, Object> row = latestEventOfType(tenant.id(), "password_changed");
+            assertThat(row).isNotNull();
+            assertThat(row.get("details").toString().replace(" ", ""))
+                .contains("\"trigger\":\"forced\"");
+        });
     }
 
     @Test
@@ -391,8 +401,12 @@ class UserManagementIntegrationTest {
                 .param("newPassword", "newpass123").param("confirmPassword", "newpass123"))
             .andExpect(status().is3xxRedirection());
 
-        Map<String, Object> row = latestEventOfType(tenant.id(), "password_changed");
-        assertThat(row.get("details").toString().replace(" ", "")).contains("\"trigger\":\"self_service\"");
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            Map<String, Object> row = latestEventOfType(tenant.id(), "password_changed");
+            assertThat(row).isNotNull();
+            assertThat(row.get("details").toString().replace(" ", ""))
+                .contains("\"trigger\":\"self_service\"");
+        });
     }
 
     @Test
@@ -452,16 +466,27 @@ class UserManagementIntegrationTest {
         return (MockHttpSession) login.getRequest().getSession(false);
     }
 
+    // The AFTER_COMMIT-bound dispatcher runs asynchronously under the Modulith
+    // publication registry, so positive audit-row checks poll until the row
+    // lands. Negative checks (assertNoAuditRow / "count is zero") follow a
+    // rejected action that never commits, so no event is ever emitted; a
+    // synchronous read is safe.
+
     private void assertAuditRow(Long tenantId, String eventType, Long actorUserId, Long targetUserId, String email) {
-        Map<String, Object> row = latestEventOfType(tenantId, eventType);
-        assertThat(row.get("actor_user_id")).isEqualTo(actorUserId);
-        assertThat(row.get("target_id")).isEqualTo(String.valueOf(targetUserId));
-        assertThat(row.get("details").toString().replace(" ", "")).contains("\"email\":\"" + email + "\"");
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            Map<String, Object> row = latestEventOfType(tenantId, eventType);
+            assertThat(row).as("expected %s row for tenant %d", eventType, tenantId).isNotNull();
+            assertThat(row.get("actor_user_id")).isEqualTo(actorUserId);
+            assertThat(row.get("target_id")).isEqualTo(String.valueOf(targetUserId));
+            assertThat(row.get("details").toString().replace(" ", "")).contains("\"email\":\"" + email + "\"");
+        });
     }
 
     private void assertAuditRowExists(Long tenantId, String eventType, Long targetUserId) {
-        long count = countAuditRows(tenantId, eventType, targetUserId);
-        assertThat(count).as("expected %s row for user %d", eventType, targetUserId).isGreaterThan(0);
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+            assertThat(countAuditRows(tenantId, eventType, targetUserId))
+                .as("expected %s row for user %d", eventType, targetUserId)
+                .isGreaterThan(0));
     }
 
     private void assertNoAuditRow(Long tenantId, String eventType) {
@@ -478,10 +503,11 @@ class UserManagementIntegrationTest {
         return count == null ? 0 : count;
     }
 
-    private Map<String, Object> latestEventOfType(Long tenantId, String eventType) {
-        return jdbcTemplate.queryForMap(
+    private @org.jspecify.annotations.Nullable Map<String, Object> latestEventOfType(Long tenantId, String eventType) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
             "SELECT event_type, tenant_id, actor_user_id, target_type, target_id, details::text AS details "
                 + "FROM audit_event WHERE tenant_id = ? AND event_type = ? ORDER BY occurred_at DESC LIMIT 1",
             tenantId, eventType);
+        return rows.isEmpty() ? null : rows.get(0);
     }
 }

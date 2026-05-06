@@ -10,6 +10,6 @@ public record PasswordChangedEvent(
     Long tenantId,
     Long userId,
     Trigger trigger
-) {
+) implements AuditedDomainEvent {
     public enum Trigger { FORCED, SELF_SERVICE, ADMIN_RESET }
 }

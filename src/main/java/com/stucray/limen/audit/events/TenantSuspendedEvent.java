@@ -4,4 +4,4 @@ public record TenantSuspendedEvent(
     Long tenantId,
     String slug,
     Long actorUserId
-) {}
+) implements AuditedDomainEvent {}
