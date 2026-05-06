@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   publish:
-    uses: stucray/workflows/.github/workflows/publish-image-spring-boot-maven.yml@feat/publish-image-spring-boot-maven
+    uses: stucray/workflows/.github/workflows/publish-image-spring-boot-maven.yml@v1
     with:
       # Fallback to '' so non-dispatch triggers (push) and dispatches without
       # a value pass a string (not null) through the with: block.
