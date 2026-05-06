@@ -1,103 +1,16 @@
-# Main CI pipeline: builds the project, runs the full test suite, and enforces
-# static-analysis gates on every push and PR to `main`. A single job — if it
-# fails, the PR cannot be merged.
+# Main CI pipeline. Thin caller — the build/test/static-analysis behaviour
+# lives in stucray/workflows/.github/workflows/ci-spring-boot-maven.yml.
 
 name: CI
 
-# Run on every push to main and on PRs targeting main.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
-# Least-privilege default: the workflow's GITHUB_TOKEN gets read-only access
-# to repo contents and nothing else.
-permissions:
-  contents: read
-
-# Cancel any in-flight run on the same ref when a new commit arrives, so
-# superseded runs don't burn CI minutes.
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  verify:
-    name: build, test, static analysis
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    env:
-      # Test-only Key Encryption Key supplied as a repo secret; required by
-      # tests that exercise envelope encryption of tenant secrets.
-      LIMEN_SECURITY_KEK: ${{ secrets.LIMEN_SECURITY_KEK_TEST }}
-    steps:
-      # Fetch the commit under test.
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      # Install Java 26 and enable Maven dependency caching for faster reruns.
-      - name: Set up JDK 26 (Temurin)
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '26'
-          cache: maven
-
-      # Cache the Playwright browser binaries (~150 MB Chromium) downloaded by
-      # Playwright on first `Playwright.create()`. Keyed on pom.xml so a bump
-      # of the Playwright version invalidates the cache; restore-keys lets us
-      # fall back to any prior cache for the same OS to avoid a full miss when
-      # unrelated deps change.
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pom.xml') }}
-          restore-keys: |
-            playwright-${{ runner.os }}-
-
-      # Single Maven phase that does everything: compile, Error Prone +
-      # NullAway (errors fail the build), unit + integration tests
-      # (Surefire + Failsafe-driven Playwright UI tests), JaCoCo coverage
-      # check, and the PMD complexity report.
-      - name: Verify (compile + Error Prone + NullAway + tests + JaCoCo + PMD report)
-        run: ./mvnw -B -ntp verify
-
-      # Always upload the PMD complexity report (even on green builds) so
-      # reviewers can inspect complexity hotspots; kept for 30 days.
-      - name: Upload PMD complexity report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: pmd-complexity-report
-          path: |
-            target/pmd.xml
-            target/reports/pmd.html
-            target/reports/xref
-          if-no-files-found: ignore
-          retention-days: 30
-
-      # Only uploaded when verify fails (typically a coverage-threshold
-      # breach) to help diagnose what's uncovered; kept for 14 days.
-      - name: Upload JaCoCo report on failure
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: jacoco-report
-          path: target/site/jacoco
-          if-no-files-found: ignore
-          retention-days: 14
-
-      # Playwright traces (zipped, replayable in the trace viewer) and final-
-      # state screenshots are written under target/playwright-artifacts/ ONLY
-      # when a UI test fails. Uploaded on failure so reviewers can replay the
-      # test step-by-step against full DOM snapshots.
-      - name: Upload Playwright traces and screenshots on failure
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-artifacts
-          path: target/playwright-artifacts/
-          if-no-files-found: ignore
-          retention-days: 14
+  ci:
+    uses: stucray/workflows/.github/workflows/ci-spring-boot-maven.yml@feat/ci-spring-boot-maven
+    secrets:
+      test_env_json: '{"LIMEN_SECURITY_KEK":"${{ secrets.LIMEN_SECURITY_KEK_TEST }}"}'
