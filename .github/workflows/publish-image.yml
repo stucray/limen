@@ -1,7 +1,11 @@
 # Builds the application container image with Paketo buildpacks and pushes it
 # to GitHub Container Registry as a multi-arch manifest list (amd64 + arm64).
-# Triggered by every push to `main` (rolling image), every release tag
-# `v*.*.*` (versioned + `:latest`), or manually.
+# Triggered by every push to `main` (rolling `:main` image), every release
+# tag `v*.*.*` (versioned tags + `:latest`), or manually.
+#
+# To re-publish a past release as multi-arch (e.g. one that was tagged before
+# this workflow shipped), dispatch from `main` with the `version_ref` input:
+#   gh workflow run publish-image.yml --ref main -f version_ref=v0.1.0
 #
 # Strategy: a per-arch matrix builds each architecture natively on its own
 # runner (no QEMU), pushes a transient `tmp-<run-id>-<arch>` tag, then a
@@ -14,6 +18,10 @@ on:
     branches: [main]
     tags: ['v*.*.*']
   workflow_dispatch:
+    inputs:
+      version_ref:
+        description: 'Republish a past release: tag (e.g. `v0.1.0`) or sha to build from. Leave blank to build the workflow ref.'
+        required: false
 
 # Needs `packages: write` to push to ghcr.io; everything else stays read-only.
 permissions:
@@ -23,7 +31,7 @@ permissions:
 # Serialise pushes per ref: don't cancel an in-flight publish — letting it
 # finish avoids leaving the registry in a half-tagged state.
 concurrency:
-  group: publish-image-${{ github.ref }}
+  group: publish-image-${{ inputs.version_ref || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -45,6 +53,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.version_ref || github.ref }}
 
       # Java 26 is required by the Paketo build (BP_JVM_VERSION=26 below).
       # Temurin publishes both amd64 and arm64 builds, so the same step works
@@ -83,19 +93,40 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      # Derive the set of image tags to push: branch name, short SHA, and on
-      # release tags also `X.Y.Z`, `X.Y`, and `latest`.
+      # Checkout the same ref the build jobs used so the short-sha tag below
+      # refers to the commit the image was actually built from.
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.version_ref || github.ref }}
+
+      # Derive the public-facing tag set:
+      # - semver tag (auto push of `refs/tags/vX.Y.Z`, or `version_ref` set):
+      #     `:X.Y.Z`, `:X.Y`, `:latest`, `:sha-<short>`
+      # - main branch push: `:main`, `:sha-<short>`
+      # - anything else (manual dispatch from a feature branch, etc.):
+      #     `:sha-<short>` only
       - name: Compute image tags
         id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=ref,event=branch
-            type=sha,format=short
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          set -euo pipefail
+          IMG="ghcr.io/${{ github.repository }}"
+          REF="${{ inputs.version_ref || github.ref }}"
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          if [[ "$REF" =~ ^(refs/tags/)?v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            VER="${REF#refs/tags/}"; VER="${VER#v}"
+            IFS=. read -r MAJOR MINOR _ <<<"$VER"
+            TAGS=("$IMG:$VER" "$IMG:$MAJOR.$MINOR" "$IMG:latest" "$IMG:sha-$SHORT_SHA")
+          elif [ "$REF" = "refs/heads/main" ]; then
+            TAGS=("$IMG:main" "$IMG:sha-$SHORT_SHA")
+          else
+            TAGS=("$IMG:sha-$SHORT_SHA")
+          fi
+          {
+            echo "tags<<EOF"
+            printf '%s\n' "${TAGS[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
