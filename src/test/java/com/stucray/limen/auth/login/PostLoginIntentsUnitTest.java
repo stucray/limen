@@ -1,6 +1,6 @@
 package com.stucray.limen.auth.login;
 
-import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.user.TenantUserDetails;
 import com.stucray.limen.auth.ott.OttIntent;
 import com.stucray.limen.auth.ott.TenantOttAuthentication;
 import com.stucray.limen.tenant.Tenant;

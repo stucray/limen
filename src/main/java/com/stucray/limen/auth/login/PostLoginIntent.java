@@ -1,6 +1,6 @@
 package com.stucray.limen.auth.login;
 
-import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.user.TenantUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.jspecify.annotations.Nullable;

@@ -1,7 +1,7 @@
 package com.stucray.limen.identity;
 
 import com.stucray.limen.tenant.Tenant;
-import com.stucray.limen.tenant.TenantProvisioningService;
+import com.stucray.limen.provisioning.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;

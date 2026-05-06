@@ -1,6 +1,6 @@
 package com.stucray.limen.management.web;
 
-import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.user.TenantUserDetails;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.ControllerAdvice;

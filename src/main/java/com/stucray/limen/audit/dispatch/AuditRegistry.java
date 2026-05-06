@@ -20,7 +20,7 @@ import com.stucray.limen.audit.events.UserDisabledEvent;
 import com.stucray.limen.audit.events.UserEnabledEvent;
 import com.stucray.limen.audit.events.VerificationOttIssuedEvent;
 import com.stucray.limen.audit.events.VerificationResentEvent;
-import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.user.TenantUserDetails;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.authentication.event.AbstractAuthenticationFailureEvent;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;

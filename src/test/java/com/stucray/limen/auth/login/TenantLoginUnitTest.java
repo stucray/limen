@@ -1,5 +1,7 @@
 package com.stucray.limen.auth.login;
 
+import com.stucray.limen.user.TenantUserDetails;
+
 import com.stucray.limen.auth.TenantPersistentTokenBasedRememberMeServices;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -73,13 +75,13 @@ class TenantLoginUnitTest {
         @Order(50) class IntentX implements PostLoginIntent {
             public String resolve(jakarta.servlet.http.HttpServletRequest req,
                                   jakarta.servlet.http.HttpServletResponse res,
-                                  com.stucray.limen.auth.TenantUserDetails p,
+                                  com.stucray.limen.user.TenantUserDetails p,
                                   TenantUrlScheme scheme) { return null; }
         }
         @Order(50) class IntentY implements PostLoginIntent {
             public String resolve(jakarta.servlet.http.HttpServletRequest req,
                                   jakarta.servlet.http.HttpServletResponse res,
-                                  com.stucray.limen.auth.TenantUserDetails p,
+                                  com.stucray.limen.user.TenantUserDetails p,
                                   TenantUrlScheme scheme) { return null; }
         }
         TenantLogin login = new TenantLogin(
@@ -105,13 +107,13 @@ class TenantLoginUnitTest {
         @Order(10) class IntentX implements PostLoginIntent {
             public String resolve(jakarta.servlet.http.HttpServletRequest req,
                                   jakarta.servlet.http.HttpServletResponse res,
-                                  com.stucray.limen.auth.TenantUserDetails p,
+                                  com.stucray.limen.user.TenantUserDetails p,
                                   TenantUrlScheme scheme) { return null; }
         }
         @Order(20) class IntentY implements PostLoginIntent {
             public String resolve(jakarta.servlet.http.HttpServletRequest req,
                                   jakarta.servlet.http.HttpServletResponse res,
-                                  com.stucray.limen.auth.TenantUserDetails p,
+                                  com.stucray.limen.user.TenantUserDetails p,
                                   TenantUrlScheme scheme) { return null; }
         }
         TenantLogin login = new TenantLogin(

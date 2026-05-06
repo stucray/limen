@@ -2,7 +2,7 @@ package com.stucray.limen.auth.lockout;
 
 import com.stucray.limen.audit.events.AccountLockedEvent;
 import com.stucray.limen.auth.TenantAuthToken;
-import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.user.TenantUserDetails;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.user.User;

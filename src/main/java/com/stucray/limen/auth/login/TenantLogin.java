@@ -2,8 +2,8 @@ package com.stucray.limen.auth.login;
 
 import com.stucray.limen.auth.TenantAuthToken;
 import com.stucray.limen.auth.TenantPersistentTokenBasedRememberMeServices;
-import com.stucray.limen.auth.TenantUserDetails;
-import com.stucray.limen.oauth2.TenantAccessFilter;
+import com.stucray.limen.user.TenantUserDetails;
+import com.stucray.limen.auth.TenantAccessFilter;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

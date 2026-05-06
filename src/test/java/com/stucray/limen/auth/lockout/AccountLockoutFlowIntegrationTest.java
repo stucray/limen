@@ -2,7 +2,7 @@ package com.stucray.limen.auth.lockout;
 
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.tenant.Tenant;
-import com.stucray.limen.tenant.TenantProvisioningService;
+import com.stucray.limen.provisioning.TenantProvisioningService;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;

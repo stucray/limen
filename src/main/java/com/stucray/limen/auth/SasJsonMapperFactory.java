@@ -1,5 +1,7 @@
 package com.stucray.limen.auth;
 
+import com.stucray.limen.user.TenantUserDetails;
+
 import org.springframework.security.jackson.SecurityJacksonModules;
 
 import tools.jackson.databind.json.JsonMapper;

@@ -1,7 +1,7 @@
 package com.stucray.limen.auth.login;
 
 import com.stucray.limen.audit.events.PasswordChangedEvent;
-import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.user.TenantUserDetails;
 import com.stucray.limen.auth.ott.OttIntent;
 import com.stucray.limen.auth.ott.PasswordResetService;
 import com.stucray.limen.auth.ott.TenantOttAuthentication;

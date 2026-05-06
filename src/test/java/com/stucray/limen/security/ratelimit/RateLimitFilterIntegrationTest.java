@@ -1,7 +1,7 @@
 package com.stucray.limen.security.ratelimit;
 
 import com.stucray.limen.TestcontainersConfiguration;
-import com.stucray.limen.tenant.TenantProvisioningService;
+import com.stucray.limen.provisioning.TenantProvisioningService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

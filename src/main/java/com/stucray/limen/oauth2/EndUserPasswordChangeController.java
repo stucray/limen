@@ -1,6 +1,6 @@
 package com.stucray.limen.oauth2;
 
-import com.stucray.limen.auth.TenantUserDetails;
+import com.stucray.limen.user.TenantUserDetails;
 import com.stucray.limen.auth.login.TenantPasswordChangeFlow;
 import com.stucray.limen.auth.login.TenantUrlScheme;
 import jakarta.servlet.http.HttpServletRequest;

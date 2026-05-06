@@ -1,10 +1,10 @@
 package com.stucray.limen.oauth2;
 
 import com.stucray.limen.TestcontainersConfiguration;
-import com.stucray.limen.management.applications.Application;
-import com.stucray.limen.management.applications.ApplicationRepository;
-import com.stucray.limen.management.clients.TenantClient;
-import com.stucray.limen.management.clients.TenantClientRepository;
+import com.stucray.limen.applications.Application;
+import com.stucray.limen.applications.ApplicationRepository;
+import com.stucray.limen.clients.TenantClient;
+import com.stucray.limen.clients.TenantClientRepository;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantScope;
