@@ -84,3 +84,23 @@ management:
     web:
       exposure:
         include: health
+  # OpenTelemetry: signals (metrics, traces, logs) are pushed via OTLP/HTTP
+  # to the endpoint configured by the OTel SDK. In dev, Spring Boot's
+  # Docker Compose support auto-detects the `grafana/otel-lgtm` service
+  # (compose `observability` profile) and wires endpoint + enables exports.
+  # In production, override via standard OTel env vars:
+  #   OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.example.com
+  #   OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <token>"
+  #   OTEL_RESOURCE_ATTRIBUTES=deployment.environment=production
+  #   OTEL_TRACES_SAMPLER_ARG=0.1
+  # See dev/observability/README.md for the dev workflow.
+  tracing:
+    sampling:
+      # 100% trace sampling locally; production should knock this down
+      # via OTEL_TRACES_SAMPLER_ARG=0.1 (≈10%).
+      probability: 1.0
+  opentelemetry:
+    resource-attributes:
+      # `service.name` defaults to spring.application.name (`limen`).
+      # `deployment.environment` is overridable via env at deploy time.
+      deployment.environment: dev
