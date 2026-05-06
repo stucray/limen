@@ -33,5 +33,28 @@ services:
       timeout: 5s
       retries: 5
 
+  # Grafana LGTM all-in-one: Grafana + Mimir (Prom-compatible TSDB) + Loki +
+  # Tempo + an OTel Collector, in a single image. Receives OTLP/HTTP on 4318;
+  # serves Grafana on http://localhost:3000 (admin / admin). Behind the
+  # `observability` compose profile so it only starts when explicitly
+  # requested (`docker compose --profile observability up -d`) — image is
+  # ~500MB and most `mvn spring-boot:run` sessions don't need dashboards.
+  # Spring Boot's Docker Compose support auto-detects this service and
+  # wires OTEL_EXPORTER_OTLP_ENDPOINT for the running app. See
+  # dev/observability/README.md for usage. Grafana Labs flag this image as
+  # dev/demo only (no HA, no durable storage); production would point the
+  # OTel exporter at a real backend via env vars.
+  otel-lgtm:
+    image: grafana/otel-lgtm:latest
+    profiles: ["observability"]
+    ports:
+      - "3000:3000"  # Grafana UI
+      - "4318:4318"  # OTLP / HTTP (protobuf)
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   auth_postgres_data:

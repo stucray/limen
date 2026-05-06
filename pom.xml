@@ -67,6 +67,20 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
+		<!--
+			OpenTelemetry: ships the OTel API, the Micrometer→OTel bridge, and
+			OTLP exporters for metrics, traces, and logs. Auto-instruments
+			Tomcat, RestTemplate, JDBC, etc. Pushes signals over OTLP/HTTP to
+			the endpoint at OTEL_EXPORTER_OTLP_ENDPOINT (default
+			http://localhost:4318); Spring Boot's Docker Compose support
+			auto-detects the `grafana/otel-lgtm` service and wires the
+			endpoint when the `observability` compose profile is up. Disabled
+			under the `test` profile (see application-test.yaml).
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-opentelemetry</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-docker-compose</artifactId>
@@ -263,6 +277,15 @@
 				<configuration>
 					<environmentVariables>
 						<LIMEN_SECURITY_KEK>dGVzdC1rZWstdGVzdC1rZWstdGVzdC1rZWstdGVzdC0=</LIMEN_SECURITY_KEK>
+						<!--
+							Universal kill switch for the OpenTelemetry SDK
+							during tests. Without it, the SDK schedules
+							periodic OTLP exports to localhost:4318 and floods
+							test logs with connection-refused warnings (the
+							LGTM container is dev-only, never up during
+							`mvn verify`). Applies to surefire and failsafe.
+						-->
+						<OTEL_SDK_DISABLED>true</OTEL_SDK_DISABLED>
 					</environmentVariables>
 					<!--
 						Default-off: every unit/integration test shares the
@@ -286,6 +309,15 @@
 					</includes>
 					<environmentVariables>
 						<LIMEN_SECURITY_KEK>dGVzdC1rZWstdGVzdC1rZWstdGVzdC1rZWstdGVzdC0=</LIMEN_SECURITY_KEK>
+						<!--
+							Universal kill switch for the OpenTelemetry SDK
+							during tests. Without it, the SDK schedules
+							periodic OTLP exports to localhost:4318 and floods
+							test logs with connection-refused warnings (the
+							LGTM container is dev-only, never up during
+							`mvn verify`). Applies to surefire and failsafe.
+						-->
+						<OTEL_SDK_DISABLED>true</OTEL_SDK_DISABLED>
 					</environmentVariables>
 					<!-- Same rationale as surefire above. -->
 					<systemPropertyVariables>
