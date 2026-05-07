@@ -1,0 +1,85 @@
+{
+  "summary": {
+    "tool": "pmd",
+    "tool_version": "7.24.0",
+    "ruleset": "pmd-ruleset.xml",
+    "total_findings": 6,
+    "by_priority": {
+      "3": 6
+    }
+  },
+  "findings": [
+    {
+      "rule": "CyclomaticComplexity",
+      "ruleset": "Design",
+      "priority": 3,
+      "package": "com.stucray.limen.auth",
+      "class": "TenantAccessFilter",
+      "method": "doFilterInternal",
+      "file": "src/main/java/com/stucray/limen/auth/TenantAccessFilter.java",
+      "begin_line": 41,
+      "end_line": 41,
+      "message": "The method 'doFilterInternal(HttpServletRequest, HttpServletResponse, FilterChain)' has a cyclomatic complexity of 10."
+    },
+    {
+      "rule": "CyclomaticComplexity",
+      "ruleset": "Design",
+      "priority": 3,
+      "package": "com.stucray.limen.auth",
+      "class": "TenantAuthProvider",
+      "method": "authenticate",
+      "file": "src/main/java/com/stucray/limen/auth/TenantAuthProvider.java",
+      "begin_line": 57,
+      "end_line": 57,
+      "message": "The method 'authenticate(Authentication)' has a cyclomatic complexity of 12."
+    },
+    {
+      "rule": "CyclomaticComplexity",
+      "ruleset": "Design",
+      "priority": 3,
+      "package": "com.stucray.limen.auth",
+      "class": "TenantPersistentTokenBasedRememberMeServices",
+      "method": "processAutoLoginCookie",
+      "file": "src/main/java/com/stucray/limen/auth/TenantPersistentTokenBasedRememberMeServices.java",
+      "begin_line": 86,
+      "end_line": 86,
+      "message": "The method 'processAutoLoginCookie(String[], HttpServletRequest, HttpServletResponse)' has a cyclomatic complexity of 16."
+    },
+    {
+      "rule": "ExcessiveParameterList",
+      "ruleset": "Design",
+      "priority": 3,
+      "package": "com.stucray.limen.clients",
+      "class": "ClientManagementController",
+      "method": "createClient",
+      "file": "src/main/java/com/stucray/limen/clients/ClientManagementController.java",
+      "begin_line": 57,
+      "end_line": 72,
+      "message": "Avoid long parameter lists (14 parameters - threshold is 10)."
+    },
+    {
+      "rule": "ExcessiveParameterList",
+      "ruleset": "Design",
+      "priority": 3,
+      "package": "com.stucray.limen.clients",
+      "class": "ClientManagementService",
+      "method": "createClient",
+      "file": "src/main/java/com/stucray/limen/clients/ClientManagementService.java",
+      "begin_line": 62,
+      "end_line": 74,
+      "message": "Avoid long parameter lists (12 parameters - threshold is 10)."
+    },
+    {
+      "rule": "TooManyMethods",
+      "ruleset": "Design",
+      "priority": 3,
+      "package": "com.stucray.limen.users",
+      "class": "UserManagementController",
+      "method": "",
+      "file": "src/main/java/com/stucray/limen/users/UserManagementController.java",
+      "begin_line": 22,
+      "end_line": 190,
+      "message": "This class has too many methods, consider refactoring it."
+    }
+  ]
+}
