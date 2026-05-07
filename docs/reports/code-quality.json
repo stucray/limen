@@ -3,9 +3,10 @@
     "tool": "pmd",
     "tool_version": "7.24.0",
     "ruleset": "pmd-ruleset.xml",
-    "total_findings": 6,
+    "total_findings": 11,
     "by_priority": {
-      "3": 6
+      "2": 1,
+      "3": 10
     }
   },
   "findings": [
@@ -70,6 +71,54 @@
       "message": "Avoid long parameter lists (12 parameters - threshold is 10)."
     },
     {
+      "rule": "ImplicitFunctionalInterface",
+      "ruleset": "Best Practices",
+      "priority": 2,
+      "package": "com.stucray.limen.email",
+      "class": "EmailSender",
+      "method": "",
+      "file": "src/main/java/com/stucray/limen/email/EmailSender.java",
+      "begin_line": 12,
+      "end_line": 12,
+      "message": "Annotate this interface with @FunctionalInterface or with @SuppressWarnings(\"PMD.ImplicitFunctionalInterface\") to clarify your intent."
+    },
+    {
+      "rule": "PreserveStackTrace",
+      "ruleset": "Best Practices",
+      "priority": 3,
+      "package": "com.stucray.limen.auth",
+      "class": "TenantPersistentTokenBasedRememberMeServices",
+      "method": "processAutoLoginCookie",
+      "file": "src/main/java/com/stucray/limen/auth/TenantPersistentTokenBasedRememberMeServices.java",
+      "begin_line": 130,
+      "end_line": 130,
+      "message": "Thrown exception does not preserve the stack trace of exception 'ex' on all code paths"
+    },
+    {
+      "rule": "PreserveStackTrace",
+      "ruleset": "Best Practices",
+      "priority": 3,
+      "package": "com.stucray.limen.auth.ott",
+      "class": "TenantOttAuthenticationProvider",
+      "method": "authenticate",
+      "file": "src/main/java/com/stucray/limen/auth/ott/TenantOttAuthenticationProvider.java",
+      "begin_line": 89,
+      "end_line": 89,
+      "message": "Thrown exception does not preserve the stack trace of exception 'ex' on all code paths"
+    },
+    {
+      "rule": "RelianceOnDefaultCharset",
+      "ruleset": "Best Practices",
+      "priority": 3,
+      "package": "com.stucray.limen.auth",
+      "class": "TenantPersistentTokenBasedRememberMeServices",
+      "method": "encodeBase64",
+      "file": "src/main/java/com/stucray/limen/auth/TenantPersistentTokenBasedRememberMeServices.java",
+      "begin_line": 155,
+      "end_line": 155,
+      "message": "Specify a character set instead of relying on the default charset"
+    },
+    {
       "rule": "TooManyMethods",
       "ruleset": "Design",
       "priority": 3,
@@ -80,6 +129,18 @@
       "begin_line": 22,
       "end_line": 190,
       "message": "This class has too many methods, consider refactoring it."
+    },
+    {
+      "rule": "UnusedLocalVariable",
+      "ruleset": "Best Practices",
+      "priority": 3,
+      "package": "com.stucray.limen.provisioning",
+      "class": "TenantProvisioner",
+      "method": "provision",
+      "file": "src/main/java/com/stucray/limen/provisioning/TenantProvisioner.java",
+      "begin_line": 103,
+      "end_line": 103,
+      "message": "Avoid unused local variables such as 'g'."
     }
   ]
 }
