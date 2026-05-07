@@ -85,8 +85,10 @@ public class TenantOttAuthenticationProvider implements AuthenticationProvider {
         } catch (UsernameNotFoundException ex) {
             // The token row's email does not resolve to a user in the tenant
             // (e.g. user deleted between issue and consume). Treat as bad creds
-            // rather than leaking which case we hit.
-            throw new BadCredentialsException("Failed to authenticate the one-time token");
+            // rather than leaking which case we hit. The thrown type stays
+            // BadCredentialsException — the cause chain is preserved for
+            // server-log debugging, not exposed to clients.
+            throw new BadCredentialsException("Failed to authenticate the one-time token", ex);
         }
 
         // Both intents flip email_verified=true. For VERIFY_EMAIL that is the

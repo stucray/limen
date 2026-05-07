@@ -21,8 +21,7 @@ class VerifyEmailHandler implements OttIntentHandler {
 
     @Override
     public String body(Tenant tenant, String magicLink) {
-        return ""
-            + "Welcome to " + tenant.displayName() + " on Limen.\n\n"
+        return "Welcome to " + tenant.displayName() + " on Limen.\n\n"
             + "Click the link below to verify your email address and activate your account:\n\n"
             + magicLink + "\n\n"
             + "This link is single-use and will expire in 60 minutes.\n";

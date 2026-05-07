@@ -100,7 +100,7 @@ public class TenantProvisioner {
                 rawPassword = p.rawPassword();
                 mustChangePassword = false;
             }
-            case OwnerCredentials.GenerateRandom g -> {
+            case OwnerCredentials.GenerateRandom _ -> {
                 rawPassword = randomPlaceholderPassword();
                 mustChangePassword = true;
             }
