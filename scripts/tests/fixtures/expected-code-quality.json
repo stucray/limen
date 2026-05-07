@@ -1,0 +1,61 @@
+{
+  "summary": {
+    "tool": "pmd",
+    "tool_version": "7.24.0",
+    "ruleset": "pmd-ruleset.xml",
+    "total_findings": 4,
+    "by_priority": {
+      "3": 4
+    }
+  },
+  "findings": [
+    {
+      "rule": "CyclomaticComplexity",
+      "ruleset": "Design",
+      "priority": 3,
+      "package": "com.example.sample.auth",
+      "class": "SampleService",
+      "method": "processRequest",
+      "file": "src/main/java/com/example/sample/auth/SampleService.java",
+      "begin_line": 42,
+      "end_line": 42,
+      "message": "The method 'processRequest(Request)' has a cyclomatic complexity of 11."
+    },
+    {
+      "rule": "CyclomaticComplexity",
+      "ruleset": "Design",
+      "priority": 3,
+      "package": "com.example.sample.auth",
+      "class": "SampleService",
+      "method": "validateInput",
+      "file": "src/main/java/com/example/sample/auth/SampleService.java",
+      "begin_line": 78,
+      "end_line": 78,
+      "message": "The method 'validateInput(Input)' has a cyclomatic complexity of 12."
+    },
+    {
+      "rule": "ExcessiveParameterList",
+      "ruleset": "Design",
+      "priority": 3,
+      "package": "com.example.sample.web",
+      "class": "SampleController",
+      "method": "createSomething",
+      "file": "src/main/java/com/example/sample/web/SampleController.java",
+      "begin_line": 50,
+      "end_line": 65,
+      "message": "Avoid long parameter lists (12 parameters - threshold is 10)."
+    },
+    {
+      "rule": "TooManyMethods",
+      "ruleset": "Design",
+      "priority": 3,
+      "package": "com.example.sample.web",
+      "class": "SampleController",
+      "method": "",
+      "file": "src/main/java/com/example/sample/web/SampleController.java",
+      "begin_line": 20,
+      "end_line": 180,
+      "message": "This class has too many methods, consider refactoring it."
+    }
+  ]
+}
