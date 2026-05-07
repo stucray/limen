@@ -8,6 +8,13 @@
 limen:
   email:
     driver: smtp
+  signing-key-rotation:
+    # Belt-and-braces off-switch for tests that explicitly @ActiveProfiles("test").
+    # Most integration tests don't activate this profile and rely on the cron
+    # not firing during a build's wall-clock window; tests that need
+    # determinism on the rotation counters/audit rows opt into "test" so the
+    # SigningKeyRotationSchedule bean is never created here.
+    enabled: false
 spring:
   mail:
     properties:

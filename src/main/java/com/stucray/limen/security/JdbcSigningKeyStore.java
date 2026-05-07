@@ -151,6 +151,18 @@ public class JdbcSigningKeyStore implements SigningKeyStore {
     }
 
     @Override
+    public List<Long> findTenantIdsWithActiveKeyOlderThan(Duration age) {
+        return jdbcTemplate.query(
+            "SELECT tenant_id FROM tenant_signing_key " +
+                "WHERE status = 'ACTIVE' " +
+                "AND created_at < CURRENT_TIMESTAMP - make_interval(secs => ?) " +
+                "ORDER BY tenant_id",
+            (rs, rowNum) -> rs.getLong("tenant_id"),
+            age.toSeconds()
+        );
+    }
+
+    @Override
     @Transactional
     public List<PrunedKey> pruneRetiredOlderThan(Duration grace) {
         // Threshold is computed in the database to stay coherent with the

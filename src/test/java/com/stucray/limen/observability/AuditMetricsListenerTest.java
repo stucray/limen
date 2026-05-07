@@ -3,6 +3,7 @@ package com.stucray.limen.observability;
 import com.stucray.limen.audit.events.ClientSecretRotatedEvent;
 import com.stucray.limen.audit.events.SigningKeyPrunedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
+import com.stucray.limen.audit.events.SigningKeyRotationFailedEvent;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
@@ -102,6 +103,31 @@ class AuditMetricsListenerTest {
         listener.onSigningKeyPruned(new SigningKeyPrunedEvent(42L, "kid"));
 
         assertThat(meters.counter(AuditMetricsListener.SIGNING_KEY_PRUNED).count()).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("SigningKeyRotationFailedEvent increments security.signing_key.rotation.failure with cause tag set to the carried simple name")
+    void onSigningKeyRotationFailureIncrementsWithCauseTag() {
+        listener.onSigningKeyRotationFailure(new SigningKeyRotationFailedEvent(42L, "IllegalStateException"));
+
+        Counter c = meters.find(AuditMetricsListener.SIGNING_KEY_ROTATION_FAILURE)
+            .tag("cause", "IllegalStateException")
+            .counter();
+        assertThat(c).isNotNull();
+        assertThat(c.count()).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("Different rotation-failure causes produce distinct series under the same metric name")
+    void differentRotationFailureCausesGetDistinctSeries() {
+        listener.onSigningKeyRotationFailure(new SigningKeyRotationFailedEvent(1L, "IllegalStateException"));
+        listener.onSigningKeyRotationFailure(new SigningKeyRotationFailedEvent(2L, "DataAccessException"));
+        listener.onSigningKeyRotationFailure(new SigningKeyRotationFailedEvent(3L, "IllegalStateException"));
+
+        assertThat(meters.find(AuditMetricsListener.SIGNING_KEY_ROTATION_FAILURE)
+            .tag("cause", "IllegalStateException").counter().count()).isEqualTo(2.0);
+        assertThat(meters.find(AuditMetricsListener.SIGNING_KEY_ROTATION_FAILURE)
+            .tag("cause", "DataAccessException").counter().count()).isEqualTo(1.0);
     }
 
     @Test

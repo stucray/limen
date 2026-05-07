@@ -2,6 +2,7 @@ package com.stucray.limen.security;
 
 import com.stucray.limen.audit.events.SigningKeyPrunedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
+import com.stucray.limen.audit.events.SigningKeyRotationFailedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -37,7 +39,7 @@ class SigningKeyRotatorTest {
     void rotateDelegatesAndPublishesEvent() {
         given(signingKeyStore.rotateForTenant(42L))
             .willReturn(new SigningKeyStore.RotationOutcome("old-kid", "new-kid"));
-        SigningKeyRotator rotator = new SigningKeyRotator(signingKeyStore, eventPublisher, clock);
+        SigningKeyRotator rotator = rotator(null);
 
         rotator.rotate(42L);
 
@@ -55,7 +57,7 @@ class SigningKeyRotatorTest {
     void rotatePropagatesStoreFailureAndDoesNotPublish() {
         willThrow(new IllegalStateException("no ACTIVE key"))
             .given(signingKeyStore).rotateForTenant(42L);
-        SigningKeyRotator rotator = new SigningKeyRotator(signingKeyStore, eventPublisher, clock);
+        SigningKeyRotator rotator = rotator(null);
 
         assertThatThrownBy(() -> rotator.rotate(42L))
             .isInstanceOf(IllegalStateException.class)
@@ -71,7 +73,7 @@ class SigningKeyRotatorTest {
             new SigningKeyStore.PrunedKey(7L, "kid-b"),
             new SigningKeyStore.PrunedKey(11L, "kid-c")
         ));
-        SigningKeyRotator rotator = new SigningKeyRotator(signingKeyStore, eventPublisher, clock);
+        SigningKeyRotator rotator = rotator(null);
 
         rotator.pruneRetired(Duration.ofHours(24));
 
@@ -89,10 +91,88 @@ class SigningKeyRotatorTest {
     @DisplayName("pruneRetired() publishes nothing when the store reports zero deletions")
     void prunePublishesNothingWhenNothingDeleted() {
         given(signingKeyStore.pruneRetiredOlderThan(Duration.ofHours(24))).willReturn(List.of());
-        SigningKeyRotator rotator = new SigningKeyRotator(signingKeyStore, eventPublisher, clock);
+        SigningKeyRotator rotator = rotator(null);
 
         rotator.pruneRetired(Duration.ofHours(24));
 
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    @DisplayName("runScheduledRotation() rotates each eligible tenant via the self-proxy and prunes once at the end")
+    void runScheduledRotationIteratesAllEligibleTenantsThenPrunes() {
+        SigningKeyRotator self = lenientMock();
+        given(signingKeyStore.findTenantIdsWithActiveKeyOlderThan(Duration.ofDays(30)))
+            .willReturn(List.of(7L, 11L, 13L));
+        SigningKeyRotator rotator = rotator(self);
+
+        rotator.runScheduledRotation();
+
+        var inOrder = inOrder(self);
+        inOrder.verify(self).rotate(7L);
+        inOrder.verify(self).rotate(11L);
+        inOrder.verify(self).rotate(13L);
+        inOrder.verify(self).pruneRetired(Duration.ofHours(24));
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    @DisplayName("runScheduledRotation() catches a per-tenant exception, publishes a SigningKeyRotationFailedEvent with cause = exception simple name, and continues with later tenants and the prune")
+    void runScheduledRotationContinuesPastFailureAndIncrementsFailureCounter() {
+        SigningKeyRotator self = lenientMock();
+        given(signingKeyStore.findTenantIdsWithActiveKeyOlderThan(Duration.ofDays(30)))
+            .willReturn(List.of(7L, 11L, 13L));
+        org.mockito.Mockito.doThrow(new IllegalStateException("boom"))
+            .when(self).rotate(11L);
+        SigningKeyRotator rotator = rotator(self);
+
+        rotator.runScheduledRotation();
+
+        verify(self).rotate(7L);
+        verify(self).rotate(11L);
+        verify(self).rotate(13L);
+        verify(self).pruneRetired(Duration.ofHours(24));
+
+        ArgumentCaptor<SigningKeyRotationFailedEvent> captor =
+            ArgumentCaptor.forClass(SigningKeyRotationFailedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        SigningKeyRotationFailedEvent failure = captor.getValue();
+        assertThat(failure.tenantId()).isEqualTo(11L);
+        assertThat(failure.cause()).isEqualTo("IllegalStateException");
+    }
+
+    @Test
+    @DisplayName("runScheduledRotation() with no eligible tenants still calls prune (RETIRED keys may still need reaping)")
+    void runScheduledRotationStillPrunesWhenNoTenantsEligible() {
+        SigningKeyRotator self = lenientMock();
+        given(signingKeyStore.findTenantIdsWithActiveKeyOlderThan(Duration.ofDays(30)))
+            .willReturn(List.of());
+        SigningKeyRotator rotator = rotator(self);
+
+        rotator.runScheduledRotation();
+
+        org.mockito.Mockito.verify(self, org.mockito.Mockito.never()).rotate(org.mockito.ArgumentMatchers.anyLong());
+        verify(self).pruneRetired(Duration.ofHours(24));
+        verifyNoInteractions(eventPublisher);
+    }
+
+    private SigningKeyRotator rotator(SigningKeyRotator self) {
+        SigningKeyRotationProperties props = new SigningKeyRotationProperties(
+            true, "0 0 3 * * *", Duration.ofDays(30), Duration.ofHours(24));
+        // self can be null for tests that don't exercise the batch path.
+        SigningKeyRotator nonNullSelf = self != null ? self : lenientMock();
+        return new SigningKeyRotator(signingKeyStore, eventPublisher, props, nonNullSelf, clock);
+    }
+
+    /**
+     * Lenient SigningKeyRotator mock: Mockito's strict stubbing throws
+     * {@code PotentialStubbingProblem} on unstubbed args of an otherwise-stubbed
+     * method, which the rotator's catch block would mistakenly treat as a
+     * rotation failure. The lenient mode preserves the "do nothing on
+     * unstubbed call" default we rely on here.
+     */
+    private static SigningKeyRotator lenientMock() {
+        return org.mockito.Mockito.mock(SigningKeyRotator.class,
+            org.mockito.Mockito.withSettings().strictness(org.mockito.quality.Strictness.LENIENT));
     }
 }
