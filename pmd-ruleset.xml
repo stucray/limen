@@ -55,4 +55,48 @@
         <exclude name="GuardLogStatement"/>
         <exclude name="LooseCoupling"/>
     </rule>
+
+    <!--
+        Bug-pattern detection (added per #189). Distinct from the
+        Error Prone compiler plugin already wired into maven-compiler-plugin
+        — different rules, different mechanism. PMD's Error Prone catches
+        latent bugs and footguns that aren't covered by the compiler-plugin
+        version (e.g. AvoidLiteralsInIfCondition, UseLocaleWithCaseConversions,
+        UseProperClassLoader).
+
+        Six rules in this category are excluded because every finding
+        they produce in this codebase is project/library-pattern noise
+        rather than a real bug or refactoring opportunity:
+
+        - AvoidFieldNameMatchingMethodName: Java records and bean
+          accessors deliberately match field name with the auto-generated
+          method name (it's a language feature, not a smell).
+        - MissingSerialVersionUID + NonSerializableClass: Spring
+          exception classes and `TenantUserDetails` implement
+          Serializable for framework reasons; this app has no
+          cross-JVM serialization story, so the rules' premise doesn't
+          apply.
+        - ReplaceJavaUtilDate: every match is
+          `TenantPersistentTokenBasedRememberMeServices` /
+          `TenantPersistentRememberMeToken`, both implementing Spring
+          Security's `RememberMeServices` API which forces
+          `java.util.Date`. We can't change the API.
+        - AvoidDuplicateLiterals: most matches are template-binding
+          attribute names (`"slug"`, `"app"`, `"client"`) and Spring
+          redirect prefixes; signal-to-noise is too low for routine
+          surfacing. Re-evaluate if/when a churning-strings refactor
+          is on the table.
+        - AvoidCatchingGenericException: every match is a deliberate
+          boundary safety-net (filter doFilterInternal, scheduled job,
+          audit dispatch); the rule doesn't model the
+          "absorb-anything-from-below-here" pattern.
+    -->
+    <rule ref="category/java/errorprone.xml">
+        <exclude name="AvoidCatchingGenericException"/>
+        <exclude name="AvoidDuplicateLiterals"/>
+        <exclude name="AvoidFieldNameMatchingMethodName"/>
+        <exclude name="MissingSerialVersionUID"/>
+        <exclude name="NonSerializableClass"/>
+        <exclude name="ReplaceJavaUtilDate"/>
+    </rule>
 </ruleset>
