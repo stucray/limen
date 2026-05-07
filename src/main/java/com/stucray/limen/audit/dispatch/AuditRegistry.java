@@ -8,6 +8,7 @@ import com.stucray.limen.audit.events.PasswordChangedEvent;
 import com.stucray.limen.audit.events.PasswordResetCompletedEvent;
 import com.stucray.limen.audit.events.PasswordResetOttIssuedEvent;
 import com.stucray.limen.audit.events.RateLimitHitEvent;
+import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
 import com.stucray.limen.audit.events.TenantCreatedEvent;
 import com.stucray.limen.audit.events.TenantDeletedEvent;
 import com.stucray.limen.audit.events.TenantOwnershipGrantedEvent;
@@ -104,6 +105,14 @@ public class AuditRegistry {
                 event.tenantId(), event.actorUserId(),
                 "registered_client", event.registeredClientId(),
                 Map.of())),
+
+        // No actor — rotation is system-driven. Target is the kid (the new
+        // ACTIVE one); both kids land in details so the trail is reconstructable.
+        new AuditRule<>(SigningKeyRotatedEvent.class, "signing_key_rotated", AFTER_COMMIT,
+            event -> AuditRule.Projection.of(
+                event.tenantId(), null,
+                "signing_key", event.newKid(),
+                Map.of("oldKid", event.oldKid(), "newKid", event.newKid()))),
 
         new AuditRule<>(VerificationOttIssuedEvent.class, "verification_ott_issued", AFTER_COMMIT,
             event -> AuditRule.Projection.ofUser(
