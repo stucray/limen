@@ -1,5 +1,7 @@
 package com.stucray.limen.audit;
 
+import com.stucray.limen.clients.CreateClientCommand;
+
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.applications.Application;
 import com.stucray.limen.applications.ApplicationService;
@@ -129,13 +131,13 @@ class AuditEventEmitIntegrationTest {
         Tenant tenant = tenantProvisioningService.createTenant(uniqueSlug(), "X");
         long actor = seedSystemAdminId();
         Application app = applicationService.createApplication(tenant.id(), "App " + uniqueSlug(), null);
-        String registeredClientId = clientManagementService.createClient(
+        String registeredClientId = clientManagementService.createClient(new CreateClientCommand(
             app.id(), tenant.id(), "Client",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("openid"),
             false, true,
             5, 30, false
-        ).client().registeredClientId();
+        )).client().registeredClientId();
 
         clientManagementService.rotateSecret(registeredClientId, tenant.id(), actor);
 

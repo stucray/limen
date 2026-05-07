@@ -2,6 +2,7 @@ package com.stucray.limen.clients;
 
 import com.stucray.limen.applications.ApplicationService;
 import com.stucray.limen.user.TenantUserDetails;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.stereotype.Controller;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -58,31 +60,29 @@ public class ClientManagementController {
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,
-        @RequestParam String displayName,
-        @RequestParam(required = false) String[] grantTypes,
-        @RequestParam(required = false) String redirectUris,
-        @RequestParam(required = false) String postLogoutRedirectUris,
-        @RequestParam(required = false) String scopes,
-        @RequestParam(defaultValue = "false") boolean requirePkce,
-        @RequestParam(defaultValue = "true") boolean confidential,
-        @RequestParam(defaultValue = "5") long accessTokenTtlMinutes,
-        @RequestParam(defaultValue = "30") long refreshTokenTtlDays,
-        @RequestParam(defaultValue = "false") boolean reuseRefreshTokens,
+        @ModelAttribute CreateClientForm form,
         RedirectAttributes redirectAttributes
     ) {
-        Set<AuthorizationGrantType> grants = grantTypes == null ? Set.of() :
-            Arrays.stream(grantTypes)
-                .map(AuthorizationGrantType::new)
-                .collect(Collectors.toSet());
+        Set<AuthorizationGrantType> grants = form.getGrantTypes().stream()
+            .map(AuthorizationGrantType::new)
+            .collect(Collectors.toSet());
 
-        Set<String> redirectUriSet = parseLines(redirectUris);
-        Set<String> postLogoutSet = parseLines(postLogoutRedirectUris);
-        Set<String> scopeSet = parseLines(scopes);
-
-        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
-            appId, principal.tenantId(), displayName, grants, redirectUriSet, postLogoutSet, scopeSet,
-            requirePkce, confidential, accessTokenTtlMinutes, refreshTokenTtlDays, reuseRefreshTokens
+        // displayName carried over the prior @RequestParam contract (required by
+        // default). Fail loudly if a malformed POST omits it rather than threading
+        // a nullable through the service.
+        String displayName = Objects.requireNonNull(form.getDisplayName(), "displayName is required");
+        CreateClientCommand command = new CreateClientCommand(
+            appId, principal.tenantId(), displayName,
+            grants,
+            parseLines(form.getRedirectUris()),
+            parseLines(form.getPostLogoutRedirectUris()),
+            parseLines(form.getScopes()),
+            form.isRequirePkce(), form.isConfidential(),
+            form.getAccessTokenTtlMinutes(), form.getRefreshTokenTtlDays(),
+            form.isReuseRefreshTokens()
         );
+
+        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(command);
 
         if (result.rawSecret() != null) {
             redirectAttributes.addFlashAttribute("clientSecret", result.rawSecret());
@@ -149,7 +149,7 @@ public class ClientManagementController {
         return "redirect:/manage/t/" + slug + "/applications/" + appId + "/clients";
     }
 
-    private static Set<String> parseLines(String input) {
+    private static Set<String> parseLines(@Nullable String input) {
         if (input == null || input.isBlank()) return Set.of();
         return Arrays.stream(input.split("[\n,]+"))
             .map(String::trim)

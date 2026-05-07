@@ -100,12 +100,12 @@ class ClientTokenSettingsIntegrationTest {
     @DisplayName("Configured access-token TTL: exp − iat on the issued JWT matches the configured minutes")
     void accessTokenTtlIsReflectedInIssuedToken() throws Exception {
         long ttlMinutes = 2;
-        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
+        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
             app.id(), tenant.id(), "ttl-client",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
             false, true, ttlMinutes, 30, false
-        );
+        ));
 
         String oauthClientId = jdbcTemplate.queryForObject(
             "SELECT client_id FROM oauth2_registered_client WHERE id = ?",
@@ -132,12 +132,12 @@ class ClientTokenSettingsIntegrationTest {
     @Test
     @DisplayName("requirePkce=true: token exchange without code_verifier returns 400 Bad Request")
     void pkceRequiredClientRejectsTokenExchangeWithoutCodeVerifier() throws Exception {
-        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
+        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
             app.id(), tenant.id(), "pkce-client",
             Set.of(AuthorizationGrantType.AUTHORIZATION_CODE),
             Set.of("http://localhost/callback"), Set.of(), Set.of(OidcScopes.OPENID),
             true, true, 5, 30, false
-        );
+        ));
         grantMembership(result.client().registeredClientId());
 
         String oauthClientId = jdbcTemplate.queryForObject(
@@ -197,12 +197,12 @@ class ClientTokenSettingsIntegrationTest {
     @Test
     @DisplayName("reuseRefreshTokens=false (rotation): refresh issues a new token and the old one is rejected")
     void refreshTokenRotationIssuesNewTokenAndInvalidatesOld() throws Exception {
-        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
+        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
             app.id(), tenant.id(), "rotation-client",
             Set.of(AuthorizationGrantType.AUTHORIZATION_CODE, AuthorizationGrantType.REFRESH_TOKEN),
             Set.of("http://localhost/callback"), Set.of(), Set.of(OidcScopes.OPENID),
             false, true, 5, 30, false  // reuseRefreshTokens=false → rotation
-        );
+        ));
         grantMembership(result.client().registeredClientId());
 
         String oauthClientId = jdbcTemplate.queryForObject(
@@ -237,12 +237,12 @@ class ClientTokenSettingsIntegrationTest {
     @Test
     @DisplayName("reuseRefreshTokens=true: the same refresh token works for repeated exchanges")
     void reuseRefreshTokensAllowsRepeatedUseOfSameToken() throws Exception {
-        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
+        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
             app.id(), tenant.id(), "reuse-client",
             Set.of(AuthorizationGrantType.AUTHORIZATION_CODE, AuthorizationGrantType.REFRESH_TOKEN),
             Set.of("http://localhost/callback"), Set.of(), Set.of(OidcScopes.OPENID),
             false, true, 5, 30, true  // reuseRefreshTokens=true
-        );
+        ));
         grantMembership(result.client().registeredClientId());
 
         String oauthClientId = jdbcTemplate.queryForObject(
@@ -269,12 +269,12 @@ class ClientTokenSettingsIntegrationTest {
     @Test
     @DisplayName("Updating a client's TTL through the management UI shortens TTLs of subsequent tokens")
     void updatingTokenSettingsIsReflectedInSubsequentTokens() throws Exception {
-        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
+        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
             app.id(), tenant.id(), "update-client",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
             false, true, 60, 30, false
-        );
+        ));
 
         String registeredClientId = result.client().registeredClientId();
         String oauthClientId = jdbcTemplate.queryForObject(

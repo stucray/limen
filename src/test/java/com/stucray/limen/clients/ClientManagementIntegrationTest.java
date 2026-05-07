@@ -85,12 +85,12 @@ class ClientManagementIntegrationTest {
     }
 
     private TenantClient createConfidentialClient(String name) {
-        return clientManagementService.createClient(
+        return clientManagementService.createClient(new CreateClientCommand(
             appA.id(), tenantA.id(), name,
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
             false, true, 5, 30, false
-        ).client();
+        )).client();
     }
 
     @Test

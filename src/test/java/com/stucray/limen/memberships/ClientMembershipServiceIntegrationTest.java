@@ -1,5 +1,7 @@
 package com.stucray.limen.memberships;
 
+import com.stucray.limen.clients.CreateClientCommand;
+
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.applications.Application;
 import com.stucray.limen.applications.ApplicationRepository;
@@ -86,12 +88,12 @@ class ClientMembershipServiceIntegrationTest {
     }
 
     private TenantClient createClient(Long applicationId, Long tenantId, String name) {
-        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(
+        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
             applicationId, tenantId, name,
             Set.of(AuthorizationGrantType.AUTHORIZATION_CODE),
             Set.of("http://localhost/callback"), Set.of(), Set.of("openid"),
             false, true, 5, 30, false
-        );
+        ));
         return result.client();
     }
 

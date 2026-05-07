@@ -1,5 +1,7 @@
 package com.stucray.limen.oauth2;
 
+import com.stucray.limen.clients.CreateClientCommand;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWK;
@@ -145,13 +147,13 @@ class TenantOAuth2RoutingIntegrationTest {
     @Test
     @DisplayName("client_credentials token flow at /t/{slug}/oauth2/token succeeds for a client created under that tenant")
     void clientCredentialsTokenFlowSucceedsForTenantClient() throws Exception {
-        ClientCreationResult result = clientManagementService.createClient(
+        ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
             alphaApp.id(), alphaCorpTenant.id(),
             "m2m-client",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
             false, true, 5, 30, false
-        );
+        ));
 
         String clientId = result.client().registeredClientId();
         String rawSecret = result.rawSecret();
@@ -178,13 +180,13 @@ class TenantOAuth2RoutingIntegrationTest {
     @DisplayName("A client registered under tenant alpha cannot exchange credentials at tenant beta's /oauth2/token — the request is rejected as 401")
     void crossTenantClientRejected() throws Exception {
         // Register a client under alpha-corp
-        ClientCreationResult result = clientManagementService.createClient(
+        ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
             alphaApp.id(), alphaCorpTenant.id(),
             "alpha-m2m",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
             false, true, 5, 30, false
-        );
+        ));
 
         String clientId = result.client().registeredClientId();
         String rawSecret = result.rawSecret();
@@ -205,13 +207,13 @@ class TenantOAuth2RoutingIntegrationTest {
     @Test
     @DisplayName("client_credentials access token carries tenant + iss claims and an empty roles array")
     void clientCredentialsTokenIncludesTenantAndRolesClaims() throws Exception {
-        ClientCreationResult result = clientManagementService.createClient(
+        ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
             alphaApp.id(), alphaCorpTenant.id(),
             "claims-m2m",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
             false, true, 5, 30, false
-        );
+        ));
 
         String oauthClientId = jdbcTemplate.queryForObject(
             "SELECT client_id FROM oauth2_registered_client WHERE id = ?",
@@ -339,13 +341,13 @@ class TenantOAuth2RoutingIntegrationTest {
     @Test
     @DisplayName("Each tenant's JWKS endpoint serves only its own signing keys — alpha's token verifies against alpha's JWKS but not beta's")
     void tenantJwksEndpointsServeIsolatedKeys() throws Exception {
-        ClientCreationResult result = clientManagementService.createClient(
+        ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
             alphaApp.id(), alphaCorpTenant.id(),
             "isolation-m2m",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
             false, true, 5, 30, false
-        );
+        ));
         String oauthClientId = jdbcTemplate.queryForObject(
             "SELECT client_id FROM oauth2_registered_client WHERE id = ?",
             String.class, result.client().registeredClientId()
