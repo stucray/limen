@@ -48,6 +48,22 @@ match what the dashboard expects — start with **Explore → mimir** and
 search for `http_server_requests_seconds_count` or `jvm_memory_used_bytes`
 to confirm the metrics are flowing.
 
+## Custom counters
+
+In addition to the stock auto-instrumentation (HTTP, JVM, JDBC, GC, threads),
+`observability.AuditMetricsListener` exports three named auth counters:
+
+| Metric | Trigger | Tags |
+|---|---|---|
+| `limen.auth.login.success` | Spring Security `AuthenticationSuccessEvent` | — |
+| `limen.auth.login.failure` | any `AbstractAuthenticationFailureEvent` | `cause` (exception simple class name, e.g. `BadCredentialsException`) |
+| `limen.oauth2.client.secret.rotated` | `ClientSecretRotatedEvent` (AFTER_COMMIT) | — |
+
+No tenant tag — same cardinality rule as the section below. Token-issuance
+volume and latency are already covered by stock `http.server.requests` for
+`/oauth2/token` (URI templates, no tenant tag), so a custom counter would be
+redundant.
+
 ## Tenant attribution
 
 `TenantObservabilityFilter` sets the active tenant's `tenant.slug` and
