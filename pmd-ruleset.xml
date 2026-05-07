@@ -1,20 +1,36 @@
 <?xml version="1.0"?>
-<ruleset name="Limen complexity ruleset"
+<ruleset name="Limen code-quality ruleset"
     xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 http://pmd.sourceforge.net/ruleset_2_0_0.xsd">
 
     <description>
-        Complexity-only ruleset. PMD is configured as a reporting tool, not
-        a gate — findings are surfaced in `docs/reports/code-quality.{md,json}`,
-        regenerated automatically by `mvn verify`, and the build does not fail
-        on findings. Rules here exist to inform refactoring, not block PRs.
+        PMD is configured as a reporting tool, not a gate — findings are
+        surfaced in `docs/reports/code-quality.{md,json}`, regenerated
+        automatically by `mvn verify`, and the build does not fail on
+        findings. Rules here exist to inform refactoring, not block PRs.
         See `docs/process/code-quality.md` for the regen flow.
 
-        Future expansion of this ruleset (Best Practices, Error Prone PMD-rules,
-        Performance categories) is tracked in #189 — add categories one at a
-        time so each addition's diff in `code-quality.json` shows exactly which
-        findings the new rules introduced.
+        Categories included: Complexity (design.xml subset), Best Practices,
+        Error Prone (PMD's, distinct from the Error Prone compiler plugin),
+        and Performance. Per-category exclusions and their rationale are
+        documented inline against each &lt;rule ref=…&gt; block below.
+
+        Categories evaluated and dropped:
+        - Documentation — produced 712 findings (589 CommentRequired,
+          121 CommentSize) on the inaugural baseline. Fundamentally at
+          odds with this project's "default to no comments; explain only
+          the non-obvious WHY" convention.
+
+        Categories deferred (unevaluated for now):
+        - Multithreading — niche; revisit if concurrency-heavy code lands.
+        - Security — minimal PMD coverage; better served by dedicated
+          tooling (e.g. dependency-check) if security scanning becomes a
+          concern.
+        - Code Style — cosmetic; defer indefinitely. Style is enforced by
+          formatter conventions, not PMD.
+
+        Full evaluation history: GitHub issue #189.
     </description>
 
     <!-- "Method does too much" signals -->
