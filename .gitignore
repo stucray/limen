@@ -36,6 +36,10 @@ build/
 .envrc
 /scripts/install-direnv-hook.sh
 
+### Python ###
+__pycache__/
+.pytest_cache/
+
 ### Claude Code ###
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
