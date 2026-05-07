@@ -99,4 +99,22 @@
         <exclude name="NonSerializableClass"/>
         <exclude name="ReplaceJavaUtilDate"/>
     </rule>
+
+    <!--
+        Performance hot-path signals (added per #189). PMD's Performance
+        category is a mixed bag — some rules catch real footguns
+        (`AddEmptyString` flags `"" + first + …`-style concatenation
+        chains), others are cargo-culted micro-optimisation noise.
+
+        One rule is excluded outright:
+
+        - AvoidInstantiatingObjectsInLoops: heuristic too broad. Every
+          finding in this codebase is a per-iteration allocation that
+          the JIT escape-analyses away (e.g. `computeIfAbsent` lookup
+          keys for a small static rule set, per-event objects, builder
+          DTOs). The premise pre-dates modern GC + escape analysis.
+    -->
+    <rule ref="category/java/performance.xml">
+        <exclude name="AvoidInstantiatingObjectsInLoops"/>
+    </rule>
 </ruleset>
