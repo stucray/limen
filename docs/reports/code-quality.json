@@ -3,48 +3,12 @@
     "tool": "pmd",
     "tool_version": "7.24.0",
     "ruleset": "pmd-ruleset.xml",
-    "total_findings": 9,
+    "total_findings": 6,
     "by_priority": {
-      "3": 9
+      "3": 6
     }
   },
   "findings": [
-    {
-      "rule": "AvoidLiteralsInIfCondition",
-      "ruleset": "Error Prone",
-      "priority": 3,
-      "package": "com.stucray.limen.auth",
-      "class": "TenantPersistentTokenBasedRememberMeServices",
-      "method": "processAutoLoginCookie",
-      "file": "src/main/java/com/stucray/limen/auth/TenantPersistentTokenBasedRememberMeServices.java",
-      "begin_line": 89,
-      "end_line": 89,
-      "message": "Avoid using literals such as 3 in if statements"
-    },
-    {
-      "rule": "AvoidLiteralsInIfCondition",
-      "ruleset": "Error Prone",
-      "priority": 3,
-      "package": "com.stucray.limen.auth.lockout",
-      "class": "LockoutProperties",
-      "method": "",
-      "file": "src/main/java/com/stucray/limen/auth/lockout/LockoutProperties.java",
-      "begin_line": 29,
-      "end_line": 29,
-      "message": "Avoid using literals such as 1 in if statements"
-    },
-    {
-      "rule": "AvoidLiteralsInIfCondition",
-      "ruleset": "Error Prone",
-      "priority": 3,
-      "package": "com.stucray.limen.oauth2",
-      "class": "MembershipGateFilter",
-      "method": "resolveRedirectUri",
-      "file": "src/main/java/com/stucray/limen/oauth2/MembershipGateFilter.java",
-      "begin_line": 144,
-      "end_line": 144,
-      "message": "Avoid using literals such as 1 in if statements"
-    },
     {
       "rule": "CyclomaticComplexity",
       "ruleset": "Design",
@@ -77,8 +41,8 @@
       "class": "TenantPersistentTokenBasedRememberMeServices",
       "method": "processAutoLoginCookie",
       "file": "src/main/java/com/stucray/limen/auth/TenantPersistentTokenBasedRememberMeServices.java",
-      "begin_line": 86,
-      "end_line": 86,
+      "begin_line": 88,
+      "end_line": 88,
       "message": "The method 'processAutoLoginCookie(String[], HttpServletRequest, HttpServletResponse)' has a cyclomatic complexity of 16."
     },
     {

@@ -40,6 +40,8 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
 
     public static final int DEFAULT_SERIES_LENGTH = 16;
     public static final int DEFAULT_TOKEN_LENGTH = 16;
+    /** series, token, slug — see the cookie format note above. */
+    private static final int COOKIE_TOKEN_FIELDS = 3;
 
     private final TenantPersistentTokenRepository tokenRepository;
     private final TenantUserDetailsService tenantUserDetailsService;
@@ -86,9 +88,10 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
     protected UserDetails processAutoLoginCookie(
         String[] cookieTokens, HttpServletRequest request, HttpServletResponse response
     ) {
-        if (cookieTokens.length != 3) {
+        if (cookieTokens.length != COOKIE_TOKEN_FIELDS) {
             throw new InvalidCookieException(
-                "Cookie token did not contain 3 tokens (series, token, slug); got " + cookieTokens.length);
+                "Cookie token did not contain " + COOKIE_TOKEN_FIELDS
+                    + " tokens (series, token, slug); got " + cookieTokens.length);
         }
         String presentedSeries = cookieTokens[0];
         String presentedToken = cookieTokens[1];
