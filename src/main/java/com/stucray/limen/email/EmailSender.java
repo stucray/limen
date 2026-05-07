@@ -9,6 +9,7 @@ package com.stucray.limen.email;
  * production swap from Mailpit to Resend / SES / etc. is a one-bean
  * configuration change (see roadmap §6 v4).
  */
+@FunctionalInterface
 public interface EmailSender {
     void send(EmailMessage message);
 }

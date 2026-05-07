@@ -127,7 +127,7 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
                 getTokenValiditySeconds(), request, response);
         } catch (Exception ex) {
             this.logger.error("Failed to update token", ex);
-            throw new RememberMeAuthenticationException("Autologin failed due to data access problem");
+            throw new RememberMeAuthenticationException("Autologin failed due to data access problem", ex);
         }
 
         return tenantUserDetailsService.loadByEmailAndSlug(token.getUsername(), cookieSlug);
@@ -152,7 +152,7 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
     private String encodeBase64(int byteLength) {
         byte[] bytes = new byte[byteLength];
         random.nextBytes(bytes);
-        return new String(Base64.getEncoder().encode(bytes));
+        return Base64.getEncoder().encodeToString(bytes);
     }
 
     private int seriesLength() { return DEFAULT_SERIES_LENGTH; }

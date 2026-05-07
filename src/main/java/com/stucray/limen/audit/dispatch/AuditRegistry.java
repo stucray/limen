@@ -28,6 +28,8 @@ import org.springframework.security.authentication.event.AuthenticationSuccessEv
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+import java.util.Locale;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -156,7 +158,7 @@ public class AuditRegistry {
         new AuditRule<>(PasswordChangedEvent.class, "password_changed", AFTER_COMMIT,
             event -> AuditRule.Projection.ofUser(
                 event.tenantId(), event.userId(), event.userId(),
-                Map.of("trigger", event.trigger().name().toLowerCase()))),
+                Map.of("trigger", event.trigger().name().toLowerCase(Locale.ROOT)))),
 
         new AuditRule<>(UserCreatedEvent.class, "user_created", AFTER_COMMIT,
             event -> AuditRule.Projection.ofUser(

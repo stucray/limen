@@ -24,7 +24,7 @@ public final class SasJsonMapperFactory {
     private SasJsonMapperFactory() {}
 
     public static JsonMapper create() {
-        ClassLoader cl = SasJsonMapperFactory.class.getClassLoader();
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
         BasicPolymorphicTypeValidator.Builder validatorBuilder = BasicPolymorphicTypeValidator.builder()
             .allowIfSubType(TenantUserDetails.class)
             .allowIfSubType(TenantAuthToken.class)

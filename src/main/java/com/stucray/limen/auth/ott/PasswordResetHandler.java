@@ -21,8 +21,7 @@ class PasswordResetHandler implements OttIntentHandler {
 
     @Override
     public String body(Tenant tenant, String magicLink) {
-        return ""
-            + "We received a password-reset request for your account at "
+        return "We received a password-reset request for your account at "
             + tenant.displayName() + ".\n\n"
             + "Click the link below to set a new password:\n\n"
             + magicLink + "\n\n"
