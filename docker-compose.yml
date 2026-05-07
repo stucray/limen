@@ -41,7 +41,7 @@ services:
   # ~500MB and most `mvn spring-boot:run` sessions don't need dashboards.
   # Spring Boot's Docker Compose support auto-detects this service and
   # wires OTEL_EXPORTER_OTLP_ENDPOINT for the running app. See
-  # dev/observability/README.md for usage. Grafana Labs flag this image as
+  # docs/process/observability.md for usage. Grafana Labs flag this image as
   # dev/demo only (no HA, no durable storage); production would point the
   # OTel exporter at a real backend via env vars.
   otel-lgtm:
