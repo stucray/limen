@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Pulls in Spring Boot's default console-appender setup (colour, pattern,
+    levels) and adds the OpenTelemetry Logback bridge. The bridge buffers
+    early-startup events until OtelLogbackInstaller hands it the SDK once
+    the application context is ready; from that point on every Logback event
+    is also forwarded to the OTLP log exporter alongside the console.
+
+    captureMdcAttributes="*" sweeps in everything the application has put on
+    the MDC — currently tenant.slug / tenant.id from TenantObservabilityFilter
+    plus the trace_id / span_id Micrometer Tracing already populates. These
+    surface in Loki as structured log labels and stay safely off Mimir's
+    metric series.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <appender name="OPEN_TELEMETRY"
+              class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
+        <captureExperimentalAttributes>true</captureExperimentalAttributes>
+        <captureCodeAttributes>true</captureCodeAttributes>
+        <captureMdcAttributes>*</captureMdcAttributes>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="OPEN_TELEMETRY"/>
+    </root>
+</configuration>

@@ -24,7 +24,12 @@ Then start Limen as usual:
 
 Spring Boot's Docker Compose support auto-detects the LGTM container and
 wires `OTEL_EXPORTER_OTLP_ENDPOINT` (logs, metrics, traces) for the running
-app — no env vars needed locally.
+app — no env vars needed locally. Logs reach Loki via the
+`opentelemetry-logback-appender-1.0` bridge declared in `logback-spring.xml`,
+which `observability.OtelLogbackInstaller` hands the auto-configured OTel
+SDK at startup; the Spring Boot OTel starter wires the SDK + OTLP log
+exporter but does not ship a Logback bridge of its own, so without that
+appender the log endpoint stays configured but unused.
 
 Open Grafana at <http://localhost:3000> (login `admin` / `admin`).
 The pre-provisioned datasources (`mimir`, `loki`, `tempo`) are ready to query.

@@ -81,6 +81,29 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-opentelemetry</artifactId>
 		</dependency>
+		<!--
+			Logback → OTel bridge. The Spring Boot OpenTelemetry starter
+			configures an SdkLoggerProvider + OTLP log exporter, but does
+			NOT ship a Logback appender to feed it. Without this dep,
+			management.opentelemetry.logging.export.otlp.endpoint is set but
+			zero log records reach Loki. The "1.0" in the artifact name is
+			the Logback API line, not the artifact's own version; alpha is
+			the only release stream for OTel instrumentation, so no GA tag
+			exists despite the line being widely used in production.
+		-->
+		<dependency>
+			<groupId>io.opentelemetry.instrumentation</groupId>
+			<artifactId>opentelemetry-logback-appender-1.0</artifactId>
+			<!--
+				Version pinned to match the io.opentelemetry:* line that
+				Spring Boot 4.0.5 ships (opentelemetry-bom 1.55.0). The
+				instrumentation BOM 2.21.0-alpha → otel-bom 1.55.0; later
+				instrumentation alphas track newer otel-bom versions and
+				hit NoSuchMethodError on appender startup. Bump this in
+				lockstep with Spring Boot's OpenTelemetry line.
+			-->
+			<version>2.21.0-alpha</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-docker-compose</artifactId>
