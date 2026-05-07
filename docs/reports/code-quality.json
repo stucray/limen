@@ -3,13 +3,37 @@
     "tool": "pmd",
     "tool_version": "7.24.0",
     "ruleset": "pmd-ruleset.xml",
-    "total_findings": 16,
+    "total_findings": 18,
     "by_priority": {
       "2": 1,
-      "3": 15
+      "3": 17
     }
   },
   "findings": [
+    {
+      "rule": "AddEmptyString",
+      "ruleset": "Performance",
+      "priority": 3,
+      "package": "com.stucray.limen.auth.ott",
+      "class": "PasswordResetHandler",
+      "method": "body",
+      "file": "src/main/java/com/stucray/limen/auth/ott/PasswordResetHandler.java",
+      "begin_line": 24,
+      "end_line": 24,
+      "message": "Do not add empty strings"
+    },
+    {
+      "rule": "AddEmptyString",
+      "ruleset": "Performance",
+      "priority": 3,
+      "package": "com.stucray.limen.auth.ott",
+      "class": "VerifyEmailHandler",
+      "method": "body",
+      "file": "src/main/java/com/stucray/limen/auth/ott/VerifyEmailHandler.java",
+      "begin_line": 24,
+      "end_line": 24,
+      "message": "Do not add empty strings"
+    },
     {
       "rule": "AvoidLiteralsInIfCondition",
       "ruleset": "Error Prone",
