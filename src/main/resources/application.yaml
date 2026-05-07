@@ -104,3 +104,16 @@ management:
       # `service.name` defaults to spring.application.name (`limen`).
       # `deployment.environment` is overridable via env at deploy time.
       deployment.environment: dev
+    tracing:
+      export:
+        otlp:
+          # Trace export endpoint. Micrometer's OtlpMeterRegistry has a
+          # baked-in default for metrics, but tracing requires this
+          # explicitly. Override per env via OTEL_EXPORTER_OTLP_ENDPOINT
+          # (which sets the base URL; the SDK appends /v1/traces).
+          endpoint: http://localhost:4318/v1/traces
+    logging:
+      export:
+        otlp:
+          # Same reasoning as tracing above. SDK appends /v1/logs.
+          endpoint: http://localhost:4318/v1/logs
