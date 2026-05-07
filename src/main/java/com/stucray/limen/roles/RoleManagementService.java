@@ -1,7 +1,6 @@
 package com.stucray.limen.roles;
 
-import com.stucray.limen.applications.Application;
-import com.stucray.limen.applications.ApplicationRepository;
+import com.stucray.limen.applications.ApplicationLookup;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -17,27 +16,27 @@ import java.util.List;
 public class RoleManagementService {
 
     private final RoleRepository roleRepository;
-    private final ApplicationRepository applicationRepository;
+    private final ApplicationLookup applicationLookup;
 
-    public RoleManagementService(RoleRepository roleRepository, ApplicationRepository applicationRepository) {
+    public RoleManagementService(RoleRepository roleRepository, ApplicationLookup applicationLookup) {
         this.roleRepository = roleRepository;
-        this.applicationRepository = applicationRepository;
+        this.applicationLookup = applicationLookup;
     }
 
     public List<Role> listRoles(Long applicationId, Long tenantId) {
-        requireApplication(applicationId, tenantId);
+        applicationLookup.require(applicationId, tenantId);
         return roleRepository.findAllByApplicationId(applicationId);
     }
 
     public Role getRole(Long roleId, Long applicationId, Long tenantId) {
-        requireApplication(applicationId, tenantId);
+        applicationLookup.require(applicationId, tenantId);
         return roleRepository.findByIdAndApplicationId(roleId, applicationId)
             .orElseThrow(() -> new IllegalArgumentException("Role not found"));
     }
 
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     public Role createRole(Long applicationId, Long tenantId, String name, String description) {
-        requireApplication(applicationId, tenantId);
+        applicationLookup.require(applicationId, tenantId);
         if (roleRepository.existsByNameAndApplicationId(name, applicationId)) {
             throw new IllegalArgumentException("A role named '" + name + "' already exists in this application");
         }
@@ -57,10 +56,5 @@ public class RoleManagementService {
     public void deleteRole(Long roleId, Long applicationId, Long tenantId) {
         Role role = getRole(roleId, applicationId, tenantId);
         roleRepository.delete(role);
-    }
-
-    private Application requireApplication(Long applicationId, Long tenantId) {
-        return applicationRepository.findByIdAndTenantId(applicationId, tenantId)
-            .orElseThrow(() -> new IllegalArgumentException("Application not found"));
     }
 }

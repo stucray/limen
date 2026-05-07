@@ -2,8 +2,7 @@ package com.stucray.limen.memberships;
 
 import com.stucray.limen.clients.TenantClient;
 import com.stucray.limen.clients.TenantClientRepository;
-import com.stucray.limen.roles.Role;
-import com.stucray.limen.roles.RoleRepository;
+import com.stucray.limen.roles.RoleResolver;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.springframework.stereotype.Service;
@@ -40,20 +39,20 @@ public class ClientMembershipService {
     private final ApplicationMembershipRepository applicationMembershipRepository;
     private final TenantClientRepository tenantClientRepository;
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
+    private final RoleResolver roleResolver;
 
     public ClientMembershipService(
         ClientMembershipRepository membershipRepository,
         ApplicationMembershipRepository applicationMembershipRepository,
         TenantClientRepository tenantClientRepository,
         UserRepository userRepository,
-        RoleRepository roleRepository
+        RoleResolver roleResolver
     ) {
         this.membershipRepository = membershipRepository;
         this.applicationMembershipRepository = applicationMembershipRepository;
         this.tenantClientRepository = tenantClientRepository;
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
+        this.roleResolver = roleResolver;
     }
 
     public List<ClientMembership> listMemberships(String registeredClientId, Long applicationId, Long tenantId) {
@@ -98,13 +97,7 @@ public class ClientMembershipService {
     ) {
         ClientMembership membership = getMembership(membershipId, registeredClientId, applicationId, tenantId);
         Set<Long> requested = roleIds == null ? Set.of() : new LinkedHashSet<>(roleIds);
-        for (Long roleId : requested) {
-            Role role = roleRepository.findById(roleId)
-                .orElseThrow(() -> new IllegalArgumentException("Role not found: " + roleId));
-            if (!role.applicationId().equals(applicationId)) {
-                throw new IllegalArgumentException("Role does not belong to this application");
-            }
-        }
+        roleResolver.requireRolesInApplication(applicationId, requested);
         membershipRepository.save(membership.withRoles(requested));
     }
 

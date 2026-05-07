@@ -1,9 +1,8 @@
 package com.stucray.limen.memberships;
 
 import com.stucray.limen.applications.Application;
-import com.stucray.limen.applications.ApplicationRepository;
-import com.stucray.limen.roles.Role;
-import com.stucray.limen.roles.RoleRepository;
+import com.stucray.limen.applications.ApplicationLookup;
+import com.stucray.limen.roles.RoleResolver;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.springframework.stereotype.Service;
@@ -27,36 +26,36 @@ import java.util.Set;
 public class ApplicationMembershipService {
 
     private final ApplicationMembershipRepository membershipRepository;
-    private final ApplicationRepository applicationRepository;
+    private final ApplicationLookup applicationLookup;
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
+    private final RoleResolver roleResolver;
 
     public ApplicationMembershipService(
         ApplicationMembershipRepository membershipRepository,
-        ApplicationRepository applicationRepository,
+        ApplicationLookup applicationLookup,
         UserRepository userRepository,
-        RoleRepository roleRepository
+        RoleResolver roleResolver
     ) {
         this.membershipRepository = membershipRepository;
-        this.applicationRepository = applicationRepository;
+        this.applicationLookup = applicationLookup;
         this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
+        this.roleResolver = roleResolver;
     }
 
     public List<ApplicationMembership> listMemberships(Long applicationId, Long tenantId) {
-        requireApplication(applicationId, tenantId);
+        applicationLookup.require(applicationId, tenantId);
         return membershipRepository.findAllByApplicationId(applicationId);
     }
 
     public ApplicationMembership getMembership(Long membershipId, Long applicationId, Long tenantId) {
-        requireApplication(applicationId, tenantId);
+        applicationLookup.require(applicationId, tenantId);
         return membershipRepository.findByIdAndApplicationId(membershipId, applicationId)
             .orElseThrow(() -> new IllegalArgumentException("Membership not found"));
     }
 
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     public ApplicationMembership grant(Long applicationId, Long tenantId, Long userId, Long grantedByUserId) {
-        Application app = requireApplication(applicationId, tenantId);
+        Application app = applicationLookup.require(applicationId, tenantId);
         User user = userRepository.findByIdAndTenantId(userId, tenantId)
             .orElseThrow(() -> new IllegalArgumentException("User not found in this tenant"));
         // Belt-and-braces: the lookup above already filters by tenantId, but
@@ -76,13 +75,7 @@ public class ApplicationMembershipService {
     public void updateRoles(Long membershipId, Long applicationId, Long tenantId, Set<Long> roleIds) {
         ApplicationMembership membership = getMembership(membershipId, applicationId, tenantId);
         Set<Long> requested = roleIds == null ? Set.of() : new LinkedHashSet<>(roleIds);
-        for (Long roleId : requested) {
-            Role role = roleRepository.findById(roleId)
-                .orElseThrow(() -> new IllegalArgumentException("Role not found: " + roleId));
-            if (!role.applicationId().equals(applicationId)) {
-                throw new IllegalArgumentException("Role does not belong to this application");
-            }
-        }
+        roleResolver.requireRolesInApplication(applicationId, requested);
         membershipRepository.save(membership.withRoles(requested));
     }
 
@@ -96,7 +89,7 @@ public class ApplicationMembershipService {
      * Used to populate the "Add member" form's user picker.
      */
     public List<User> listGrantableUsers(Long applicationId, Long tenantId) {
-        requireApplication(applicationId, tenantId);
+        applicationLookup.require(applicationId, tenantId);
         List<User> all = userRepository.findAllByTenantId(tenantId);
         List<User> grantable = new java.util.ArrayList<>();
         for (User u : all) {
@@ -105,10 +98,5 @@ public class ApplicationMembershipService {
             }
         }
         return grantable;
-    }
-
-    private Application requireApplication(Long applicationId, Long tenantId) {
-        return applicationRepository.findByIdAndTenantId(applicationId, tenantId)
-            .orElseThrow(() -> new IllegalArgumentException("Application not found"));
     }
 }
