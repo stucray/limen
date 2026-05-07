@@ -101,7 +101,7 @@ management:
   #   OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <token>"
   #   OTEL_RESOURCE_ATTRIBUTES=deployment.environment=production
   #   OTEL_TRACES_SAMPLER_ARG=0.1
-  # See dev/observability/README.md for the dev workflow.
+  # See docs/process/observability.md for the dev workflow.
   tracing:
     sampling:
       # 100% trace sampling locally; production should knock this down
