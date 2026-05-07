@@ -33,7 +33,7 @@ import java.util.Set;
  * <p>Side effects on consume:
  * <ul>
  *   <li>{@link OttIntent#VERIFY_EMAIL} — flips {@code email_verified=true} via
- *       {@link EmailVerificationService#markEmailVerified} (idempotent on a
+ *       {@link OttCompletionService#markEmailVerified} (idempotent on a
  *       second consume).</li>
  *   <li>{@link OttIntent#PASSWORD_RESET} — also flips {@code email_verified=true}
  *       (clicking a link delivered to the address proves control of it, same
@@ -51,16 +51,16 @@ public class TenantOttAuthenticationProvider implements AuthenticationProvider {
 
     private final OneTimeTokenService tokenService;
     private final TenantUserDetailsService userDetailsService;
-    private final EmailVerificationService verificationService;
+    private final OttCompletionService completionService;
 
     public TenantOttAuthenticationProvider(
         OneTimeTokenService tokenService,
         TenantUserDetailsService userDetailsService,
-        EmailVerificationService verificationService
+        OttCompletionService completionService
     ) {
         this.tokenService = tokenService;
         this.userDetailsService = userDetailsService;
-        this.verificationService = verificationService;
+        this.completionService = completionService;
     }
 
     @Override
@@ -96,7 +96,7 @@ public class TenantOttAuthenticationProvider implements AuthenticationProvider {
         // Without this an unverified user using forgot-password would be bounced
         // to /check-inbox by emailVerificationRequired() before ever reaching
         // change-password.
-        verificationService.markEmailVerified(principal.userId(), principal.tenantId());
+        completionService.markEmailVerified(principal.userId(), principal.tenantId());
         // Reflect the just-applied flip on the in-memory principal so the
         // PostLoginIntent.emailVerificationRequired() check that runs from
         // the success handler doesn't see stale state and bounce the user

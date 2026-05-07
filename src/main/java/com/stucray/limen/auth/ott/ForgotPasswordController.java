@@ -14,9 +14,10 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * GET renders the email-collection form; POST dispatches to
- * {@link PasswordResetService#requestReset} and redirects to the shared
- * check-inbox landing with {@code flow=password-reset} so the page text
- * mentions a reset link rather than verification.
+ * {@link OttDispatcher#issue(OttIntent, Tenant, String)} with
+ * {@link OttIntent#PASSWORD_RESET} and redirects to the shared check-inbox
+ * landing with {@code flow=password-reset} so the page text mentions a reset
+ * link rather than verification.
  *
  * <p>Both verbs are anonymous. The POST response is identical for known and
  * unknown emails — the same redirect target, the same query parameters — so
@@ -26,14 +27,14 @@ import java.nio.charset.StandardCharsets;
 public class ForgotPasswordController {
 
     private final TenantRepository tenantRepository;
-    private final PasswordResetService passwordResetService;
+    private final OttDispatcher ottDispatcher;
 
     public ForgotPasswordController(
         TenantRepository tenantRepository,
-        PasswordResetService passwordResetService
+        OttDispatcher ottDispatcher
     ) {
         this.tenantRepository = tenantRepository;
-        this.passwordResetService = passwordResetService;
+        this.ottDispatcher = ottDispatcher;
     }
 
     @GetMapping("/t/{slug}/forgot-password")
@@ -61,7 +62,7 @@ public class ForgotPasswordController {
         if (tenant == null) {
             return "redirect:/";
         }
-        passwordResetService.requestReset(tenant, email);
+        ottDispatcher.issue(OttIntent.PASSWORD_RESET, tenant, email);
         return "redirect:" + UriComponentsBuilder
             .fromPath("/t/" + slug + "/check-inbox")
             .queryParam("email", email)

@@ -2,8 +2,8 @@ package com.stucray.limen.auth.login;
 
 import com.stucray.limen.audit.events.PasswordChangedEvent;
 import com.stucray.limen.user.TenantUserDetails;
+import com.stucray.limen.auth.ott.OttCompletionService;
 import com.stucray.limen.auth.ott.OttIntent;
-import com.stucray.limen.auth.ott.PasswordResetService;
 import com.stucray.limen.auth.ott.TenantOttAuthentication;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
@@ -50,7 +50,7 @@ public class TenantPasswordChangeFlow {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
-    private final PasswordResetService passwordResetService;
+    private final OttCompletionService ottCompletionService;
     private final HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
@@ -58,12 +58,12 @@ public class TenantPasswordChangeFlow {
         UserRepository userRepository,
         PasswordEncoder passwordEncoder,
         ApplicationEventPublisher eventPublisher,
-        PasswordResetService passwordResetService
+        OttCompletionService ottCompletionService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.eventPublisher = eventPublisher;
-        this.passwordResetService = passwordResetService;
+        this.ottCompletionService = ottCompletionService;
     }
 
     /** Returns an error message if validation fails, else null. */
@@ -101,7 +101,7 @@ public class TenantPasswordChangeFlow {
         Authentication current = SecurityContextHolder.getContext().getAuthentication();
         if (current instanceof TenantOttAuthentication tott
             && tott.intent() == OttIntent.PASSWORD_RESET) {
-            passwordResetService.completeReset(principal.userId(), principal.tenantId());
+            ottCompletionService.markPasswordResetCompleted(principal.userId(), principal.tenantId());
             SecurityContext rotated = SecurityContextHolder.createEmptyContext();
             rotated.setAuthentication(new UsernamePasswordAuthenticationToken(
                 principal, null, principal.getAuthorities()));

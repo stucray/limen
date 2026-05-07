@@ -1,6 +1,7 @@
 package com.stucray.limen.provisioning;
 
-import com.stucray.limen.auth.ott.EmailVerificationService;
+import com.stucray.limen.auth.ott.OttDispatcher;
+import com.stucray.limen.auth.ott.OttIntent;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.provisioning.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
@@ -54,20 +55,20 @@ public class TenantProvisioner {
     private final TenantProvisioningService tenantProvisioningService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EmailVerificationService emailVerificationService;
+    private final OttDispatcher ottDispatcher;
 
     public TenantProvisioner(
         TenantRepository tenantRepository,
         TenantProvisioningService tenantProvisioningService,
         UserRepository userRepository,
         PasswordEncoder passwordEncoder,
-        EmailVerificationService emailVerificationService
+        OttDispatcher ottDispatcher
     ) {
         this.tenantRepository = tenantRepository;
         this.tenantProvisioningService = tenantProvisioningService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.emailVerificationService = emailVerificationService;
+        this.ottDispatcher = ottDispatcher;
     }
 
     @Transactional
@@ -111,7 +112,7 @@ public class TenantProvisioner {
             Objects.requireNonNull(passwordEncoder.encode(rawPassword)),
             true, mustChangePassword, true, false, LocalDateTime.now()
         ));
-        emailVerificationService.issueVerification(tenant, owner);
+        ottDispatcher.issue(OttIntent.VERIFY_EMAIL, tenant, owner);
 
         return new Result.Provisioned(tenant, email);
     }

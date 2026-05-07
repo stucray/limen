@@ -340,22 +340,22 @@ Both flows are built on Spring Security 7's One-Time Token Login primitive (`One
 ```mermaid
 flowchart LR
     subgraph "Issue paths"
-      SU["/signup or sysadmin tenant-create"] --> EVS[EmailVerificationService.issueVerification]
-      RV["/t/{slug}/resend-verification"] --> EVS
-      FP["/t/{slug}/forgot-password"] --> PRS[PasswordResetService]
-      EVS --> SVC[TenantAwareOneTimeTokenService.generateForIntent]
-      PRS --> SVC
+      SU["/signup or sysadmin tenant-create"] --> DISP["OttDispatcher.issue(intent, tenant, user|email)"]
+      RV["/t/{slug}/resend-verification"] --> DISP
+      FP["/t/{slug}/forgot-password"] --> DISP
+      DISP --> H["OttIntentHandler<br/>(per-intent subject/body/event)"]
+      DISP --> SVC[TenantAwareOneTimeTokenService.generateForIntent]
       SVC --> ROW[(one_time_tokens row)]
-      SVC --> NOT[OttEmailNotifier]
-      NOT --> ES[EmailSender]
+      DISP --> ES[EmailSender]
     end
     subgraph "Consume paths"
       LINK[Magic link] --> SUB["/t/{slug}/login/ott"]
       SUB --> CON[TenantAwareOneTimeTokenService.consume]
       CON --> ROW
       CON --> CHECK{intent?}
-      CHECK -->|verify-email| MV[markEmailVerified] --> HOME["/t/{slug}/"]
+      CHECK -->|verify-email| MV[OttCompletionService.markEmailVerified] --> HOME["/t/{slug}/"]
       CHECK -->|password-reset| TPCF[TenantPasswordChangeFlow]
+      TPCF --> RC[OttCompletionService.markPasswordResetCompleted]
     end
 ```
 
@@ -363,8 +363,10 @@ Properties:
 
 - **`TenantAwareOneTimeTokenService` is a tenant decorator** mirroring the OAuth2 storage pattern (§4.3). Generation requires an active `TenantScope`; `consume()` returns `null` if the token's `tenant_id` does not match the current scope. Tokens issued under Tenant A are invisible / unusable from Tenant B.
 - **One row, two intents.** The `one_time_tokens` table carries an `intent` column constrained to `('verify-email', 'password-reset')`. The `OttIntent` enum + `generateForIntent(username, intent)` API surface this distinction; the bare `OneTimeTokenService.generate(...)` defaults to `VERIFY_EMAIL`.
-- **Consume routing.** `OttSubmitController` (`GET /t/{slug}/login/ott`) is the single submit endpoint. After consume, the resulting `Authentication` is a `TenantOttAuthentication` (subclass of Spring's `OneTimeTokenAuthentication`) carrying the typed `OttIntent`; downstream readers (`PostLoginIntents.passwordChangeAfterReset`, `TenantPasswordChangeFlow`) read intent from the principal rather than via session-side state. The controller branches on intent: `verify-email` flips `users.email_verified=true` (via `EmailVerificationService.markEmailVerified`) and lands the User on the end-user home; `password-reset` drops the User into the existing `TenantPasswordChangeFlow` (§4.5) so the same validation, persistence, and OAuth2-resume logic applies. On a successful reset submission, `TenantPasswordChangeFlow` rotates the `SecurityContext` to a plain `UsernamePasswordAuthenticationToken` — that ends the journey in code, so a form refresh cannot re-fire `password_reset_completed`.
-- **Verification is required before first login.** Newly provisioned Users have `email_verified=false`; `TenantAuthProvider` rejects unverified-account login with a dedicated message and a "Resend verification" link. `ResendVerificationController` deliberately emits `VerificationResentEvent` regardless of whether the email matches a real User — the response is identical either way to avoid a user-existence oracle.
+- **Issue surface = `OttDispatcher`.** Every "send an OTT" path — signup, sysadmin tenant-create, resend-verification, forgot-password — funnels through `OttDispatcher.issue(intent, tenant, user|email)`. The dispatcher hides the user-lookup branch (existence-oracle defence: silent no-op for delivery on an unknown email, but still emits a `delivered=false` audit row), the `TenantScope` binding, the email send, and the audit emission. Per-intent behaviour (subject, body, audit-event factory) lives on `OttIntentHandler` `@Component` beans collected via Spring collection-injection — adding a new intent requires exactly two edits: a new handler bean and a new audit event record. The Spring `OneTimeTokenGenerationSuccessHandler` contract (called by `GenerateOneTimeTokenFilter` for the `/ott/generate` filter path that Limen does not route any UI to) is satisfied by `OttSpringContractHandler`, which consumes the same handler beans for subject/body lookup so the contract path is also Open–Closed.
+- **Completion surface = `OttCompletionService`.** Issue and completion are different operations with different domain semantics — issue is uniform across intents, completion is intent-specific by definition — so they live on different services. `markEmailVerified(userId, tenantId)` flips `users.email_verified=true` (idempotent on already-verified) and emits `EmailVerifiedEvent`; `markPasswordResetCompleted(userId, tenantId)` emits the `password_reset_completed` journey-tail marker without DB mutation (the password rotation itself is owned by `TenantPasswordChangeFlow`).
+- **Consume routing.** `OttSubmitController` (`GET /t/{slug}/login/ott`) is the single submit endpoint. After consume, the resulting `Authentication` is a `TenantOttAuthentication` (subclass of Spring's `OneTimeTokenAuthentication`) carrying the typed `OttIntent`; downstream readers (`PostLoginIntents.passwordChangeAfterReset`, `TenantPasswordChangeFlow`) read intent from the principal rather than via session-side state. `TenantOttAuthenticationProvider` calls `OttCompletionService.markEmailVerified` on every consume — both intents flip the bit, since clicking a link delivered to an address proves control of it. The post-login intent chain then routes verify-email consumes to the end-user home, and password-reset consumes into the existing `TenantPasswordChangeFlow` (§4.5) so the same validation, persistence, and OAuth2-resume logic applies. On a successful reset submission, `TenantPasswordChangeFlow` rotates the `SecurityContext` to a plain `UsernamePasswordAuthenticationToken` — that ends the journey in code, so a form refresh cannot re-fire `password_reset_completed`.
+- **Verification is required before first login.** Newly provisioned Users have `email_verified=false`; `TenantAuthProvider` rejects unverified-account login with a dedicated message and a "Resend verification" link. The forgot-password and resend-verification controllers deliberately emit a `verification_ott_issued` / `password_reset_ott_issued` event regardless of whether the email matches a real User — the response is identical either way to avoid a user-existence oracle, and the audit row's `delivered` flag is the only place the distinction surfaces.
 - **`/t/{slug}/check-inbox`** is a public landing shown after `/signup` or after a forgot-password submission so the User has somewhere to go before clicking the magic link.
 
 ### 4.7 Email infrastructure
@@ -410,7 +412,7 @@ Properties:
   - **Duplicates are possible** on rare restart-after-failure (no idempotency key on `audit_event` in this slice — adding one is a follow-up if duplicates are observed).
   - **The guarantee is bounded.** It applies only to the `@ApplicationModuleListener` path. Audit rows derived from Spring Security auth events and `RateLimitHitEvent` go through the IMMEDIATE `@EventListener` path because those events fire outside any transaction; closing the gap for them needs an outbox-style approach (synchronous insert inside the publishing filter, async drain) and is out of scope here.
 - **Application-level write failures are still swallowed.** If the listener runs but the writer throws, the dispatcher logs and returns normally — the publication record is marked complete and not retried. The at-least-once guarantee here is specifically about *delivery* (the listener was invoked), not about *eventual write success*.
-- **Event types currently emitted:** `login_success`, `login_failure`, `tenant_created` / `tenant_suspended` / `tenant_unsuspended` / `tenant_deleted`, `client_secret_rotated`, `verification_ott_issued` / `email_verified` / `verification_resent`, `account_locked` / `account_unlocked`, `password_reset_ott_issued` / `password_reset_completed` / `password_changed`, `user_created` / `user_enabled` / `user_disabled` / `user_deleted`, `tenant_ownership_granted` / `tenant_ownership_revoked`, `rate_limit_hit`.
+- **Event types currently emitted:** `login_success`, `login_failure`, `tenant_created` / `tenant_suspended` / `tenant_unsuspended` / `tenant_deleted`, `client_secret_rotated`, `verification_ott_issued` / `email_verified`, `account_locked` / `account_unlocked`, `password_reset_ott_issued` / `password_reset_completed` / `password_changed`, `user_created` / `user_enabled` / `user_disabled` / `user_deleted`, `tenant_ownership_granted` / `tenant_ownership_revoked`, `rate_limit_hit`.
 - **Schema-shaped for forward compatibility.** `audit_event` carries `tenant_id` (nullable, `ON DELETE SET NULL` so deleting a Tenant does not delete its history), `actor_user_id` (same nullability rule), `event_type`, optional `target_type` / `target_id`, request context (`ip_address`, `user_agent`), `occurred_at`, and a `jsonb details` payload for event-specific fields. Indexed by `(tenant_id, occurred_at DESC)` for the per-tenant timeline view. The Modulith publication registry's own `event_publication` table is created by Flyway V10 (the framework's own initializer is left disabled; default `spring.modulith.events.jdbc.schema-initialization.enabled=false`).
 
 ### 4.9 Rate limiting
@@ -605,7 +607,7 @@ Each direct sub-package of `com.stucray.limen` is one application module. As of 
 
 - `audit.events` — the audit event types other modules publish via `ApplicationEventPublisher`
 - `auth.login` — login pipeline integration points (`TenantUrlScheme`, `PostLoginIntent`, `TenantPasswordChangeFlow`)
-- `auth.ott` — OTT services consumed across modules (`EmailVerificationService`, `PasswordResetService`, `OttIntent`)
+- `auth.ott` — OTT services consumed across modules (`OttDispatcher`, `OttCompletionService`, `OttIntent`)
 
 Other sub-packages (e.g. `audit.dispatch`, `auth.lockout`, `security.ratelimit`) are internal to their module by Modulith default — outside callers cannot import them.
 

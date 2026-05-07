@@ -41,8 +41,8 @@ public final class PostLoginIntents {
      * If the principal has {@code email_verified=false}, redirect to the
      * tenant's check-inbox page so a fresh verification email can be requested.
      * The OTT consume path itself flips the flag to {@code true} via
-     * {@code EmailVerificationService}, so a successful verify-email login
-     * falls through to the next intent in the chain.
+     * {@code OttCompletionService.markEmailVerified}, so a successful
+     * verify-email login falls through to the next intent in the chain.
      */
     public static PostLoginIntent emailVerificationRequired() {
         return (req, res, principal, scheme) -> principal.user().emailVerified()

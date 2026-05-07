@@ -2,9 +2,9 @@ package com.stucray.limen.oauth2;
 
 import com.stucray.limen.auth.login.TenantLogin;
 import com.stucray.limen.auth.login.TenantUrlScheme;
-import com.stucray.limen.auth.ott.OttEmailNotifier;
 import com.stucray.limen.auth.ott.TenantAwareOneTimeTokenService;
 import com.stucray.limen.auth.ott.TenantOttAuthenticationProvider;
+import org.springframework.security.web.authentication.ott.OneTimeTokenGenerationSuccessHandler;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -43,20 +43,20 @@ public class OAuth2LoginSecurityConfig {
     private final TenantLogin login;
     private final TenantUrlScheme oauth2UrlScheme;
     private final TenantAwareOneTimeTokenService oneTimeTokenService;
-    private final OttEmailNotifier ottEmailNotifier;
+    private final OneTimeTokenGenerationSuccessHandler ottGenerationSuccessHandler;
     private final TenantOttAuthenticationProvider ottAuthenticationProvider;
 
     public OAuth2LoginSecurityConfig(
         TenantLogin login,
         @Qualifier("oauth2UrlScheme") TenantUrlScheme oauth2UrlScheme,
         TenantAwareOneTimeTokenService oneTimeTokenService,
-        OttEmailNotifier ottEmailNotifier,
+        OneTimeTokenGenerationSuccessHandler ottGenerationSuccessHandler,
         TenantOttAuthenticationProvider ottAuthenticationProvider
     ) {
         this.login = login;
         this.oauth2UrlScheme = oauth2UrlScheme;
         this.oneTimeTokenService = oneTimeTokenService;
-        this.ottEmailNotifier = ottEmailNotifier;
+        this.ottGenerationSuccessHandler = ottGenerationSuccessHandler;
         this.ottAuthenticationProvider = ottAuthenticationProvider;
     }
 
@@ -83,7 +83,7 @@ public class OAuth2LoginSecurityConfig {
             ))
             .oneTimeTokenLogin(ott -> ott
                 .tokenService(oneTimeTokenService)
-                .tokenGenerationSuccessHandler(ottEmailNotifier)
+                .tokenGenerationSuccessHandler(ottGenerationSuccessHandler)
                 .authenticationProvider(ottAuthenticationProvider)
                 .loginProcessingUrl("/t/*/login/ott")
                 // Spring's default submit page filter renders a form whose action
