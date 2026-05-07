@@ -46,6 +46,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
@@ -273,7 +274,10 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
             .andExpect(status().is3xxRedirection());
 
         mockMvc.perform(get("/t/alpha-corp/change-password").session(session))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            // Pin view selection: the OAuth2 surface uses the bare "change-password"
+            // template, not the management-surface "manage/users/change-password" one.
+            .andExpect(view().name("change-password"));
     }
 
     private MockHttpSession startAuthorize(String codeChallenge) throws Exception {

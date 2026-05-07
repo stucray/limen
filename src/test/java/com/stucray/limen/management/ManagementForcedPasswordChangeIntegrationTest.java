@@ -42,6 +42,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Slice 2 of #67. Pins the two latent-bug fixes for the management surface
@@ -255,7 +256,10 @@ class ManagementForcedPasswordChangeIntegrationTest {
             .andExpect(status().is3xxRedirection());
 
         mockMvc.perform(get("/manage/t/alpha-corp/change-password").session(session))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            // Pin view selection: the management surface uses
+            // "manage/users/change-password", not the bare OAuth2 "change-password".
+            .andExpect(view().name("manage/users/change-password"));
     }
 
     private MockHttpSession startAuthorize(String codeChallenge) throws Exception {
