@@ -29,7 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * End-to-end coverage of per-tenant signing-key rotation. Asserts the full
  * pipeline: storage swap → audit row → counter → JWKS endpoint serving both
- * keys for the duration of the grace window. Slice 1 of PRD #173.
+ * keys for the duration of the grace window, plus the slice-2 prune flow that
+ * reaps RETIRED keys whose grace window has elapsed.
  */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
@@ -46,7 +47,7 @@ class SigningKeyRotationFlowIntegrationTest {
     @BeforeEach
     void cleanAudit() {
         jdbcTemplate.execute(
-            "DELETE FROM audit_event WHERE event_type = 'signing_key_rotated'");
+            "DELETE FROM audit_event WHERE event_type IN ('signing_key_rotated', 'signing_key_pruned')");
     }
 
     @Test
@@ -105,9 +106,59 @@ class SigningKeyRotationFlowIntegrationTest {
             .containsExactly(newActiveKid, originalKid);
     }
 
+    @Test
+    @DisplayName("pruneRetired(grace) deletes a RETIRED key whose retired_at exceeds the grace, lands a signing_key_pruned audit row, and increments the pruned counter")
+    void prunePastGraceProducesAuditRowCounterAndDbDelete() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String slug = "prune-" + suffix;
+        Tenant tenant = tenantProvisioningService.createTenant(slug, "Prune " + suffix);
+
+        rotator.rotate(tenant.id());
+        String retiredKid = jdbcTemplate.queryForObject(
+            "SELECT kid FROM tenant_signing_key WHERE tenant_id = ? AND status = 'RETIRED'",
+            String.class, tenant.id());
+        jdbcTemplate.update(
+            "UPDATE tenant_signing_key SET retired_at = CURRENT_TIMESTAMP - INTERVAL '48 hours' " +
+                "WHERE tenant_id = ? AND status = 'RETIRED'",
+            tenant.id());
+
+        double pruneCountBefore = pruneCounterCount();
+
+        rotator.pruneRetired(Duration.ofHours(24));
+
+        Integer rowCount = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM tenant_signing_key WHERE tenant_id = ?",
+            Integer.class, tenant.id());
+        assertThat(rowCount).isEqualTo(1);
+        Integer retiredRows = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM tenant_signing_key WHERE tenant_id = ? AND status = 'RETIRED'",
+            Integer.class, tenant.id());
+        assertThat(retiredRows).isZero();
+
+        // Counter increment (synchronous on AFTER_COMMIT — no await needed).
+        assertThat(pruneCounterCount() - pruneCountBefore).isEqualTo(1.0);
+
+        // Audit row (async via Modulith publication registry — wait).
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT target_id, details::text AS details FROM audit_event "
+                    + "WHERE event_type = 'signing_key_pruned' AND tenant_id = ? "
+                    + "ORDER BY occurred_at DESC LIMIT 1",
+                tenant.id());
+            assertThat(rows).isNotEmpty();
+            Map<String, Object> row = rows.get(0);
+            assertThat(row.get("target_id")).isEqualTo(retiredKid);
+            assertThat(row.get("details").toString()).contains(retiredKid);
+        });
+    }
+
     private double counterCount() {
         // Metric name is the public contract observed by Grafana/Mimir; assert
         // the literal so a rename in AuditMetricsListener trips this test.
         return meterRegistry.counter("limen.security.signing_key.rotated").count();
+    }
+
+    private double pruneCounterCount() {
+        return meterRegistry.counter("limen.security.signing_key.pruned").count();
     }
 }

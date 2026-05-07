@@ -1,5 +1,6 @@
 package com.stucray.limen.security;
 
+import com.stucray.limen.audit.events.SigningKeyPrunedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -7,17 +8,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Duration;
 
 /**
- * Orchestrates per-tenant signing-key rotation: delegates the storage swap to
- * {@link SigningKeyStore#rotateForTenant(long)} and publishes a
- * {@link SigningKeyRotatedEvent} for downstream audit + metrics.
+ * Orchestrates per-tenant signing-key rotation: delegates storage writes to
+ * {@link SigningKeyStore} and publishes one domain event per affected key for
+ * downstream audit + metrics.
  *
- * <p>Slice 1 ships the per-tenant {@link #rotate(long)} entry point used by
- * the storage and end-to-end tests; the scheduled batch entry point and prune
- * path arrive in slices 2 and 3 respectively (PRD #173). The {@link Clock}
- * field is unused today but injected now to lock in the constructor seam used
- * by the slice-3 batch tests, mirroring {@code TenantAwareOneTimeTokenService}.
+ * <p>Slice 1 shipped the per-tenant {@link #rotate(long)} entry point; slice 2
+ * adds {@link #pruneRetired(Duration)} for grace-expired RETIRED rows. The
+ * scheduled batch driver that ties both together arrives in slice 3 (PRD #173).
+ * The {@link Clock} field is unused today but injected now to lock in the
+ * constructor seam used by the slice-3 batch tests, mirroring
+ * {@code TenantAwareOneTimeTokenService}.
  */
 @Component
 public class SigningKeyRotator {
@@ -48,5 +51,20 @@ public class SigningKeyRotator {
         SigningKeyStore.RotationOutcome outcome = signingKeyStore.rotateForTenant(tenantId);
         eventPublisher.publishEvent(new SigningKeyRotatedEvent(
             tenantId, outcome.oldKid(), outcome.newKid()));
+    }
+
+    /**
+     * Reaps every {@code RETIRED} signing key whose {@code retired_at} is older
+     * than {@code grace}. One {@link SigningKeyPrunedEvent} fires per deleted
+     * row so each pruned key lands its own audit row + counter increment;
+     * AFTER_COMMIT semantics on the listeners require this method's
+     * transaction to reach commit, so the events fire as a single batch when
+     * this method returns successfully.
+     */
+    @Transactional
+    public void pruneRetired(Duration grace) {
+        for (SigningKeyStore.PrunedKey pruned : signingKeyStore.pruneRetiredOlderThan(grace)) {
+            eventPublisher.publishEvent(new SigningKeyPrunedEvent(pruned.tenantId(), pruned.kid()));
+        }
     }
 }

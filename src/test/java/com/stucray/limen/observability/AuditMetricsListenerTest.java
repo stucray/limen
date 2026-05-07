@@ -1,6 +1,7 @@
 package com.stucray.limen.observability;
 
 import com.stucray.limen.audit.events.ClientSecretRotatedEvent;
+import com.stucray.limen.audit.events.SigningKeyPrunedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -35,6 +36,7 @@ class AuditMetricsListenerTest {
         assertThat(meters.find(AuditMetricsListener.LOGIN_SUCCESS).counter()).isNotNull();
         assertThat(meters.find(AuditMetricsListener.CLIENT_SECRET_ROTATED).counter()).isNotNull();
         assertThat(meters.find(AuditMetricsListener.SIGNING_KEY_ROTATED).counter()).isNotNull();
+        assertThat(meters.find(AuditMetricsListener.SIGNING_KEY_PRUNED).counter()).isNotNull();
     }
 
     @Test
@@ -95,17 +97,28 @@ class AuditMetricsListenerTest {
     }
 
     @Test
+    @DisplayName("SigningKeyPrunedEvent increments security.signing_key.pruned")
+    void onSigningKeyPrunedIncrements() {
+        listener.onSigningKeyPruned(new SigningKeyPrunedEvent(42L, "kid"));
+
+        assertThat(meters.counter(AuditMetricsListener.SIGNING_KEY_PRUNED).count()).isEqualTo(1.0);
+    }
+
+    @Test
     @DisplayName("Counters carry no tenant tag (cardinality safety)")
     void countersHaveNoTenantTag() {
         listener.onLoginSuccess(new AuthenticationSuccessEvent(authToken()));
         listener.onClientSecretRotated(new ClientSecretRotatedEvent(42L, "client-id", 7L));
         listener.onSigningKeyRotated(new SigningKeyRotatedEvent(42L, "old-kid", "new-kid"));
+        listener.onSigningKeyPruned(new SigningKeyPrunedEvent(42L, "kid"));
 
         assertThat(meters.find(AuditMetricsListener.LOGIN_SUCCESS).counter().getId().getTags())
             .isEmpty();
         assertThat(meters.find(AuditMetricsListener.CLIENT_SECRET_ROTATED).counter().getId().getTags())
             .isEmpty();
         assertThat(meters.find(AuditMetricsListener.SIGNING_KEY_ROTATED).counter().getId().getTags())
+            .isEmpty();
+        assertThat(meters.find(AuditMetricsListener.SIGNING_KEY_PRUNED).counter().getId().getTags())
             .isEmpty();
     }
 

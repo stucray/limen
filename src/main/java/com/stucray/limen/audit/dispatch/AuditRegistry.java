@@ -8,6 +8,7 @@ import com.stucray.limen.audit.events.PasswordChangedEvent;
 import com.stucray.limen.audit.events.PasswordResetCompletedEvent;
 import com.stucray.limen.audit.events.PasswordResetOttIssuedEvent;
 import com.stucray.limen.audit.events.RateLimitHitEvent;
+import com.stucray.limen.audit.events.SigningKeyPrunedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
 import com.stucray.limen.audit.events.TenantCreatedEvent;
 import com.stucray.limen.audit.events.TenantDeletedEvent;
@@ -113,6 +114,14 @@ public class AuditRegistry {
                 event.tenantId(), null,
                 "signing_key", event.newKid(),
                 Map.of("oldKid", event.oldKid(), "newKid", event.newKid()))),
+
+        // Same system-driven framing as rotation. One event per deleted row,
+        // so audit trails count grace-expired RETIRED keys exactly.
+        new AuditRule<>(SigningKeyPrunedEvent.class, "signing_key_pruned", AFTER_COMMIT,
+            event -> AuditRule.Projection.of(
+                event.tenantId(), null,
+                "signing_key", event.kid(),
+                Map.of("kid", event.kid()))),
 
         new AuditRule<>(VerificationOttIssuedEvent.class, "verification_ott_issued", AFTER_COMMIT,
             event -> AuditRule.Projection.ofUser(

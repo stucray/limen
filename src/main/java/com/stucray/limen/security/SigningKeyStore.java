@@ -4,6 +4,9 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import org.jspecify.annotations.Nullable;
 
+import java.time.Duration;
+import java.util.List;
+
 public interface SigningKeyStore {
 
     void createForTenant(long tenantId);
@@ -31,5 +34,19 @@ public interface SigningKeyStore {
      */
     RotationOutcome rotateForTenant(long tenantId);
 
+    /**
+     * Deletes every {@code RETIRED} row across all tenants whose
+     * {@code retired_at} is older than {@code grace} (DB clock). Returns one
+     * {@link PrunedKey} per deleted row so the orchestration layer can publish
+     * a per-key {@code SigningKeyPrunedEvent} for audit + metrics.
+     *
+     * <p>Threshold is computed in the database (via {@code CURRENT_TIMESTAMP -
+     * make_interval(...)}) to stay coherent with the {@code retired_at} value
+     * written by {@link #rotateForTenant(long)}.
+     */
+    List<PrunedKey> pruneRetiredOlderThan(Duration grace);
+
     record RotationOutcome(String oldKid, String newKid) {}
+
+    record PrunedKey(long tenantId, String kid) {}
 }
