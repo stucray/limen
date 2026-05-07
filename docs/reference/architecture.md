@@ -281,7 +281,8 @@ Properties:
 - **Per-key random salt** stored in the `iv` column. The column is named `iv` for historical reasons; it is the salt passed to `Encryptors.stronger`, not an AES IV.
 - **Public key stored as a JWK in plaintext** (`public_key_jwk`) so that the JWKS endpoint can be served without decrypting anything.
 - **Keys are created during Tenant provisioning** by `TenantProvisioningService` calling `SigningKeyStore.createForTenant(tenantId)`. The System Tenant does not get a signing key — it never issues tokens.
-- **Rotation is supported by the schema but not yet automated.** The `status` column (`ACTIVE` / `RETIRED`) plus the partial unique index allows multiple keys per Tenant with one ACTIVE; no scheduled job currently performs rotation.
+- **Per-tenant rotation is supported by `SigningKeyStore.rotateForTenant`** (and orchestrated by `SigningKeyRotator`, which publishes a `SigningKeyRotatedEvent` consumed by the audit dispatcher and `AuditMetricsListener`'s `limen.security.signing_key.rotated` counter). Storage swap is one transaction: the existing `ACTIVE` row is updated to `RETIRED` with `retired_at = now()`, then the new `ACTIVE` row is inserted — order forced by the partial unique index. A scheduled batch driver and prune of grace-expired `RETIRED` keys are tracked separately under §6 v3.5 #13.
+- **The JWKS endpoint advertises both `ACTIVE` and `RETIRED` keys for a tenant.** `TenantJwkSource` branches on selector intent: SAS's signing path (selector constrained by keyType + keyUse + algorithm) returns the `ACTIVE` key only with private material decrypted, so `NimbusJwtEncoder`'s strict single-match contract is satisfied. The JWKS-endpoint path (match-all selector) returns every key for the tenant, public-only. This means resource servers caching the JWKS can validate tokens signed by either the current `ACTIVE` or a recently-`RETIRED` key throughout a rotation grace window.
 
 ### 4.5 Authentication flows
 

@@ -1,5 +1,6 @@
 package com.stucray.limen.security;
 
+import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.stucray.limen.TestcontainersConfiguration;
@@ -113,6 +114,53 @@ class JdbcSigningKeyStoreIntegrationTest {
         signingKeyStore.createForTenant(tenant.id());
 
         assertThatPartialUniqueIndexBlocksSecondActive();
+    }
+
+    @Test
+    @DisplayName("rotateForTenant retires the old ACTIVE row and inserts a new ACTIVE one in a single transaction; partial unique index does not fire mid-rotation")
+    void rotateForTenantSwapsActiveAndRetiresPrevious() {
+        signingKeyStore.createForTenant(tenant.id());
+        String originalKid = jdbcTemplate.queryForObject(
+            "SELECT kid FROM tenant_signing_key WHERE tenant_id = ? AND status = 'ACTIVE'",
+            String.class, tenant.id());
+
+        SigningKeyStore.RotationOutcome outcome = signingKeyStore.rotateForTenant(tenant.id());
+
+        assertThat(outcome.oldKid()).isEqualTo(originalKid);
+        assertThat(outcome.newKid()).isNotEqualTo(originalKid);
+        assertThat(rowCount(tenant.id())).isEqualTo(2);
+
+        String activeKid = jdbcTemplate.queryForObject(
+            "SELECT kid FROM tenant_signing_key WHERE tenant_id = ? AND status = 'ACTIVE'",
+            String.class, tenant.id());
+        assertThat(activeKid).isEqualTo(outcome.newKid());
+
+        Object retiredAt = jdbcTemplate.queryForObject(
+            "SELECT retired_at FROM tenant_signing_key WHERE tenant_id = ? AND status = 'RETIRED'",
+            Object.class, tenant.id());
+        assertThat(retiredAt).as("retired_at populated when key transitions to RETIRED").isNotNull();
+    }
+
+    @Test
+    @DisplayName("rotateForTenant throws IllegalStateException when the tenant has no ACTIVE key")
+    void rotateForTenantThrowsWhenNoActiveKey() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+            signingKeyStore.rotateForTenant(tenant.id()))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("no ACTIVE signing key");
+    }
+
+    @Test
+    @DisplayName("getJwkSet orders ACTIVE before RETIRED so SAS's first-match selector keeps signing on the live key during a grace window")
+    void getJwkSetOrdersActiveBeforeRetired() {
+        signingKeyStore.createForTenant(tenant.id());
+        SigningKeyStore.RotationOutcome outcome = signingKeyStore.rotateForTenant(tenant.id());
+
+        JWKSet jwkSet = signingKeyStore.getJwkSet(tenant.id());
+
+        assertThat(jwkSet.getKeys()).hasSize(2);
+        assertThat(jwkSet.getKeys()).extracting(JWK::getKeyID)
+            .containsExactly(outcome.newKid(), outcome.oldKid());
     }
 
     private void assertThatPartialUniqueIndexBlocksSecondActive() {

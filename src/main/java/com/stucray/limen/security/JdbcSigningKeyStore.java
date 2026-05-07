@@ -5,10 +5,12 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import org.jspecify.annotations.Nullable;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.encrypt.BytesEncryptor;
 import org.springframework.security.crypto.encrypt.Encryptors;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -18,6 +20,7 @@ import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Component
@@ -43,7 +46,7 @@ public class JdbcSigningKeyStore implements SigningKeyStore {
         });
     }
 
-    private static void insertActiveSigningKey(Connection conn, long tenantId, String kekPassword) throws SQLException {
+    private static String insertActiveSigningKey(Connection conn, long tenantId, String kekPassword) throws SQLException {
         RSAKey rsaKey;
         try {
             rsaKey = new RSAKeyGenerator(RSA_KEY_SIZE)
@@ -71,6 +74,7 @@ public class JdbcSigningKeyStore implements SigningKeyStore {
             ps.setString(6, publicJwk);
             ps.executeUpdate();
         }
+        return rsaKey.getKeyID();
     }
 
     @Override
@@ -100,7 +104,8 @@ public class JdbcSigningKeyStore implements SigningKeyStore {
     @Override
     public JWKSet getJwkSet(long tenantId) {
         List<JWK> jwks = jdbcTemplate.query(
-            "SELECT public_key_jwk FROM tenant_signing_key WHERE tenant_id = ?",
+            "SELECT public_key_jwk FROM tenant_signing_key WHERE tenant_id = ? " +
+                "ORDER BY (status = 'ACTIVE') DESC, created_at DESC",
             (rs, rowNum) -> {
                 try {
                     return JWK.parse(rs.getString("public_key_jwk"));
@@ -118,6 +123,30 @@ public class JdbcSigningKeyStore implements SigningKeyStore {
     @Override
     public void deleteForTenant(long tenantId) {
         jdbcTemplate.update("DELETE FROM tenant_signing_key WHERE tenant_id = ?", tenantId);
+    }
+
+    @Override
+    @Transactional
+    public RotationOutcome rotateForTenant(long tenantId) {
+        // Order is forced: the partial unique index allows only one ACTIVE row
+        // per tenant, so we must vacate ACTIVE before inserting a new one.
+        String oldKid;
+        try {
+            oldKid = jdbcTemplate.queryForObject(
+                "UPDATE tenant_signing_key SET status = 'RETIRED', retired_at = CURRENT_TIMESTAMP " +
+                    "WHERE tenant_id = ? AND status = 'ACTIVE' RETURNING kid",
+                String.class,
+                tenantId
+            );
+        } catch (EmptyResultDataAccessException e) {
+            throw new IllegalStateException(
+                "Cannot rotate: tenant " + tenantId + " has no ACTIVE signing key", e);
+        }
+        String newKid = jdbcTemplate.execute((Connection conn) ->
+            insertActiveSigningKey(conn, tenantId, kekPassword));
+        return new RotationOutcome(
+            Objects.requireNonNull(oldKid, "RETURNING kid must be non-null after non-empty UPDATE"),
+            Objects.requireNonNull(newKid, "insertActiveSigningKey returned a non-null kid"));
     }
 
     private BytesEncryptor encryptor(byte[] salt) {

@@ -1,6 +1,7 @@
 package com.stucray.limen.observability;
 
 import com.stucray.limen.audit.events.ClientSecretRotatedEvent;
+import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +34,7 @@ class AuditMetricsListenerTest {
     void countersPreRegisteredAtConstruction() {
         assertThat(meters.find(AuditMetricsListener.LOGIN_SUCCESS).counter()).isNotNull();
         assertThat(meters.find(AuditMetricsListener.CLIENT_SECRET_ROTATED).counter()).isNotNull();
+        assertThat(meters.find(AuditMetricsListener.SIGNING_KEY_ROTATED).counter()).isNotNull();
     }
 
     @Test
@@ -85,14 +87,25 @@ class AuditMetricsListenerTest {
     }
 
     @Test
+    @DisplayName("SigningKeyRotatedEvent increments security.signing_key.rotated")
+    void onSigningKeyRotatedIncrements() {
+        listener.onSigningKeyRotated(new SigningKeyRotatedEvent(42L, "old-kid", "new-kid"));
+
+        assertThat(meters.counter(AuditMetricsListener.SIGNING_KEY_ROTATED).count()).isEqualTo(1.0);
+    }
+
+    @Test
     @DisplayName("Counters carry no tenant tag (cardinality safety)")
     void countersHaveNoTenantTag() {
         listener.onLoginSuccess(new AuthenticationSuccessEvent(authToken()));
         listener.onClientSecretRotated(new ClientSecretRotatedEvent(42L, "client-id", 7L));
+        listener.onSigningKeyRotated(new SigningKeyRotatedEvent(42L, "old-kid", "new-kid"));
 
         assertThat(meters.find(AuditMetricsListener.LOGIN_SUCCESS).counter().getId().getTags())
             .isEmpty();
         assertThat(meters.find(AuditMetricsListener.CLIENT_SECRET_ROTATED).counter().getId().getTags())
+            .isEmpty();
+        assertThat(meters.find(AuditMetricsListener.SIGNING_KEY_ROTATED).counter().getId().getTags())
             .isEmpty();
     }
 

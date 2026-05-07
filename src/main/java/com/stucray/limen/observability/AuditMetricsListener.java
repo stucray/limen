@@ -1,6 +1,7 @@
 package com.stucray.limen.observability;
 
 import com.stucray.limen.audit.events.ClientSecretRotatedEvent;
+import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.event.EventListener;
@@ -34,10 +35,12 @@ public class AuditMetricsListener {
     static final String LOGIN_SUCCESS = "limen.auth.login.success";
     static final String LOGIN_FAILURE = "limen.auth.login.failure";
     static final String CLIENT_SECRET_ROTATED = "limen.oauth2.client.secret.rotated";
+    static final String SIGNING_KEY_ROTATED = "limen.security.signing_key.rotated";
 
     private final MeterRegistry registry;
     private final Counter loginSuccess;
     private final Counter clientSecretRotated;
+    private final Counter signingKeyRotated;
 
     public AuditMetricsListener(MeterRegistry registry) {
         this.registry = registry;
@@ -47,6 +50,10 @@ public class AuditMetricsListener {
             .register(registry);
         this.clientSecretRotated = Counter.builder(CLIENT_SECRET_ROTATED)
             .description("OAuth2 client secret rotations.")
+            .baseUnit("events")
+            .register(registry);
+        this.signingKeyRotated = Counter.builder(SIGNING_KEY_ROTATED)
+            .description("Per-tenant JWT signing-key rotations.")
             .baseUnit("events")
             .register(registry);
     }
@@ -69,5 +76,10 @@ public class AuditMetricsListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onClientSecretRotated(ClientSecretRotatedEvent event) {
         clientSecretRotated.increment();
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onSigningKeyRotated(SigningKeyRotatedEvent event) {
+        signingKeyRotated.increment();
     }
 }
