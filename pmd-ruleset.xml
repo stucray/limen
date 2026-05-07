@@ -29,4 +29,30 @@
     <rule ref="category/java/design.xml/TooManyFields"/>
     <rule ref="category/java/design.xml/TooManyMethods"/>
     <rule ref="category/java/design.xml/ExcessivePublicCount"/>
+
+    <!--
+        Forgotten-code + small-correctness signals (added per #189).
+        Three rules in this category are excluded because every finding
+        they produce in this codebase is pattern-specific noise rather
+        than a real refactoring opportunity:
+
+        - AbstractClassWithoutAbstractMethod: the only matches are
+          Jackson `*Mixin` classes whose abstractness is a marker (they
+          are never instantiated; Jackson reads their annotations),
+          which the rule doesn't model.
+        - GuardLogStatement: slf4j's parameterised logging is already
+          lazy, so wrapping `log.x("foo {}", v)` in `isXEnabled()`
+          guards adds boilerplate without measurable benefit. The
+          existing flagged sites are an audit hot path, a dev-profile
+          email logger, and a once-a-day scheduled job.
+        - LooseCoupling: `EnumMap` / `ConcurrentHashMap` are declared
+          as their concrete types deliberately because the semantics
+          (enum-keyed iteration order, thread-safety) are part of the
+          contract; downgrading to `Map` would silently lose them.
+    -->
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="AbstractClassWithoutAbstractMethod"/>
+        <exclude name="GuardLogStatement"/>
+        <exclude name="LooseCoupling"/>
+    </rule>
 </ruleset>
