@@ -417,7 +417,13 @@
 					<rulesets>
 						<ruleset>${project.basedir}/pmd-ruleset.xml</ruleset>
 					</rulesets>
-					<format>html</format>
+					<!--
+						XML output feeds scripts/render-pmd-report.py, which
+						regenerates docs/reports/code-quality.{md,json} during
+						the verify phase. For an interactive HTML drilldown,
+						run `mvn pmd:pmd -Dformat=html` ad-hoc.
+					-->
+					<format>xml</format>
 					<linkXRef>true</linkXRef>
 					<printFailingErrors>true</printFailingErrors>
 					<skipPmdError>true</skipPmdError>
@@ -454,6 +460,43 @@
 						<version>${pmd.version}</version>
 					</dependency>
 				</dependencies>
+			</plugin>
+			<!--
+				Run scripts/render-pmd-report.py after maven-pmd-plugin in
+				the verify phase. Plugins within a phase run in declaration
+				order, so this stays after the pmd-report execution above
+				and reads the freshly-written target/pmd.xml. The script is
+				stdlib-only Python and writes docs/reports/code-quality.{md,json}
+				atomically. See docs/process/code-quality.md.
+			-->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>3.5.0</version>
+				<executions>
+					<execution>
+						<id>render-pmd-report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<executable>python3</executable>
+							<workingDirectory>${project.basedir}</workingDirectory>
+							<arguments>
+								<argument>scripts/render-pmd-report.py</argument>
+								<argument>--in</argument>
+								<argument>target/pmd.xml</argument>
+								<argument>--out-md</argument>
+								<argument>docs/reports/code-quality.md</argument>
+								<argument>--out-json</argument>
+								<argument>docs/reports/code-quality.json</argument>
+								<argument>--ruleset</argument>
+								<argument>pmd-ruleset.xml</argument>
+							</arguments>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

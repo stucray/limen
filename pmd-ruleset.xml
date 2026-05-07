@@ -6,9 +6,15 @@
 
     <description>
         Complexity-only ruleset. PMD is configured as a reporting tool, not
-        a gate — findings are surfaced in target/pmd.html and stdout, but the
-        build does not fail. Add or remove rules as understanding of the
-        codebase's natural numbers grows.
+        a gate — findings are surfaced in `docs/reports/code-quality.{md,json}`,
+        regenerated automatically by `mvn verify`, and the build does not fail
+        on findings. Rules here exist to inform refactoring, not block PRs.
+        See `docs/process/code-quality.md` for the regen flow.
+
+        Future expansion of this ruleset (Best Practices, Error Prone PMD-rules,
+        Performance categories) is tracked in #189 — add categories one at a
+        time so each addition's diff in `code-quality.json` shows exactly which
+        findings the new rules introduced.
     </description>
 
     <!-- "Method does too much" signals -->
