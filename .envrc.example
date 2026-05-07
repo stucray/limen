@@ -1,0 +1,7 @@
+# Copy to .envrc (gitignored), then run `direnv allow` from the repo root.
+# Loads the variables in .env into your shell so `mvn spring-boot:run`
+# picks up LIMEN_SECURITY_KEK and friends without you having to export
+# them manually each session.
+#
+# See docs/process/local-setup.md for first-time setup.
+dotenv
