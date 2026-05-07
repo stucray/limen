@@ -3,13 +3,49 @@
     "tool": "pmd",
     "tool_version": "7.24.0",
     "ruleset": "pmd-ruleset.xml",
-    "total_findings": 11,
+    "total_findings": 16,
     "by_priority": {
       "2": 1,
-      "3": 10
+      "3": 15
     }
   },
   "findings": [
+    {
+      "rule": "AvoidLiteralsInIfCondition",
+      "ruleset": "Error Prone",
+      "priority": 3,
+      "package": "com.stucray.limen.auth",
+      "class": "TenantPersistentTokenBasedRememberMeServices",
+      "method": "processAutoLoginCookie",
+      "file": "src/main/java/com/stucray/limen/auth/TenantPersistentTokenBasedRememberMeServices.java",
+      "begin_line": 89,
+      "end_line": 89,
+      "message": "Avoid using literals such as 3 in if statements"
+    },
+    {
+      "rule": "AvoidLiteralsInIfCondition",
+      "ruleset": "Error Prone",
+      "priority": 3,
+      "package": "com.stucray.limen.auth.lockout",
+      "class": "LockoutProperties",
+      "method": "",
+      "file": "src/main/java/com/stucray/limen/auth/lockout/LockoutProperties.java",
+      "begin_line": 29,
+      "end_line": 29,
+      "message": "Avoid using literals such as 1 in if statements"
+    },
+    {
+      "rule": "AvoidLiteralsInIfCondition",
+      "ruleset": "Error Prone",
+      "priority": 3,
+      "package": "com.stucray.limen.oauth2",
+      "class": "MembershipGateFilter",
+      "method": "resolveRedirectUri",
+      "file": "src/main/java/com/stucray/limen/oauth2/MembershipGateFilter.java",
+      "begin_line": 144,
+      "end_line": 144,
+      "message": "Avoid using literals such as 1 in if statements"
+    },
     {
       "rule": "CyclomaticComplexity",
       "ruleset": "Design",
@@ -141,6 +177,30 @@
       "begin_line": 103,
       "end_line": 103,
       "message": "Avoid unused local variables such as 'g'."
+    },
+    {
+      "rule": "UseLocaleWithCaseConversions",
+      "ruleset": "Error Prone",
+      "priority": 3,
+      "package": "com.stucray.limen.audit.dispatch",
+      "class": "AuditRegistry",
+      "method": "",
+      "file": "src/main/java/com/stucray/limen/audit/dispatch/AuditRegistry.java",
+      "begin_line": 159,
+      "end_line": 159,
+      "message": "When doing a String.toLowerCase()/toUpperCase() call, use a Locale"
+    },
+    {
+      "rule": "UseProperClassLoader",
+      "ruleset": "Error Prone",
+      "priority": 3,
+      "package": "com.stucray.limen.auth",
+      "class": "SasJsonMapperFactory",
+      "method": "create",
+      "file": "src/main/java/com/stucray/limen/auth/SasJsonMapperFactory.java",
+      "begin_line": 27,
+      "end_line": 27,
+      "message": "In J2EE, getClassLoader() might not work as expected.  Use Thread.currentThread().getContextClassLoader() instead."
     }
   ]
 }
