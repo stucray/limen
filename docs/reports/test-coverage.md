@@ -53,7 +53,7 @@ Four small additions, all targeting security-adjacent oauth2 / signup branches t
 
 - `auth.TenantUserDetailsService` — happy/unknown-tenant/unknown-user paths and the unsupported `loadUserByUsername` are exercised by `TenantUserDetailsServiceUnitTest`.
 - `oauth2.MembershipGateFilter` — missing `client_id`, unknown `client_id`, single- and multi-redirect-uri fallbacks, and the unbound-`TenantScope` short-circuit are exercised by `MembershipGateFilterUnitTest`.
-- `management.users.PasswordChangeController` and `oauth2.EndUserPasswordChangeController` — mismatched-password and blank-password redisplay paths, plus the no-saved-request fallback for the OAuth2 controller.
+- `auth.login.PasswordChangeController` (consolidated 2026-05-07; previously two thin per-surface controllers) — mismatched-password and blank-password redisplay paths, plus the no-saved-request fallback for the OAuth2 surface.
 - Management `*Controller` form-error redisplay paths in `MembersController.update()`, `ClientMembersController.update()`, `RolesController.update()`, `RolesController.delete()` (FK ON DELETE RESTRICT), and `ApplicationController.create()`.
 
 ## Remaining gaps
