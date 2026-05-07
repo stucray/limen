@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from collections import Counter
@@ -269,6 +270,26 @@ def atomic_write(path: Path, content: str) -> None:
     os.replace(tmp, path)
 
 
+def gate_drift(paths: list[Path]) -> None:
+    """In CI, fail the build when the freshly-written report files differ
+    from what's committed. Locally (``CI`` unset) this is a no-op so the
+    edit-build-test loop stays frictionless. Triggered by ``CI=true``,
+    the convention every major CI provider sets, so the gate is portable.
+    """
+    if os.environ.get("CI") != "true":
+        return
+    result = subprocess.run(
+        ["git", "diff", "--exit-code", "--", *(str(p) for p in paths)],
+        check=False,
+    )
+    if result.returncode != 0:
+        sys.stderr.write(
+            "\nStale code-quality report. Run `mvn verify` locally and "
+            "recommit docs/reports/code-quality.{md,json}.\n"
+        )
+        raise SystemExit(result.returncode)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -303,6 +324,7 @@ def main() -> int:
 
     atomic_write(out_json, render_json(findings, summary))
     atomic_write(out_md, render_markdown(findings, summary))
+    gate_drift([out_json, out_md])
     return 0
 
 

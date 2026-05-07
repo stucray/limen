@@ -38,6 +38,44 @@ python3 scripts/render-pmd-report.py \
 
 The script is stdlib-only Python — no `pip install` step.
 
+## CI drift gate
+
+When the script runs under any CI provider that sets `CI=true` (GitHub Actions,
+GitLab CI, CircleCI, Travis, Jenkins-via-plugin), the regen step is followed
+by `git diff --exit-code` on the just-written files. If the committed reports
+are stale relative to what `mvn verify` just regenerated, the build fails with
+a message instructing you to rerun `mvn verify` locally and recommit.
+
+Locally (`CI` unset), the gate is a no-op — the script writes-and-exits even
+when the working tree mutated, so edit-build-test loops stay frictionless.
+
+To run the gate locally for a one-off check (e.g. before pushing):
+
+```sh
+CI=true ./mvnw verify
+```
+
+The gate logic lives in `scripts/render-pmd-report.py`, not in
+`.github/workflows/ci.yml` — that file stays a thin caller of the shared
+[`stucray/workflows`](https://github.com/stucray/workflows) reusable workflow,
+and adopting this pattern in another project is "copy script + pom block",
+no workflow edits.
+
+## Optional: pre-push hook
+
+To enforce the gate on every `git push` without round-tripping through CI,
+drop this into `.git/hooks/pre-push` (and `chmod +x` it):
+
+```sh
+#!/usr/bin/env bash
+exec env CI=true ./mvnw verify -DskipTests -DskipITs -e
+```
+
+The hook is per-developer (lives under `.git/`, not tracked) — opt in if you
+want CI-shaped strictness on your machine. The `-DskipTests -DskipITs` flags
+keep the hook fast (~10s) by skipping the test suites; PMD + the gate still
+run.
+
 ## Ad-hoc PMD HTML drilldown
 
 For interactive browsing of all findings (with cross-reference links into
