@@ -46,6 +46,13 @@ public interface SigningKeyStore {
      */
     List<PrunedKey> pruneRetiredOlderThan(Duration grace);
 
+    /**
+     * Returns the IDs of every tenant whose {@code ACTIVE} signing key is older
+     * than {@code age} (DB clock). The scheduled rotation driver iterates this
+     * list and rotates each tenant in its own transaction.
+     */
+    List<Long> findTenantIdsWithActiveKeyOlderThan(Duration age);
+
     record RotationOutcome(String oldKid, String newKid) {}
 
     record PrunedKey(long tenantId, String kid) {}

@@ -29,8 +29,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * End-to-end coverage of per-tenant signing-key rotation. Asserts the full
  * pipeline: storage swap → audit row → counter → JWKS endpoint serving both
- * keys for the duration of the grace window, plus the slice-2 prune flow that
- * reaps RETIRED keys whose grace window has elapsed.
+ * keys for the duration of the grace window, the slice-2 prune flow that
+ * reaps RETIRED keys whose grace window has elapsed, and the slice-3
+ * scheduled batch path that picks eligible tenants by {@code created_at} age,
+ * rotates each, and exercises ShedLock end-to-end.
  */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
@@ -41,6 +43,7 @@ class SigningKeyRotationFlowIntegrationTest {
     @Autowired MockMvc mockMvc;
     @Autowired TenantProvisioningService tenantProvisioningService;
     @Autowired SigningKeyRotator rotator;
+    @Autowired SigningKeyRotationSchedule schedule;
     @Autowired MeterRegistry meterRegistry;
     @Autowired JdbcTemplate jdbcTemplate;
 
@@ -48,6 +51,7 @@ class SigningKeyRotationFlowIntegrationTest {
     void cleanAudit() {
         jdbcTemplate.execute(
             "DELETE FROM audit_event WHERE event_type IN ('signing_key_rotated', 'signing_key_pruned')");
+        jdbcTemplate.execute("DELETE FROM shedlock");
     }
 
     @Test
@@ -150,6 +154,69 @@ class SigningKeyRotationFlowIntegrationTest {
             assertThat(row.get("target_id")).isEqualTo(retiredKid);
             assertThat(row.get("details").toString()).contains(retiredKid);
         });
+    }
+
+    @Test
+    @DisplayName("Scheduled batch (via SigningKeyRotationSchedule.run): backdated tenant is rotated, JWKS advertises both kids, counter increments, audit row lands, and ShedLock writes its lock row")
+    void scheduledBatchRotatesEligibleTenantWritesShedLockRowAndProducesAuditTrail() throws Exception {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        String slug = "sched-" + suffix;
+        Tenant tenant = tenantProvisioningService.createTenant(slug, "Sched " + suffix);
+
+        String originalKid = jdbcTemplate.queryForObject(
+            "SELECT kid FROM tenant_signing_key WHERE tenant_id = ? AND status = 'ACTIVE'",
+            String.class, tenant.id());
+        // Backdate the ACTIVE key past the default 30-day rotation threshold.
+        jdbcTemplate.update(
+            "UPDATE tenant_signing_key SET created_at = CURRENT_TIMESTAMP - INTERVAL '40 days' " +
+                "WHERE tenant_id = ? AND status = 'ACTIVE'",
+            tenant.id());
+
+        double countBefore = counterCount();
+
+        // Going through the proxied schedule wrapper exercises the @SchedulerLock
+        // advice, so a 'rotate-signing-keys' row lands in the shedlock table.
+        schedule.run();
+
+        // Storage swap: ACTIVE rotated, RETIRED row holds the original kid.
+        String newActiveKid = jdbcTemplate.queryForObject(
+            "SELECT kid FROM tenant_signing_key WHERE tenant_id = ? AND status = 'ACTIVE'",
+            String.class, tenant.id());
+        assertThat(newActiveKid).isNotEqualTo(originalKid);
+        Object retiredAt = jdbcTemplate.queryForObject(
+            "SELECT retired_at FROM tenant_signing_key WHERE tenant_id = ? AND status = 'RETIRED'",
+            Object.class, tenant.id());
+        assertThat(retiredAt).isNotNull();
+
+        // Counter incremented for the rotation.
+        assertThat(counterCount() - countBefore).isEqualTo(1.0);
+
+        // Audit row (async via Modulith publication registry — wait).
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT target_id, details::text AS details FROM audit_event "
+                    + "WHERE event_type = 'signing_key_rotated' AND tenant_id = ? "
+                    + "ORDER BY occurred_at DESC LIMIT 1",
+                tenant.id());
+            assertThat(rows).isNotEmpty();
+            assertThat(rows.get(0).get("target_id")).isEqualTo(newActiveKid);
+            String details = rows.get(0).get("details").toString();
+            assertThat(details).contains(originalKid).contains(newActiveKid);
+        });
+
+        // JWKS endpoint advertises both kids; ACTIVE first.
+        String jwksJson = mockMvc.perform(get("/t/" + slug + "/oauth2/jwks"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        JWKSet jwks = JWKSet.parse(jwksJson);
+        assertThat(jwks.getKeys()).extracting(JWK::getKeyID)
+            .containsExactly(newActiveKid, originalKid);
+
+        // ShedLock recorded the lock for the named scheduler.
+        Integer shedlockRowCount = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM shedlock WHERE name = 'rotate-signing-keys'",
+            Integer.class);
+        assertThat(shedlockRowCount).isEqualTo(1);
     }
 
     private double counterCount() {

@@ -3,6 +3,7 @@ package com.stucray.limen.observability;
 import com.stucray.limen.audit.events.ClientSecretRotatedEvent;
 import com.stucray.limen.audit.events.SigningKeyPrunedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
+import com.stucray.limen.audit.events.SigningKeyRotationFailedEvent;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.event.EventListener;
@@ -38,6 +39,7 @@ public class AuditMetricsListener {
     static final String CLIENT_SECRET_ROTATED = "limen.oauth2.client.secret.rotated";
     static final String SIGNING_KEY_ROTATED = "limen.security.signing_key.rotated";
     static final String SIGNING_KEY_PRUNED = "limen.security.signing_key.pruned";
+    static final String SIGNING_KEY_ROTATION_FAILURE = "limen.security.signing_key.rotation.failure";
 
     private final MeterRegistry registry;
     private final Counter loginSuccess;
@@ -93,5 +95,26 @@ public class AuditMetricsListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onSigningKeyPruned(SigningKeyPrunedEvent event) {
         signingKeyPruned.increment();
+    }
+
+    /**
+     * Fired by {@code SigningKeyRotator.runScheduledRotation()} when a
+     * per-tenant rotation throws mid-batch. Synchronous {@code @EventListener}
+     * (not transactional): the failed transaction has already rolled back by
+     * the time this fires, so there's no commit phase to bind to and no
+     * counter increment we want to suppress on rollback.
+     *
+     * <p>{@code cause} cardinality is bounded by the set of exception classes
+     * the rotation path can throw (DB-driver, ShedLock, IllegalState, etc.) —
+     * a small fixed set, like {@code limen.auth.login.failure}.
+     */
+    @EventListener
+    public void onSigningKeyRotationFailure(SigningKeyRotationFailedEvent event) {
+        Counter.builder(SIGNING_KEY_ROTATION_FAILURE)
+            .description("Per-tenant signing-key rotations that threw mid-batch, tagged by exception class.")
+            .baseUnit("events")
+            .tag("cause", event.cause())
+            .register(registry)
+            .increment();
     }
 }

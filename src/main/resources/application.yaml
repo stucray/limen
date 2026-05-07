@@ -20,6 +20,14 @@ limen:
     # How long the lock holds; admins can short-circuit via the user-detail
     # "Unlock account" button on /manage/t/{slug}/users/{userId}.
     window: 15m
+  signing-key-rotation:
+    # Daily 3am UTC scheduled batch driver. The placeholder is resolved by
+    # Spring's @Scheduled cron at bean-init, so it must live in the
+    # Environment — record @DefaultValue alone is not enough.
+    enabled: true
+    cron: "0 0 3 * * *"
+    key-age: 30d
+    grace-period: 24h
   rate-limit:
     # Token-bucket throttling on pre-auth endpoints (RateLimitFilter). Disable
     # in test profiles that load the full context but want to exercise floods
