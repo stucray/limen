@@ -59,37 +59,25 @@ public class ClientManagementService {
     ) {}
 
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
-    public ClientCreationResult createClient(
-        Long applicationId, Long tenantId,
-        String clientName,
-        Set<AuthorizationGrantType> grantTypes,
-        Set<String> redirectUris,
-        Set<String> postLogoutRedirectUris,
-        Set<String> scopes,
-        boolean requirePkce,
-        boolean confidential,
-        long accessTokenTtlMinutes,
-        long refreshTokenTtlDays,
-        boolean reuseRefreshTokens
-    ) {
+    public ClientCreationResult createClient(CreateClientCommand cmd) {
         String rawSecret = null;
         String hashedSecret = null;
-        if (confidential) {
+        if (cmd.confidential()) {
             rawSecret = generateSecret();
             hashedSecret = passwordEncoder.encode(rawSecret);
         }
 
         RegisteredClient.Builder builder = RegisteredClient.withId(UUID.randomUUID().toString())
             .clientId(UUID.randomUUID().toString())
-            .clientName(clientName)
+            .clientName(cmd.displayName())
             .clientSettings(ClientSettings.builder()
-                .requireProofKey(requirePkce || !confidential)
+                .requireProofKey(cmd.requirePkce() || !cmd.confidential())
                 .requireAuthorizationConsent(true)
                 .build())
             .tokenSettings(TokenSettings.builder()
-                .accessTokenTimeToLive(Duration.ofMinutes(accessTokenTtlMinutes))
-                .refreshTokenTimeToLive(Duration.ofDays(refreshTokenTtlDays))
-                .reuseRefreshTokens(reuseRefreshTokens)
+                .accessTokenTimeToLive(Duration.ofMinutes(cmd.accessTokenTtlMinutes()))
+                .refreshTokenTimeToLive(Duration.ofDays(cmd.refreshTokenTtlDays()))
+                .reuseRefreshTokens(cmd.reuseRefreshTokens())
                 .build());
 
         if (hashedSecret != null) {
@@ -100,16 +88,16 @@ public class ClientManagementService {
             builder.clientAuthenticationMethod(ClientAuthenticationMethod.NONE);
         }
 
-        grantTypes.forEach(builder::authorizationGrantType);
-        redirectUris.stream().filter(u -> !u.isBlank()).forEach(builder::redirectUri);
-        postLogoutRedirectUris.stream().filter(u -> !u.isBlank()).forEach(builder::postLogoutRedirectUri);
-        scopes.stream().filter(s -> !s.isBlank()).forEach(builder::scope);
+        cmd.grantTypes().forEach(builder::authorizationGrantType);
+        cmd.redirectUris().stream().filter(u -> !u.isBlank()).forEach(builder::redirectUri);
+        cmd.postLogoutRedirectUris().stream().filter(u -> !u.isBlank()).forEach(builder::postLogoutRedirectUri);
+        cmd.scopes().stream().filter(s -> !s.isBlank()).forEach(builder::scope);
 
         RegisteredClient registered = builder.build();
         registeredClientRepository.save(registered);
 
         TenantClient tenantClient = tenantClientRepository.save(new TenantClient(
-            null, registered.getId(), applicationId, tenantId, clientName, confidential
+            null, registered.getId(), cmd.applicationId(), cmd.tenantId(), cmd.displayName(), cmd.confidential()
         ));
 
         return new ClientCreationResult(tenantClient, rawSecret);

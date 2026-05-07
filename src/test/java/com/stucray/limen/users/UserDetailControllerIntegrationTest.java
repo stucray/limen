@@ -1,5 +1,7 @@
 package com.stucray.limen.users;
 
+import com.stucray.limen.clients.CreateClientCommand;
+
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.applications.Application;
 import com.stucray.limen.applications.ApplicationRepository;
@@ -85,12 +87,12 @@ class UserDetailControllerIntegrationTest {
         ownerA = userRepository.save(new User(null, tenantA.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, true,  LocalDateTime.now()));
         aliceA = userRepository.save(new User(null, tenantA.id(), "alice@example.test", passwordEncoder.encode("pass"), true, false, false, true, LocalDateTime.now()));
         appA = applicationRepository.save(new Application(null, tenantA.id(), "Acme Web", "desc", LocalDateTime.now()));
-        clientA = clientManagementService.createClient(
+        clientA = clientManagementService.createClient(new CreateClientCommand(
             appA.id(), tenantA.id(), "acme-spa",
             Set.of(AuthorizationGrantType.AUTHORIZATION_CODE),
             Set.of("http://localhost/callback"), Set.of(), Set.of("openid"),
             false, true, 5, 30, false
-        ).client();
+        )).client();
 
         MvcResult login = mockMvc.perform(post("/manage/t/user-detail-a/login")
                 .param("email", "owner@example.test").param("password", "pass").with(csrf()))
