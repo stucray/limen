@@ -133,14 +133,16 @@ public final class MembershipGateFilter extends OncePerRequestFilter {
         redirectStrategy.sendRedirect(request, response, builder.build(true).toUriString());
     }
 
+    @SuppressWarnings("PMD.AvoidLiteralsInIfCondition")
     private static @Nullable String resolveRedirectUri(HttpServletRequest request, RegisteredClient registeredClient) {
         String requested = request.getParameter(OAuth2ParameterNames.REDIRECT_URI);
         if (StringUtils.hasText(requested) && registeredClient.getRedirectUris().contains(requested)) {
             return requested;
         }
         // The OAuth2 spec allows omitting redirect_uri when the client has
-        // exactly one registered. Fall back to it; otherwise refuse to redirect
-        // (sending a 403 instead of a guess is safer than picking arbitrarily).
+        // exactly one registered. The literal `1` IS the spec rule; a constant
+        // (e.g. EXACTLY_ONE_URI) would obscure rather than clarify, so the
+        // PMD finding is suppressed at the method scope.
         if (registeredClient.getRedirectUris().size() == 1) {
             return registeredClient.getRedirectUris().iterator().next();
         }

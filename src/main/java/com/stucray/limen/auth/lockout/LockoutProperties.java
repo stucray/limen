@@ -22,13 +22,15 @@ import java.time.Duration;
 @ConfigurationProperties("limen.lockout")
 @Validated
 public record LockoutProperties(
-    @Min(1) int threshold,
+    @Min(MIN_THRESHOLD) int threshold,
     @NotNull Duration window
 ) {
+    private static final int MIN_THRESHOLD = 1;
+
     public LockoutProperties {
-        if (threshold < 1) {
+        if (threshold < MIN_THRESHOLD) {
             throw new IllegalArgumentException(
-                "limen.lockout.threshold must be >= 1; got " + threshold);
+                "limen.lockout.threshold must be >= " + MIN_THRESHOLD + "; got " + threshold);
         }
         if (window == null || window.isZero() || window.isNegative()) {
             throw new IllegalArgumentException(
