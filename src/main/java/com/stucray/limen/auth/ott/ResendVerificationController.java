@@ -14,26 +14,27 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * GET renders the form (pre-filling the email if present in the query); POST
- * dispatches to {@link EmailVerificationService#resendVerification} and
- * redirects to {@code /t/{slug}/check-inbox?email=...}.
+ * dispatches to {@link OttDispatcher#issue(OttIntent, Tenant, String)} with
+ * {@link OttIntent#VERIFY_EMAIL} and redirects to
+ * {@code /t/{slug}/check-inbox?email=...}.
  *
  * <p>Both verbs are anonymous — a user who just signed up has no session yet
- * and so cannot authenticate to ask for a resend. The
- * {@code resendVerification} method silently no-ops on an unknown email,
- * preserving the user-existence-oracle defence laid out in PRD #120 story 14.
+ * and so cannot authenticate to ask for a resend. The dispatcher silently
+ * no-ops on an unknown email, preserving the user-existence-oracle defence
+ * laid out in PRD #120 story 14.
  */
 @Controller
 public class ResendVerificationController {
 
     private final TenantRepository tenantRepository;
-    private final EmailVerificationService verificationService;
+    private final OttDispatcher ottDispatcher;
 
     public ResendVerificationController(
         TenantRepository tenantRepository,
-        EmailVerificationService verificationService
+        OttDispatcher ottDispatcher
     ) {
         this.tenantRepository = tenantRepository;
-        this.verificationService = verificationService;
+        this.ottDispatcher = ottDispatcher;
     }
 
     @GetMapping("/t/{slug}/resend-verification")
@@ -59,7 +60,7 @@ public class ResendVerificationController {
         if (tenant == null) {
             return "redirect:/";
         }
-        verificationService.resendVerification(tenant, email);
+        ottDispatcher.issue(OttIntent.VERIFY_EMAIL, tenant, email);
         return "redirect:" + UriComponentsBuilder
             .fromPath("/t/" + slug + "/check-inbox")
             .queryParam("email", email)

@@ -92,7 +92,7 @@ class EmailVerificationFlowIntegrationTest {
         // Tests look at "the latest" event by tenant; clearing keeps assertions
         // unambiguous when prior tests also wrote rows.
         jdbcTemplate.execute("DELETE FROM audit_event WHERE event_type IN "
-            + "('verification_ott_issued', 'email_verified', 'verification_resent')");
+            + "('verification_ott_issued', 'email_verified')");
     }
 
     @Nested
@@ -154,7 +154,7 @@ class EmailVerificationFlowIntegrationTest {
             );
 
             // Issue the OTT directly under the tenant scope (mirrors what
-            // EmailVerificationService.issueVerification does after signup).
+            // OttDispatcher.issue(VERIFY_EMAIL, tenant, owner) does after signup).
             TenantOneTimeToken issued = TenantScope.call(tenant.slug(), tenant.id(), () ->
                 tokenService.generateForIntent(email, OttIntent.VERIFY_EMAIL));
 
@@ -245,7 +245,7 @@ class EmailVerificationFlowIntegrationTest {
         }
 
         @Test
-        @DisplayName("Resend for an unknown email publishes VerificationResentEvent → row with delivered=false and null user")
+        @DisplayName("Resend for an unknown email publishes verification_ott_issued with delivered=false and null user (existence-oracle defence)")
         void resendUnknownEmailEmitsAuditRowWithDeliveredFalse() throws Exception {
             String suffix = uniqueSuffix();
             String slug = "audit3-" + suffix;
@@ -259,7 +259,7 @@ class EmailVerificationFlowIntegrationTest {
             await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
                 List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                     "SELECT actor_user_id, target_id, details::text AS details FROM audit_event "
-                        + "WHERE event_type = 'verification_resent' AND tenant_id = ? "
+                        + "WHERE event_type = 'verification_ott_issued' AND tenant_id = ? "
                         + "ORDER BY occurred_at DESC LIMIT 1",
                     tenant.id());
                 assertThat(rows).isNotEmpty();

@@ -5,7 +5,7 @@ import com.stucray.limen.audit.events.PasswordChangedEvent;
 import com.stucray.limen.audit.events.RateLimitHitEvent;
 import com.stucray.limen.audit.events.TenantCreatedEvent;
 import com.stucray.limen.audit.events.TenantDeletedEvent;
-import com.stucray.limen.audit.events.VerificationResentEvent;
+import com.stucray.limen.audit.events.VerificationOttIssuedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -114,10 +114,10 @@ class AuditRegistryTest {
     }
 
     @Test
-    @DisplayName("VerificationResentEvent with null userId collapses target to null")
-    void verificationResentNullUser() {
-        VerificationResentEvent event = new VerificationResentEvent(10L, null, "x@x", false);
-        AuditRule.Projection p = projectionFor(VerificationResentEvent.class, AuditBinding.AFTER_COMMIT, event);
+    @DisplayName("VerificationOttIssuedEvent with null userId (oracle-defended path) collapses target to null")
+    void verificationIssuedNullUser() {
+        VerificationOttIssuedEvent event = new VerificationOttIssuedEvent(10L, null, "x@x", false);
+        AuditRule.Projection p = projectionFor(VerificationOttIssuedEvent.class, AuditBinding.AFTER_COMMIT, event);
         assertThat(p.targetType()).isNull();
         assertThat(p.targetId()).isNull();
         assertThat(p.actorUserId()).isNull();

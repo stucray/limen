@@ -21,7 +21,6 @@ import com.stucray.limen.audit.events.UserDeletedEvent;
 import com.stucray.limen.audit.events.UserDisabledEvent;
 import com.stucray.limen.audit.events.UserEnabledEvent;
 import com.stucray.limen.audit.events.VerificationOttIssuedEvent;
-import com.stucray.limen.audit.events.VerificationResentEvent;
 import com.stucray.limen.user.TenantUserDetails;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.authentication.event.AbstractAuthenticationFailureEvent;
@@ -126,17 +125,12 @@ public class AuditRegistry {
         new AuditRule<>(VerificationOttIssuedEvent.class, "verification_ott_issued", AFTER_COMMIT,
             event -> AuditRule.Projection.ofUser(
                 event.tenantId(), event.userId(), event.userId(),
-                Map.of("email", event.email()))),
+                Map.of("email", event.email(), "delivered", event.delivered()))),
 
         new AuditRule<>(EmailVerifiedEvent.class, "email_verified", AFTER_COMMIT,
             event -> AuditRule.Projection.ofUser(
                 event.tenantId(), event.userId(), event.userId(),
                 Map.of("email", event.email()))),
-
-        new AuditRule<>(VerificationResentEvent.class, "verification_resent", AFTER_COMMIT,
-            event -> AuditRule.Projection.ofUser(
-                event.tenantId(), event.userId(), event.userId(),
-                Map.of("email", event.email(), "delivered", event.delivered()))),
 
         new AuditRule<>(AccountLockedEvent.class, "account_locked", AFTER_COMMIT,
             event -> AuditRule.Projection.ofUser(
