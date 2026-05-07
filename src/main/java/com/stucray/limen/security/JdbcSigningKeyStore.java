@@ -18,6 +18,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.text.ParseException;
+import java.time.Duration;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
@@ -147,6 +148,23 @@ public class JdbcSigningKeyStore implements SigningKeyStore {
         return new RotationOutcome(
             Objects.requireNonNull(oldKid, "RETURNING kid must be non-null after non-empty UPDATE"),
             Objects.requireNonNull(newKid, "insertActiveSigningKey returned a non-null kid"));
+    }
+
+    @Override
+    @Transactional
+    public List<PrunedKey> pruneRetiredOlderThan(Duration grace) {
+        // Threshold is computed in the database to stay coherent with the
+        // retired_at value rotateForTenant() writes via CURRENT_TIMESTAMP. Using
+        // make_interval(secs => ?) sidesteps Postgres's interval-literal cast
+        // and lets JDBC bind the parameter as a plain BIGINT.
+        return jdbcTemplate.query(
+            "DELETE FROM tenant_signing_key " +
+                "WHERE status = 'RETIRED' " +
+                "AND retired_at < CURRENT_TIMESTAMP - make_interval(secs => ?) " +
+                "RETURNING tenant_id, kid",
+            (rs, rowNum) -> new PrunedKey(rs.getLong("tenant_id"), rs.getString("kid")),
+            grace.toSeconds()
+        );
     }
 
     private BytesEncryptor encryptor(byte[] salt) {

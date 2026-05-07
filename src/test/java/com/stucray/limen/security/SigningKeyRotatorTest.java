@@ -1,5 +1,6 @@
 package com.stucray.limen.security;
 
+import com.stucray.limen.audit.events.SigningKeyPrunedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,14 +11,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SigningKeyRotator: per-tenant rotation orchestration + event publication")
@@ -56,6 +60,39 @@ class SigningKeyRotatorTest {
         assertThatThrownBy(() -> rotator.rotate(42L))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("no ACTIVE key");
-        org.mockito.Mockito.verifyNoInteractions(eventPublisher);
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    @DisplayName("pruneRetired() publishes one SigningKeyPrunedEvent per row the store deleted, carrying tenantId + kid from the store outcome")
+    void prunePublishesOneEventPerDeletedRow() {
+        given(signingKeyStore.pruneRetiredOlderThan(Duration.ofHours(24))).willReturn(List.of(
+            new SigningKeyStore.PrunedKey(7L, "kid-a"),
+            new SigningKeyStore.PrunedKey(7L, "kid-b"),
+            new SigningKeyStore.PrunedKey(11L, "kid-c")
+        ));
+        SigningKeyRotator rotator = new SigningKeyRotator(signingKeyStore, eventPublisher, clock);
+
+        rotator.pruneRetired(Duration.ofHours(24));
+
+        ArgumentCaptor<SigningKeyPrunedEvent> captor = ArgumentCaptor.forClass(SigningKeyPrunedEvent.class);
+        verify(eventPublisher, org.mockito.Mockito.times(3)).publishEvent(captor.capture());
+        assertThat(captor.getAllValues())
+            .extracting(SigningKeyPrunedEvent::tenantId, SigningKeyPrunedEvent::kid)
+            .containsExactly(
+                org.assertj.core.groups.Tuple.tuple(7L, "kid-a"),
+                org.assertj.core.groups.Tuple.tuple(7L, "kid-b"),
+                org.assertj.core.groups.Tuple.tuple(11L, "kid-c"));
+    }
+
+    @Test
+    @DisplayName("pruneRetired() publishes nothing when the store reports zero deletions")
+    void prunePublishesNothingWhenNothingDeleted() {
+        given(signingKeyStore.pruneRetiredOlderThan(Duration.ofHours(24))).willReturn(List.of());
+        SigningKeyRotator rotator = new SigningKeyRotator(signingKeyStore, eventPublisher, clock);
+
+        rotator.pruneRetired(Duration.ofHours(24));
+
+        verifyNoInteractions(eventPublisher);
     }
 }

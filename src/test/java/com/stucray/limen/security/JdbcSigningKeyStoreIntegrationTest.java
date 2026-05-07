@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -161,6 +162,67 @@ class JdbcSigningKeyStoreIntegrationTest {
         assertThat(jwkSet.getKeys()).hasSize(2);
         assertThat(jwkSet.getKeys()).extracting(JWK::getKeyID)
             .containsExactly(outcome.newKid(), outcome.oldKid());
+    }
+
+    @Test
+    @DisplayName("pruneRetiredOlderThan deletes RETIRED rows whose retired_at exceeds the grace, returning each (tenantId, kid) pair")
+    void pruneDeletesGraceExpiredRetiredRowsAndReturnsTheirIdentities() {
+        signingKeyStore.createForTenant(tenant.id());
+        SigningKeyStore.RotationOutcome outcome = signingKeyStore.rotateForTenant(tenant.id());
+        backdateRetiredAt(tenant.id(), outcome.oldKid(), "2 days");
+
+        List<SigningKeyStore.PrunedKey> pruned = signingKeyStore.pruneRetiredOlderThan(Duration.ofHours(24));
+
+        assertThat(pruned).hasSize(1);
+        assertThat(pruned.getFirst().tenantId()).isEqualTo(tenant.id());
+        assertThat(pruned.getFirst().kid()).isEqualTo(outcome.oldKid());
+        assertThat(rowCount(tenant.id())).isEqualTo(1);
+        Integer retiredRows = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM tenant_signing_key WHERE tenant_id = ? AND status = 'RETIRED'",
+            Integer.class, tenant.id());
+        assertThat(retiredRows).isZero();
+    }
+
+    @Test
+    @DisplayName("pruneRetiredOlderThan leaves RETIRED rows still inside the grace window untouched")
+    void pruneLeavesRowsStillInsideGraceWindow() {
+        signingKeyStore.createForTenant(tenant.id());
+        SigningKeyStore.RotationOutcome outcome = signingKeyStore.rotateForTenant(tenant.id());
+        // retired_at defaults to CURRENT_TIMESTAMP — well inside any sane grace.
+
+        List<SigningKeyStore.PrunedKey> pruned = signingKeyStore.pruneRetiredOlderThan(Duration.ofHours(24));
+
+        assertThat(pruned).isEmpty();
+        assertThat(rowCount(tenant.id())).isEqualTo(2);
+        String retiredKid = jdbcTemplate.queryForObject(
+            "SELECT kid FROM tenant_signing_key WHERE tenant_id = ? AND status = 'RETIRED'",
+            String.class, tenant.id());
+        assertThat(retiredKid).isEqualTo(outcome.oldKid());
+    }
+
+    @Test
+    @DisplayName("pruneRetiredOlderThan never touches ACTIVE rows even if the partial unique index made them old")
+    void pruneNeverTouchesActiveRows() {
+        signingKeyStore.createForTenant(tenant.id());
+        // Force the ACTIVE row's created_at into the distant past — prune must
+        // ignore it because the WHERE clause filters on status='RETIRED'.
+        jdbcTemplate.update(
+            "UPDATE tenant_signing_key SET created_at = CURRENT_TIMESTAMP - INTERVAL '365 days' " +
+                "WHERE tenant_id = ? AND status = 'ACTIVE'",
+            tenant.id());
+
+        List<SigningKeyStore.PrunedKey> pruned = signingKeyStore.pruneRetiredOlderThan(Duration.ofHours(1));
+
+        assertThat(pruned).isEmpty();
+        assertThat(rowCount(tenant.id())).isEqualTo(1);
+    }
+
+    private void backdateRetiredAt(long tenantId, String kid, String pgInterval) {
+        int updated = jdbcTemplate.update(
+            "UPDATE tenant_signing_key SET retired_at = CURRENT_TIMESTAMP - INTERVAL '" + pgInterval + "' " +
+                "WHERE tenant_id = ? AND kid = ?",
+            tenantId, kid);
+        assertThat(updated).isEqualTo(1);
     }
 
     private void assertThatPartialUniqueIndexBlocksSecondActive() {
