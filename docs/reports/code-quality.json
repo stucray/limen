@@ -3,24 +3,12 @@
     "tool": "pmd",
     "tool_version": "7.24.0",
     "ruleset": "pmd-ruleset.xml",
-    "total_findings": 4,
+    "total_findings": 3,
     "by_priority": {
-      "3": 4
+      "3": 3
     }
   },
   "findings": [
-    {
-      "rule": "CyclomaticComplexity",
-      "ruleset": "Design",
-      "priority": 3,
-      "package": "com.stucray.limen.auth",
-      "class": "TenantAccessFilter",
-      "method": "doFilterInternal",
-      "file": "src/main/java/com/stucray/limen/auth/TenantAccessFilter.java",
-      "begin_line": 41,
-      "end_line": 41,
-      "message": "The method 'doFilterInternal(HttpServletRequest, HttpServletResponse, FilterChain)' has a cyclomatic complexity of 10."
-    },
     {
       "rule": "CyclomaticComplexity",
       "ruleset": "Design",
