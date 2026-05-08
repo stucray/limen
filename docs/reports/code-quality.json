@@ -3,23 +3,8 @@
     "tool": "pmd",
     "tool_version": "7.24.0",
     "ruleset": "pmd-ruleset.xml",
-    "total_findings": 1,
-    "by_priority": {
-      "3": 1
-    }
+    "total_findings": 0,
+    "by_priority": {}
   },
-  "findings": [
-    {
-      "rule": "CyclomaticComplexity",
-      "ruleset": "Design",
-      "priority": 3,
-      "package": "com.stucray.limen.auth",
-      "class": "TenantPersistentTokenBasedRememberMeServices",
-      "method": "processAutoLoginCookie",
-      "file": "src/main/java/com/stucray/limen/auth/TenantPersistentTokenBasedRememberMeServices.java",
-      "begin_line": 88,
-      "end_line": 88,
-      "message": "The method 'processAutoLoginCookie(String[], HttpServletRequest, HttpServletResponse)' has a cyclomatic complexity of 16."
-    }
-  ]
+  "findings": []
 }

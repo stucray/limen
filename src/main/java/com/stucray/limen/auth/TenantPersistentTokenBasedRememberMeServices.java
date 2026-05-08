@@ -93,27 +93,29 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
                 "Cookie token did not contain " + COOKIE_TOKEN_FIELDS
                     + " tokens (series, token, slug); got " + cookieTokens.length);
         }
-        String presentedSeries = cookieTokens[0];
-        String presentedToken = cookieTokens[1];
-        String cookieSlug = cookieTokens[2];
+        CookieFields fields = new CookieFields(cookieTokens[0], cookieTokens[1], cookieTokens[2]);
 
         String urlSlug = extractUrlSlug(request.getRequestURI());
-        if (urlSlug != null && !urlSlug.equals(cookieSlug)) {
+        if (urlSlug != null && !urlSlug.equals(fields.slug())) {
             throw new InvalidCookieException(
-                "Cookie slug '" + cookieSlug + "' does not match URL slug '" + urlSlug + "'");
+                "Cookie slug '" + fields.slug() + "' does not match URL slug '" + urlSlug + "'");
         }
 
-        Tenant tenant = tenantRepository.findBySlug(cookieSlug).orElse(null);
-        if (tenant == null) {
-            throw new RememberMeAuthenticationException("Unknown tenant slug in remember-me cookie: " + cookieSlug);
-        }
+        Tenant tenant = tenantRepository.findBySlug(fields.slug())
+            .orElseThrow(() -> new RememberMeAuthenticationException(
+                "Unknown tenant slug in remember-me cookie: " + fields.slug()));
+        TenantPersistentRememberMeToken token = locateAndValidateToken(fields, tenant);
+        rotateToken(fields, token, request, response);
+        return tenantUserDetailsService.loadByEmailAndSlug(token.getUsername(), fields.slug());
+    }
 
-        TenantPersistentRememberMeToken token = tokenRepository.getTokenForSeries(presentedSeries, tenant.id());
+    private TenantPersistentRememberMeToken locateAndValidateToken(CookieFields fields, Tenant tenant) {
+        TenantPersistentRememberMeToken token = tokenRepository.getTokenForSeries(fields.series(), tenant.id());
         if (token == null) {
             throw new RememberMeAuthenticationException(
-                "No persistent token found for series id: " + presentedSeries);
+                "No persistent token found for series id: " + fields.series());
         }
-        if (!presentedToken.equals(token.getTokenValue())) {
+        if (!fields.token().equals(token.getTokenValue())) {
             tokenRepository.removeUserTokens(token.getUsername(), token.getTenantId());
             throw new CookieTheftException(this.messages.getMessage(
                 "PersistentTokenBasedRememberMeServices.cookieStolen",
@@ -122,19 +124,25 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
         if (token.getDate().getTime() + getTokenValiditySeconds() * 1000L < System.currentTimeMillis()) {
             throw new RememberMeAuthenticationException("Remember-me login has expired");
         }
+        return token;
+    }
 
+    private void rotateToken(
+        CookieFields fields, TenantPersistentRememberMeToken token,
+        HttpServletRequest request, HttpServletResponse response
+    ) {
         String newTokenValue = encodeBase64(tokenLength());
         try {
-            tokenRepository.updateToken(presentedSeries, token.getTenantId(), newTokenValue, new Date());
-            setCookie(new String[]{presentedSeries, newTokenValue, cookieSlug},
+            tokenRepository.updateToken(fields.series(), token.getTenantId(), newTokenValue, new Date());
+            setCookie(new String[]{fields.series(), newTokenValue, fields.slug()},
                 getTokenValiditySeconds(), request, response);
         } catch (Exception ex) {
             this.logger.error("Failed to update token", ex);
             throw new RememberMeAuthenticationException("Autologin failed due to data access problem", ex);
         }
-
-        return tenantUserDetailsService.loadByEmailAndSlug(token.getUsername(), cookieSlug);
     }
+
+    private record CookieFields(String series, String token, String slug) {}
 
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response, @Nullable Authentication auth) {
