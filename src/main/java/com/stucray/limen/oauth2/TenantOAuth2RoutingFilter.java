@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
  */
 @Component
 @Order(Integer.MIN_VALUE + 10)
-public class TenantOAuth2RoutingFilter extends OncePerRequestFilter {
+class TenantOAuth2RoutingFilter extends OncePerRequestFilter {
 
     private static final Pattern TENANT_PATH =
         Pattern.compile("^/t/([^/]+)/((oauth2|\\.well-known|connect)/.*|userinfo)$");

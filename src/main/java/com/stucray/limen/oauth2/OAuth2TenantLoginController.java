@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 @Controller
-public class OAuth2TenantLoginController {
+class OAuth2TenantLoginController {
 
     private final TenantRepository tenantRepository;
 
