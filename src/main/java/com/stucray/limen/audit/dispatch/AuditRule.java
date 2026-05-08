@@ -17,7 +17,7 @@ import java.util.function.Function;
  * the {@code login_success} rule when the principal isn't a tenant user
  * (e.g. an OAuth client token).
  */
-public record AuditRule<E>(
+record AuditRule<E>(
     Class<E> eventClass,
     String eventType,
     AuditBinding binding,

@@ -44,7 +44,7 @@ import java.util.Map;
  * resubmitted via the registry.
  */
 @Component
-public class AuditDispatcher {
+class AuditDispatcher {
 
     private static final Logger log = LoggerFactory.getLogger(AuditDispatcher.class);
 

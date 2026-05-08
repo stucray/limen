@@ -5,7 +5,7 @@ package com.stucray.limen.audit.dispatch;
  * as data on each {@link AuditRule} so the choice is visible alongside the event
  * class instead of buried in a per-method annotation.
  */
-public enum AuditBinding {
+enum AuditBinding {
     /**
      * Custom domain event emitted from inside a {@code @Transactional} method.
      * Audit row is written after the parent transaction commits, so a write
