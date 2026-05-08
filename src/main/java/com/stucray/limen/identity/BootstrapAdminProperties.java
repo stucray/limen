@@ -6,7 +6,7 @@ import org.springframework.validation.annotation.Validated;
 
 @ConfigurationProperties("limen.bootstrap.admin")
 @Validated
-public record BootstrapAdminProperties(String email, String password) {
+record BootstrapAdminProperties(String email, String password) {
 
     @AssertTrue(message = "limen.bootstrap.admin.email and password must both be set or both be unset")
     public boolean isPairConsistent() {

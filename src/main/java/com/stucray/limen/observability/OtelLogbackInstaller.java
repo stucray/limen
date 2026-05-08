@@ -20,7 +20,7 @@ import org.springframework.context.annotation.Configuration;
  * zero log records reach Loki — the bridge has nowhere to send them.
  */
 @Configuration
-public class OtelLogbackInstaller {
+class OtelLogbackInstaller {
 
     private static final Logger log = LoggerFactory.getLogger(OtelLogbackInstaller.class);
 

@@ -32,7 +32,7 @@ import java.io.IOException;
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 50)
-public final class TenantObservabilityFilter extends OncePerRequestFilter {
+final class TenantObservabilityFilter extends OncePerRequestFilter {
 
     private static final String MDC_TENANT_SLUG = "tenant.slug";
     private static final String MDC_TENANT_ID = "tenant.id";
