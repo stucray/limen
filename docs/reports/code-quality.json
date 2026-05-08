@@ -3,24 +3,12 @@
     "tool": "pmd",
     "tool_version": "7.24.0",
     "ruleset": "pmd-ruleset.xml",
-    "total_findings": 2,
+    "total_findings": 1,
     "by_priority": {
-      "3": 2
+      "3": 1
     }
   },
   "findings": [
-    {
-      "rule": "CyclomaticComplexity",
-      "ruleset": "Design",
-      "priority": 3,
-      "package": "com.stucray.limen.auth",
-      "class": "TenantAuthProvider",
-      "method": "authenticate",
-      "file": "src/main/java/com/stucray/limen/auth/TenantAuthProvider.java",
-      "begin_line": 57,
-      "end_line": 57,
-      "message": "The method 'authenticate(Authentication)' has a cyclomatic complexity of 12."
-    },
     {
       "rule": "CyclomaticComplexity",
       "ruleset": "Design",

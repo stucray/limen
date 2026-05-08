@@ -65,10 +65,7 @@ public class TenantAuthProvider implements AuthenticationProvider {
 
         Tenant tenant = tenantRepository.findBySlug(slug)
             .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
-
-        if (tenant.status() == TenantStatus.SUSPENDED) {
-            throw new DisabledException("Tenant is suspended");
-        }
+        assertTenantActive(tenant);
 
         User user = userRepository.findByEmailAndTenantId(email, tenant.id())
             .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
@@ -76,17 +73,7 @@ public class TenantAuthProvider implements AuthenticationProvider {
         if (!user.enabled()) {
             throw new DisabledException("User account is disabled");
         }
-
-        // Pre-auth lockout check: rejects with a distinct message before the
-        // password is verified, so a locked-out user typing the right password
-        // still hits the lock (PRD #120 user story 21). Counter increments are
-        // suppressed for LockedException in LoginAttemptTracker, so the lock
-        // window does not extend itself when the user keeps trying.
-        if (user.lockedUntil() != null && user.lockedUntil().isAfter(LocalDateTime.now(clock))) {
-            throw new LockedException(
-                "Account is locked due to too many failed attempts. "
-                    + "Try again later or contact your tenant admin to unlock.");
-        }
+        assertNotLockedOut(user);
 
         if (!passwordEncoder.matches(rawPassword, user.passwordHash())) {
             throw new BadCredentialsException("Invalid credentials");
@@ -94,6 +81,25 @@ public class TenantAuthProvider implements AuthenticationProvider {
 
         TenantUserDetails details = new TenantUserDetails(user, tenant);
         return new TenantAuthToken(slug, details, details.getAuthorities());
+    }
+
+    private void assertTenantActive(Tenant tenant) {
+        if (tenant.status() == TenantStatus.SUSPENDED) {
+            throw new DisabledException("Tenant is suspended");
+        }
+    }
+
+    // Pre-auth lockout check: rejects with a distinct message before the
+    // password is verified, so a locked-out user typing the right password
+    // still hits the lock (PRD #120 user story 21). Counter increments are
+    // suppressed for LockedException in LoginAttemptTracker, so the lock
+    // window does not extend itself when the user keeps trying.
+    private void assertNotLockedOut(User user) {
+        if (user.lockedUntil() != null && user.lockedUntil().isAfter(LocalDateTime.now(clock))) {
+            throw new LockedException(
+                "Account is locked due to too many failed attempts. "
+                    + "Try again later or contact your tenant admin to unlock.");
+        }
     }
 
     @Override
