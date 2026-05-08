@@ -11,7 +11,7 @@
 
 	<groupId>com.stucray</groupId>
 	<artifactId>limen</artifactId>
-	<version>0.1.4-SNAPSHOT</version>
+	<version>0.1.4</version>
 
 	<properties>
 		<java.version>26</java.version>
