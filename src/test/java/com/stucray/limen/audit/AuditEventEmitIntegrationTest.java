@@ -6,7 +6,7 @@ import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.applications.Application;
 import com.stucray.limen.applications.ApplicationService;
 import com.stucray.limen.clients.ClientManagementService;
-import com.stucray.limen.users.UserAdministrationService;
+import com.stucray.limen.useradmin.UserAdministrationService;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.provisioning.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;

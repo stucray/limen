@@ -1,4 +1,4 @@
-package com.stucray.limen.users;
+package com.stucray.limen.useradmin;
 
 /**
  * Sealed exception type for invariant violations in {@link UserAdministrationService}.
