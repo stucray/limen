@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Controller
 @RequestMapping("/manage/t/{slug}/applications")
-public class ApplicationController {
+class ApplicationController {
 
     private final ApplicationService applicationService;
 
