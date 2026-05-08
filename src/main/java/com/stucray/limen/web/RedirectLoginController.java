@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
-public class RedirectLoginController {
+class RedirectLoginController {
 
     @GetMapping("/login")
     public String login(@RequestParam(required = false) String slug) {

@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
 @ControllerAdvice(basePackages = "com.stucray.limen.management")
-public class ManagementModelAdvice {
+class ManagementModelAdvice {
 
     @ModelAttribute("currentEmail")
     public @Nullable String currentEmail(@AuthenticationPrincipal @Nullable TenantUserDetails principal) {

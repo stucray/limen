@@ -14,7 +14,7 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 @Configuration
 @Order(2)
-public class ManagementSecurityConfig {
+class ManagementSecurityConfig {
 
     private final TenantLogin login;
     private final TenantUrlScheme managementUrlScheme;
