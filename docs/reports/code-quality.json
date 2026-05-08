@@ -3,9 +3,9 @@
     "tool": "pmd",
     "tool_version": "7.24.0",
     "ruleset": "pmd-ruleset.xml",
-    "total_findings": 3,
+    "total_findings": 2,
     "by_priority": {
-      "3": 3
+      "3": 2
     }
   },
   "findings": [
@@ -32,18 +32,6 @@
       "begin_line": 88,
       "end_line": 88,
       "message": "The method 'processAutoLoginCookie(String[], HttpServletRequest, HttpServletResponse)' has a cyclomatic complexity of 16."
-    },
-    {
-      "rule": "TooManyMethods",
-      "ruleset": "Design",
-      "priority": 3,
-      "package": "com.stucray.limen.users",
-      "class": "UserManagementController",
-      "method": "",
-      "file": "src/main/java/com/stucray/limen/users/UserManagementController.java",
-      "begin_line": 22,
-      "end_line": 190,
-      "message": "This class has too many methods, consider refactoring it."
     }
   ]
 }
