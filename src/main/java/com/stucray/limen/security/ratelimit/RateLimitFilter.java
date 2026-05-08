@@ -44,7 +44,7 @@ import java.util.regex.Pattern;
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
-public class RateLimitFilter extends OncePerRequestFilter {
+class RateLimitFilter extends OncePerRequestFilter {
 
     private final RateLimitProperties properties;
     private final ApplicationEventPublisher publisher;

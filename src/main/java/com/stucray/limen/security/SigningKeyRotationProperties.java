@@ -27,7 +27,7 @@ import java.time.Duration;
  */
 @ConfigurationProperties("limen.signing-key-rotation")
 @Validated
-public record SigningKeyRotationProperties(
+record SigningKeyRotationProperties(
     @DefaultValue("true") boolean enabled,
     @DefaultValue("0 0 3 * * *") @NotBlank String cron,
     @DefaultValue("30d") @NotNull Duration keyAge,

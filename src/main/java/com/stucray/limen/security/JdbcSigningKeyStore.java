@@ -25,7 +25,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Component
-public class JdbcSigningKeyStore implements SigningKeyStore {
+class JdbcSigningKeyStore implements SigningKeyStore {
 
     private static final String ALGORITHM = "RS256";
     private static final int RSA_KEY_SIZE = 2048;

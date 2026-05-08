@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
     name = "limen.signing-key-rotation.enabled",
     havingValue = "true",
     matchIfMissing = true)
-public class SigningKeyRotationSchedule {
+class SigningKeyRotationSchedule {
 
     private final SigningKeyRotator rotator;
 
