@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 @RequestMapping("/manage/t/{slug}/applications/{appId}/roles")
-public class RolesController {
+class RolesController {
 
     private final RoleManagementService roleManagementService;
     private final ApplicationService applicationService;

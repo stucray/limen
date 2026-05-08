@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/manage/t/{slug}/applications/{appId}/clients")
-public class ClientManagementController {
+class ClientManagementController {
 
     private final ClientManagementService clientManagementService;
     private final ApplicationService applicationService;

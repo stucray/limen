@@ -23,7 +23,7 @@ import java.util.List;
  * separator-delimited input here; parsing into typed collections happens at
  * the controller before building a {@link CreateClientCommand}.
  */
-public final class CreateClientForm {
+final class CreateClientForm {
 
     private @Nullable String displayName;
     private List<String> grantTypes = List.of();
