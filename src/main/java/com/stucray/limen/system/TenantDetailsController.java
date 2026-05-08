@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Controller
 @RequestMapping("/manage/t/{slug}/settings")
-public class TenantDetailsController {
+class TenantDetailsController {
 
     private final TenantRepository tenantRepository;
 

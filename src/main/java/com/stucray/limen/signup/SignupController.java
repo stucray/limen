@@ -10,7 +10,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.nio.charset.StandardCharsets;
 
 @Controller
-public class SignupController {
+class SignupController {
 
     private final SignupService signupService;
 
