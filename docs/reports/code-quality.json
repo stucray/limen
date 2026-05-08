@@ -3,9 +3,9 @@
     "tool": "pmd",
     "tool_version": "7.24.0",
     "ruleset": "pmd-ruleset.xml",
-    "total_findings": 4,
+    "total_findings": 3,
     "by_priority": {
-      "3": 4
+      "3": 3
     }
   },
   "findings": [
@@ -20,18 +20,6 @@
       "begin_line": 41,
       "end_line": 41,
       "message": "The method 'doFilterInternal(HttpServletRequest, HttpServletResponse, FilterChain)' has a cyclomatic complexity of 10."
-    },
-    {
-      "rule": "CyclomaticComplexity",
-      "ruleset": "Design",
-      "priority": 3,
-      "package": "com.stucray.limen.auth",
-      "class": "TenantAuthProvider",
-      "method": "authenticate",
-      "file": "src/main/java/com/stucray/limen/auth/TenantAuthProvider.java",
-      "begin_line": 57,
-      "end_line": 57,
-      "message": "The method 'authenticate(Authentication)' has a cyclomatic complexity of 12."
     },
     {
       "rule": "CyclomaticComplexity",
