@@ -23,7 +23,7 @@ import java.util.Map;
 @SuppressWarnings("PMD.TooManyMethods")
 @Controller
 @RequestMapping("/manage/t/{slug}/users")
-public class UserManagementController {
+class UserManagementController {
 
     private final UserAdministrationService userAdministration;
     private final UserMembershipPortfolioQuery userMembershipPortfolioQuery;

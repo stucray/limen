@@ -20,7 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 @RequestMapping("/manage/system")
 @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-public class SystemAdminController {
+class SystemAdminController {
 
     private final TenantRepository tenantRepository;
     private final TenantProvisioningService tenantProvisioningService;
