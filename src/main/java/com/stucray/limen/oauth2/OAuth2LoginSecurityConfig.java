@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
  */
 @Configuration
 @Order(1)
-public class OAuth2LoginSecurityConfig {
+class OAuth2LoginSecurityConfig {
 
     private final TenantLogin login;
     private final TenantUrlScheme oauth2UrlScheme;

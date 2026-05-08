@@ -8,7 +8,7 @@ import org.jspecify.annotations.Nullable;
  * Strips the leading /t/{slug} segment from the request URI so that Spring Authorization Server
  * sees standard endpoint paths like /oauth2/token instead of /t/acme/oauth2/token.
  */
-public class TenantOAuth2RequestWrapper extends HttpServletRequestWrapper {
+class TenantOAuth2RequestWrapper extends HttpServletRequestWrapper {
 
     private final String strippedUri;
     private final String strippedServletPath;

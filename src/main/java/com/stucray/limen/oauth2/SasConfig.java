@@ -46,7 +46,7 @@ import java.util.List;
 import java.util.Set;
 
 @Configuration
-public class SasConfig {
+class SasConfig {
 
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
