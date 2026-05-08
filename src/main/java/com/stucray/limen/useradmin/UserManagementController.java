@@ -1,4 +1,4 @@
-package com.stucray.limen.users;
+package com.stucray.limen.useradmin;
 
 import com.stucray.limen.user.TenantUserDetails;
 import com.stucray.limen.memberships.UserMembershipPortfolioQuery;
