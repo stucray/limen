@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 public class TenantLoginAutoConfig {
 
     @Bean
-    public TenantUrlScheme oauth2UrlScheme() {
+    TenantUrlScheme oauth2UrlScheme() {
         return new TenantUrlScheme(
             "oauth2",
             HttpMethod.POST,
@@ -37,7 +37,7 @@ public class TenantLoginAutoConfig {
     }
 
     @Bean
-    public TenantUrlScheme managementUrlScheme() {
+    TenantUrlScheme managementUrlScheme() {
         return new TenantUrlScheme(
             "management",
             HttpMethod.POST,
@@ -50,7 +50,7 @@ public class TenantLoginAutoConfig {
     }
 
     @Bean
-    public TenantLogin tenantLogin(
+    TenantLogin tenantLogin(
         AuthenticationManager authenticationManager,
         TenantPersistentTokenBasedRememberMeServices rememberMeServices,
         @Value("${limen.security.remember-me-key}") String rememberMeKey,

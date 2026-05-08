@@ -44,13 +44,13 @@ public final class PostLoginIntents {
      * {@code OttCompletionService.markEmailVerified}, so a successful
      * verify-email login falls through to the next intent in the chain.
      */
-    public static PostLoginIntent emailVerificationRequired() {
+    static PostLoginIntent emailVerificationRequired() {
         return (req, res, principal, scheme) -> principal.user().emailVerified()
             ? null
             : "/t/" + principal.tenantSlug() + "/check-inbox";
     }
 
-    public static PostLoginIntent passwordChangeRequired() {
+    static PostLoginIntent passwordChangeRequired() {
         return (req, res, principal, scheme) -> principal.mustChangePassword()
             ? scheme.changePasswordUrl(principal.tenantSlug())
             : null;
@@ -64,7 +64,7 @@ public final class PostLoginIntents {
      * routing here until {@code TenantPasswordChangeFlow} rotates the context
      * to a plain authenticated principal on successful submission.
      */
-    public static PostLoginIntent passwordChangeAfterReset() {
+    static PostLoginIntent passwordChangeAfterReset() {
         return (req, res, principal, scheme) -> {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             return auth instanceof TenantOttAuthentication tott
@@ -74,7 +74,7 @@ public final class PostLoginIntents {
         };
     }
 
-    public static PostLoginIntent resumeOAuth2Authorize() {
+    static PostLoginIntent resumeOAuth2Authorize() {
         return resumeOAuth2Authorize(new HttpSessionRequestCache());
     }
 
@@ -90,7 +90,7 @@ public final class PostLoginIntents {
         };
     }
 
-    public static PostLoginIntent tenantHome() {
+    static PostLoginIntent tenantHome() {
         return (req, res, principal, scheme) -> scheme.homeUrl(principal.tenantSlug());
     }
 

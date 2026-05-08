@@ -54,7 +54,7 @@ public class TenantPasswordChangeFlow {
     private final HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
-    public TenantPasswordChangeFlow(
+    TenantPasswordChangeFlow(
         UserRepository userRepository,
         PasswordEncoder passwordEncoder,
         ApplicationEventPublisher eventPublisher,
@@ -67,7 +67,7 @@ public class TenantPasswordChangeFlow {
     }
 
     /** Returns an error message if validation fails, else null. */
-    public @Nullable String validate(String newPassword, String confirmPassword) {
+    @Nullable String validate(String newPassword, String confirmPassword) {
         if (!newPassword.equals(confirmPassword)) return "Passwords do not match";
         if (newPassword.isBlank()) return "Password is required";
         return null;
@@ -80,7 +80,7 @@ public class TenantPasswordChangeFlow {
      * listener (AFTER_COMMIT) has a transaction to hook onto.
      */
     @Transactional
-    public String changeAndRedirect(
+    String changeAndRedirect(
         TenantUserDetails principal,
         TenantUrlScheme scheme,
         String newPassword,
