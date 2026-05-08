@@ -27,7 +27,7 @@ import java.util.Collection;
 )
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
-public abstract class TenantAuthTokenMixin {
+abstract class TenantAuthTokenMixin {
 
     @JsonCreator
     TenantAuthTokenMixin(

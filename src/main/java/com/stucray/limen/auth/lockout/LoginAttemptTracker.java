@@ -47,7 +47,7 @@ import java.util.Optional;
  * </ul>
  */
 @Component
-public class LoginAttemptTracker {
+class LoginAttemptTracker {
 
     private final UserRepository userRepository;
     private final TenantRepository tenantRepository;

@@ -25,7 +25,7 @@ import com.stucray.limen.user.User;
 )
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
-public abstract class TenantUserDetailsMixin {
+abstract class TenantUserDetailsMixin {
 
     @JsonCreator
     TenantUserDetailsMixin(@JsonProperty("user") User user, @JsonProperty("tenant") Tenant tenant) {
