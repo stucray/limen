@@ -3,24 +3,12 @@
     "tool": "pmd",
     "tool_version": "7.24.0",
     "ruleset": "pmd-ruleset.xml",
-    "total_findings": 3,
+    "total_findings": 1,
     "by_priority": {
-      "3": 3
+      "3": 1
     }
   },
   "findings": [
-    {
-      "rule": "CyclomaticComplexity",
-      "ruleset": "Design",
-      "priority": 3,
-      "package": "com.stucray.limen.auth",
-      "class": "TenantAccessFilter",
-      "method": "doFilterInternal",
-      "file": "src/main/java/com/stucray/limen/auth/TenantAccessFilter.java",
-      "begin_line": 41,
-      "end_line": 41,
-      "message": "The method 'doFilterInternal(HttpServletRequest, HttpServletResponse, FilterChain)' has a cyclomatic complexity of 10."
-    },
     {
       "rule": "CyclomaticComplexity",
       "ruleset": "Design",
@@ -32,18 +20,6 @@
       "begin_line": 88,
       "end_line": 88,
       "message": "The method 'processAutoLoginCookie(String[], HttpServletRequest, HttpServletResponse)' has a cyclomatic complexity of 16."
-    },
-    {
-      "rule": "TooManyMethods",
-      "ruleset": "Design",
-      "priority": 3,
-      "package": "com.stucray.limen.users",
-      "class": "UserManagementController",
-      "method": "",
-      "file": "src/main/java/com/stucray/limen/users/UserManagementController.java",
-      "begin_line": 22,
-      "end_line": 190,
-      "message": "This class has too many methods, consider refactoring it."
     }
   ]
 }

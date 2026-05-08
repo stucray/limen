@@ -17,6 +17,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Map;
 
+// Cohesive CRUD admin controller for one resource — splitting by sub-action
+// (lifecycle / credentials / ownership) would produce multiple controllers
+// sharing a URL prefix and the @ExceptionHandler below, net-negative.
+@SuppressWarnings("PMD.TooManyMethods")
 @Controller
 @RequestMapping("/manage/t/{slug}/users")
 public class UserManagementController {
