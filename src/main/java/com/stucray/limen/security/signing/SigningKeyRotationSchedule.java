@@ -1,4 +1,4 @@
-package com.stucray.limen.security;
+package com.stucray.limen.security.signing;
 
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

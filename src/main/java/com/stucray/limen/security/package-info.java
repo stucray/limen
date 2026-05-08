@@ -4,11 +4,13 @@
  *
  * <p>{@code DefaultSecurityConfig} owns the catch-all filter chain that every
  * request hits before more-specific chains (OAuth2, login, management) take over.
- * {@code JdbcSigningKeyStore} (and the {@code SigningKeyRotator} cluster) own
- * per-Tenant RSA signing-key persistence with envelope encryption — the actual
- * tenant-aware {@code JWKSource} that loads them lives in {@code oauth2}.
- * {@code security.ratelimit} is the in-memory token-bucket filter; it's an
- * internal sub-package, not callable from outside this module.
+ * The {@code SigningKeyStore} interface is the cross-module API for per-Tenant
+ * RSA signing-key storage; the implementation cluster ({@code JdbcSigningKeyStore},
+ * {@code SigningKeyRotator}, scheduling, properties, configuration) lives in the
+ * internal sub-package {@code security.signing}. The actual tenant-aware
+ * {@code JWKSource} that consumes the store lives in {@code oauth2}.
+ * {@code security.ratelimit} is the in-memory token-bucket filter; it's also an
+ * internal sub-package.
  *
  * <p>Spring Modulith application module. See {@code docs/reference/architecture.md}
  * §4.4 (Signing keys) and §4.9 (Rate limiting) for behaviour, §4.15 (Package

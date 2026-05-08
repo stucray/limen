@@ -1,5 +1,6 @@
-package com.stucray.limen.security;
+package com.stucray.limen.security.signing;
 
+import com.stucray.limen.security.SigningKeyStore;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
