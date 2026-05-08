@@ -42,14 +42,7 @@ public final class TenantAccessFilter extends OncePerRequestFilter {
         HttpServletRequest request, HttpServletResponse response, FilterChain chain
     ) throws ServletException, IOException {
         String uri = request.getRequestURI();
-        SchemeMatch match = null;
-        for (TenantUrlScheme scheme : schemes) {
-            String slug = scheme.slugFrom(uri);
-            if (slug != null) {
-                match = new SchemeMatch(scheme, slug);
-                break;
-            }
-        }
+        SchemeMatch match = findScheme(uri);
         if (match == null) {
             chain.doFilter(request, response);
             return;
@@ -70,6 +63,16 @@ public final class TenantAccessFilter extends OncePerRequestFilter {
         }
 
         chain.doFilter(request, response);
+    }
+
+    private @Nullable SchemeMatch findScheme(String uri) {
+        for (TenantUrlScheme scheme : schemes) {
+            String slug = scheme.slugFrom(uri);
+            if (slug != null) {
+                return new SchemeMatch(scheme, slug);
+            }
+        }
+        return null;
     }
 
     private record SchemeMatch(TenantUrlScheme scheme, String slug) {}
