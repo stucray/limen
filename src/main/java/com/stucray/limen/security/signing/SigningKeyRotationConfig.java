@@ -1,4 +1,4 @@
-package com.stucray.limen.security;
+package com.stucray.limen.security.signing;
 
 import net.javacrumbs.shedlock.provider.jdbctemplate.JdbcTemplateLockProvider;
 import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;

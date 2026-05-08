@@ -588,7 +588,7 @@ Each direct sub-package of `com.stucray.limen` is one application module. **The 
 | `observability` | Cross-cutting OTel/Micrometer concerns: tenant-tagging filter, named auth counters, OTel logback bridge |
 | `provisioning` | Tenant lifecycle orchestration: `TenantProvisioningService` + `TenantProvisioner` |
 | `roles` | Per-Application `Role` catalogue + `RoleResolver` + management UI |
-| `security` | Foundation security: defaults, `SecurityProperties`, signing-key store + rotator, rate-limit filter (`security.ratelimit`) |
+| `security` | Foundation security: defaults, `SecurityProperties`, the `SigningKeyStore` interface; impl + rotation cluster lives in internal sub-package `security.signing`; rate-limit filter in `security.ratelimit` |
 | `signup` | Public self-service signup form + service |
 | `system` | Cross-tenant System Admin controllers (tenant suspend/unsuspend/delete, system-admin tenant-create) |
 | `tenant` | `Tenant` entity + repository, `TenantStatus`, `TenantScope` (the per-request `ScopedValue`) |
@@ -610,7 +610,7 @@ Each direct sub-package of `com.stucray.limen` is one application module. **The 
 - `auth.login` — login pipeline integration points (`TenantUrlScheme`, `PostLoginIntent`, `TenantPasswordChangeFlow`)
 - `auth.ott` — OTT services consumed across modules (`OttDispatcher`, `OttCompletionService`, `OttIntent`)
 
-Other sub-packages (e.g. `audit.dispatch`, `auth.lockout`, `security.ratelimit`) are internal to their module by Modulith default — outside callers cannot import them.
+Other sub-packages (e.g. `audit.dispatch`, `auth.lockout`, `security.ratelimit`, `security.signing`) are internal to their module by Modulith default — outside callers cannot import them.
 
 **Cross-module dependency policy.** Modulith's open default: any module may depend on any other module's top-level package or its named interfaces. There are no `@ApplicationModule(allowedDependencies = ...)` whitelists. The verifier still enforces no cycles and no sub-package leaks; tightening to per-module allowed-dependency declarations is a future option if evidence warrants it.
 

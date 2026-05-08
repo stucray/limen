@@ -1,5 +1,6 @@
-package com.stucray.limen.security;
+package com.stucray.limen.security.signing;
 
+import com.stucray.limen.security.SigningKeyStore;
 import com.stucray.limen.audit.events.SigningKeyPrunedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotationFailedEvent;

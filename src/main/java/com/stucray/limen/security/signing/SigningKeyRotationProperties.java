@@ -1,4 +1,4 @@
-package com.stucray.limen.security;
+package com.stucray.limen.security.signing;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
