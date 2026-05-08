@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 @Controller
-public class EndUserHomeController {
+class EndUserHomeController {
 
     @GetMapping("/t/{slug}/")
     public String home(
