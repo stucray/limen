@@ -10,7 +10,7 @@ import java.util.Date;
  * {@link TenantPersistentTokenRepository#getTokenForSeries(String, Long)} so
  * the caller can verify that the cookie's claimed tenant matches the row's.
  */
-public final class TenantPersistentRememberMeToken extends PersistentRememberMeToken {
+final class TenantPersistentRememberMeToken extends PersistentRememberMeToken {
 
     private final Long tenantId;
 

@@ -18,7 +18,7 @@ import java.util.Date;
  * Callers (the custom {@link TenantPersistentTokenBasedRememberMeServices})
  * pass the tenant explicitly on every call.
  */
-public class TenantPersistentTokenRepository {
+class TenantPersistentTokenRepository {
 
     private static final String INSERT_SQL =
         "INSERT INTO persistent_logins (tenant_id, email, series, token, last_used) "

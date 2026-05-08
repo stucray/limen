@@ -12,7 +12,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.List;
 
 @Configuration
-public class AuthBeansConfig {
+class AuthBeansConfig {
 
     @Bean
     public TenantPersistentTokenRepository tenantPersistentTokenRepository(JdbcTemplate jdbcTemplate) {
