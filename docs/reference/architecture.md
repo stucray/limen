@@ -567,33 +567,34 @@ Static analysis runs in two postures:
 
 CI is a single GitHub Actions workflow (`.github/workflows/ci.yml`) with one `verify` job on push and PR to `main`. The job sets up JDK 26 (Temurin, with Maven cache), runs `./mvnw -B -ntp verify`, and uploads the PMD bundle (30-day retention) and — on failure — the JaCoCo HTML report (14-day retention). The `LIMEN_SECURITY_KEK` is supplied as a GitHub Actions secret.
 
-### 4.15 Application modules
+### 4.15 Package structure (application modules)
 
 Module boundaries are enforced mechanically via [Spring Modulith](https://spring.io/projects/spring-modulith). `LimenModuleArchitectureTest` calls `ApplicationModules.of(LimenApplication.class).verify()`, which fails the build on cycles between modules and on cross-module references into a module's internal sub-packages. The verifier runs as part of `./mvnw test` so every PR is checked.
 
-Each direct sub-package of `com.stucray.limen` is one application module. As of 2026-05-06 there are 19:
+Each direct sub-package of `com.stucray.limen` is one application module. **The canonical per-module description lives in each module's `package-info.java`** (visible in IDE tooltips and Javadoc); the table below is a one-line index for navigation, plus the cross-cutting decisions that don't belong on any single module. As of 2026-05-08 there are 20:
 
-| Module | Role |
+| Module | One-line role |
 |---|---|
-| `applications` | Application entity + per-Application CRUD service and controller |
+| `applications` | `Application` entity + per-Application CRUD service and controller |
 | `audit` | `AuditEvent` row, dispatch rules, registry, writer; published events live in `audit.events` (named interface `events`) |
-| `auth` | Tenant-aware authentication: `TenantAuthProvider`, `TenantAuthToken`, `TenantUserDetailsService`, persistent remember-me, `TenantAccessFilter` defence-in-depth. Sub-features `auth.login` and `auth.ott` are named interfaces (`login`, `ott`) |
-| `clients` | TenantClient (the multi-tenant decoration of a SAS RegisteredClient) entity + repo + management UI |
+| `auth` | Tenant-aware authentication: providers, tokens, remember-me, `TenantAccessFilter`. Sub-features `auth.login` and `auth.ott` are named interfaces |
+| `clients` | `TenantClient` (Limen's multi-tenant decoration of a SAS `RegisteredClient`) + management UI |
 | `email` | `EmailSender` abstraction with `logging` + `smtp` drivers |
 | `enduser` | End-user web routes (post-OAuth2 home) |
 | `identity` | Bootstrap-admin properties + `UserBootstrap` startup runner |
-| `management` | Admin-console infrastructure: nav, login, home, model advice, and the admin Spring Security config (`management.web`, `management.auth`). Domain features that *appear* under `/manage/...` URLs (applications, clients, etc.) live in their own top-level modules |
-| `memberships` | ApplicationMembership + ClientMembership + Role-join entities, queries (`ClientMembershipQuery`, `UserMembershipPortfolioQuery`), services, and the per-app/per-client members UI |
-| `oauth2` | SAS integration: tenant-aware decorators, routing filter, issuer-context filter, JWK source, `SasConfig` |
-| `provisioning` | Tenant lifecycle orchestration: `TenantProvisioningService` (create/suspend/unsuspend/delete + signing-key seed) and `TenantProvisioner` (the deep module entered by `/signup` and `/manage/system/tenants/new`) |
-| `roles` | Per-Application `Role` catalogue + management UI |
-| `security` | Global Spring Security defaults, `SecurityProperties`, signing-key store, rate-limit filter (`security.ratelimit`) |
+| `management` | Admin-console infrastructure (`/manage/...` filter chain, nav, model advice). Per-domain `/manage/...` features live in their own modules |
+| `memberships` | `ApplicationMembership` + `ClientMembership` + Role-join entities, queries, services, members UI |
+| `oauth2` | Spring Authorization Server integration: tenant-aware decorators, routing filter, issuer-context filter, JWK source |
+| `observability` | Cross-cutting OTel/Micrometer concerns: tenant-tagging filter, named auth counters, OTel logback bridge |
+| `provisioning` | Tenant lifecycle orchestration: `TenantProvisioningService` + `TenantProvisioner` |
+| `roles` | Per-Application `Role` catalogue + `RoleResolver` + management UI |
+| `security` | Foundation security: defaults, `SecurityProperties`, signing-key store + rotator, rate-limit filter (`security.ratelimit`) |
 | `signup` | Public self-service signup form + service |
 | `system` | Cross-tenant System Admin controllers (tenant suspend/unsuspend/delete, system-admin tenant-create) |
 | `tenant` | `Tenant` entity + repository, `TenantStatus`, `TenantScope` (the per-request `ScopedValue`) |
-| `user` | `User` entity + `UserRepository` + `TenantUserDetails` (the Spring Security `UserDetails` adapter wrapping `User` + `Tenant`) |
-| `useradmin` | Tenant-Owner administration of Users: `UserAdministrationService`, `PasswordChangeRequiredInterceptor` (the change-password form itself is hosted by `auth.login.PasswordChangeController`) |
-| `web` | Top-level web routes: `RootController` (landing) and `RedirectLoginController` (slug-aware `/login` forwarder) |
+| `user` | `User` entity + `UserRepository` + `TenantUserDetails` (the Spring Security `UserDetails` adapter) |
+| `useradmin` | Tenant-Owner administration of Users: `UserAdministrationService`, `PasswordChangeRequiredInterceptor` |
+| `web` | Top-level web routes: `RootController` (landing) + `RedirectLoginController` (slug-aware `/login` forwarder) |
 
 **Three module-shaping decisions worth calling out:**
 
