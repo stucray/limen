@@ -22,7 +22,7 @@ import java.util.Objects;
  */
 @Component
 @ConditionalOnProperty(name = "limen.email.driver", havingValue = "smtp")
-public class SmtpEmailSender implements EmailSender {
+class SmtpEmailSender implements EmailSender {
 
     private static final String DEFAULT_FROM = "no-reply@limen.local";
 

@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Component
-public class UserBootstrap implements CommandLineRunner {
+class UserBootstrap implements CommandLineRunner {
 
     static final String SYSTEM_SLUG = "system";
     static final String SYSTEM_DISPLAY_NAME = "System";

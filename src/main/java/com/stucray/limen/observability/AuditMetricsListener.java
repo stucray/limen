@@ -32,7 +32,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * Disabled, …) — a small, fixed set.
  */
 @Component
-public class AuditMetricsListener {
+class AuditMetricsListener {
 
     static final String LOGIN_SUCCESS = "limen.auth.login.success";
     static final String LOGIN_FAILURE = "limen.auth.login.failure";

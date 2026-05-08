@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @ConditionalOnProperty(name = "limen.email.driver", havingValue = "logging", matchIfMissing = true)
-public class LoggingEmailSender implements EmailSender {
+class LoggingEmailSender implements EmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingEmailSender.class);
 
