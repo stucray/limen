@@ -24,7 +24,7 @@ import java.util.Set;
 
 @Controller
 @RequestMapping("/manage/t/{slug}/applications/{appId}/members")
-public class MembersController {
+class MembersController {
 
     private final ApplicationMembershipService membershipService;
     private final ApplicationService applicationService;
