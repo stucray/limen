@@ -47,7 +47,7 @@ class AuditMetricsListener {
     private final Counter signingKeyRotated;
     private final Counter signingKeyPruned;
 
-    public AuditMetricsListener(MeterRegistry registry) {
+    AuditMetricsListener(MeterRegistry registry) {
         this.registry = registry;
         this.loginSuccess = Counter.builder(LOGIN_SUCCESS)
             .description("Successful logins (Spring Security AuthenticationSuccessEvent).")
@@ -68,12 +68,12 @@ class AuditMetricsListener {
     }
 
     @EventListener
-    public void onLoginSuccess(AuthenticationSuccessEvent event) {
+    void onLoginSuccess(AuthenticationSuccessEvent event) {
         loginSuccess.increment();
     }
 
     @EventListener
-    public void onLoginFailure(AbstractAuthenticationFailureEvent event) {
+    void onLoginFailure(AbstractAuthenticationFailureEvent event) {
         Counter.builder(LOGIN_FAILURE)
             .description("Failed logins, tagged by Spring Security exception class.")
             .baseUnit("events")
@@ -83,17 +83,17 @@ class AuditMetricsListener {
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onClientSecretRotated(ClientSecretRotatedEvent event) {
+    void onClientSecretRotated(ClientSecretRotatedEvent event) {
         clientSecretRotated.increment();
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onSigningKeyRotated(SigningKeyRotatedEvent event) {
+    void onSigningKeyRotated(SigningKeyRotatedEvent event) {
         signingKeyRotated.increment();
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onSigningKeyPruned(SigningKeyPrunedEvent event) {
+    void onSigningKeyPruned(SigningKeyPrunedEvent event) {
         signingKeyPruned.increment();
     }
 
@@ -109,7 +109,7 @@ class AuditMetricsListener {
      * a small fixed set, like {@code limen.auth.login.failure}.
      */
     @EventListener
-    public void onSigningKeyRotationFailure(SigningKeyRotationFailedEvent event) {
+    void onSigningKeyRotationFailure(SigningKeyRotationFailedEvent event) {
         Counter.builder(SIGNING_KEY_ROTATION_FAILURE)
             .description("Per-tenant signing-key rotations that threw mid-batch, tagged by exception class.")
             .baseUnit("events")

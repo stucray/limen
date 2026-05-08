@@ -36,7 +36,7 @@ class JdbcSigningKeyStore implements SigningKeyStore {
     private final JdbcTemplate jdbcTemplate;
     private final String kekPassword;
 
-    public JdbcSigningKeyStore(JdbcTemplate jdbcTemplate, SecurityProperties properties) {
+    JdbcSigningKeyStore(JdbcTemplate jdbcTemplate, SecurityProperties properties) {
         this.jdbcTemplate = jdbcTemplate;
         this.kekPassword = properties.kek();
     }

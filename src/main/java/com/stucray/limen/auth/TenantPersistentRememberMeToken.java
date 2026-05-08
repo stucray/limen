@@ -14,14 +14,14 @@ final class TenantPersistentRememberMeToken extends PersistentRememberMeToken {
 
     private final Long tenantId;
 
-    public TenantPersistentRememberMeToken(
+    TenantPersistentRememberMeToken(
         String username, String series, String tokenValue, Date date, Long tenantId
     ) {
         super(username, series, tokenValue, date);
         this.tenantId = tenantId;
     }
 
-    public Long getTenantId() {
+    Long getTenantId() {
         return tenantId;
     }
 }

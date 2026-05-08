@@ -14,12 +14,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 class IdentityConfig {
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
+    AuthenticationManager authenticationManager(
         TenantAuthProvider tenantAuthProvider,
         ApplicationEventPublisher applicationEventPublisher
     ) {

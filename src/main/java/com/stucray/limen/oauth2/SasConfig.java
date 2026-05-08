@@ -50,7 +50,7 @@ class SasConfig {
 
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(
+    SecurityFilterChain authorizationServerSecurityFilterChain(
         HttpSecurity http,
         RegisteredClientRepository registeredClientRepository,
         ClientMembershipQuery clientMembershipQuery
@@ -87,7 +87,7 @@ class SasConfig {
     }
 
     @Bean
-    public RegisteredClientRepository registeredClientRepository(
+    RegisteredClientRepository registeredClientRepository(
         JdbcTemplate jdbcTemplate,
         TenantClientRepository tenantClientRepository
     ) {
@@ -96,12 +96,12 @@ class SasConfig {
     }
 
     @Bean
-    public JsonMapper sasJsonMapper() {
+    JsonMapper sasJsonMapper() {
         return SasJsonMapperFactory.create();
     }
 
     @Bean
-    public OAuth2AuthorizationService authorizationService(
+    OAuth2AuthorizationService authorizationService(
         JdbcTemplate jdbcTemplate,
         RegisteredClientRepository registeredClientRepository,
         JsonMapper sasJsonMapper
@@ -117,7 +117,7 @@ class SasConfig {
     }
 
     @Bean
-    public OAuth2AuthorizationConsentService authorizationConsentService(
+    OAuth2AuthorizationConsentService authorizationConsentService(
         JdbcTemplate jdbcTemplate,
         RegisteredClientRepository registeredClientRepository
     ) {
@@ -125,7 +125,7 @@ class SasConfig {
     }
 
     @Bean
-    public JWKSource<SecurityContext> jwkSource(
+    JWKSource<SecurityContext> jwkSource(
         TenantRepository tenantRepository,
         SigningKeyStore signingKeyStore
     ) {
@@ -133,14 +133,14 @@ class SasConfig {
     }
 
     @Bean
-    public AuthorizationServerSettings authorizationServerSettings() {
+    AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder()
             .issuer("http://localhost:8090")
             .build();
     }
 
     @Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(
+    OAuth2TokenCustomizer<JwtEncodingContext> jwtTokenCustomizer(
         ClientMembershipQuery clientMembershipQuery
     ) {
         return context -> {

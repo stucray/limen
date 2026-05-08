@@ -31,7 +31,7 @@ record AuditRule<E>(
      * before any servlet request-context exists); when null the dispatcher
      * reads {@code RequestContextHolder}.
      */
-    public record Projection(
+    record Projection(
         @Nullable Long tenantId,
         @Nullable Long actorUserId,
         @Nullable String targetType,

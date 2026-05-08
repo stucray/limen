@@ -13,12 +13,12 @@ class TenantDetailsController {
 
     private final TenantRepository tenantRepository;
 
-    public TenantDetailsController(TenantRepository tenantRepository) {
+    TenantDetailsController(TenantRepository tenantRepository) {
         this.tenantRepository = tenantRepository;
     }
 
     @GetMapping
-    public String settings(
+    String settings(
         @PathVariable String slug,
         @AuthenticationPrincipal TenantUserDetails principal,
         Model model
@@ -29,7 +29,7 @@ class TenantDetailsController {
     }
 
     @PostMapping("/display-name")
-    public String updateDisplayName(
+    String updateDisplayName(
         @PathVariable String slug,
         @AuthenticationPrincipal TenantUserDetails principal,
         @RequestParam String displayName

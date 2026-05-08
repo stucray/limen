@@ -37,21 +37,21 @@ class TenantPersistentTokenRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public TenantPersistentTokenRepository(JdbcTemplate jdbcTemplate) {
+    TenantPersistentTokenRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public void createNewToken(PersistentRememberMeToken token, Long tenantId) {
+    void createNewToken(PersistentRememberMeToken token, Long tenantId) {
         jdbcTemplate.update(INSERT_SQL,
             tenantId, token.getUsername(), token.getSeries(), token.getTokenValue(), token.getDate());
     }
 
-    public void updateToken(String series, Long tenantId, String tokenValue, Date lastUsed) {
+    void updateToken(String series, Long tenantId, String tokenValue, Date lastUsed) {
         jdbcTemplate.update(UPDATE_SQL, tokenValue, lastUsed, tenantId, series);
     }
 
     /** Returns the token row scoped to the given tenant, or null when absent. */
-    public @Nullable TenantPersistentRememberMeToken getTokenForSeries(String series, Long tenantId) {
+    @Nullable TenantPersistentRememberMeToken getTokenForSeries(String series, Long tenantId) {
         try {
             return jdbcTemplate.queryForObject(SELECT_SQL, (rs, rowNum) ->
                 new TenantPersistentRememberMeToken(
@@ -68,7 +68,7 @@ class TenantPersistentTokenRepository {
         }
     }
 
-    public void removeUserTokens(String email, Long tenantId) {
+    void removeUserTokens(String email, Long tenantId) {
         jdbcTemplate.update(DELETE_USER_SQL, tenantId, email);
     }
 }

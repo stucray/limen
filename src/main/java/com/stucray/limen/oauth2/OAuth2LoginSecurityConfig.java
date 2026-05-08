@@ -46,7 +46,7 @@ class OAuth2LoginSecurityConfig {
     private final OneTimeTokenGenerationSuccessHandler ottGenerationSuccessHandler;
     private final TenantOttAuthenticationProvider ottAuthenticationProvider;
 
-    public OAuth2LoginSecurityConfig(
+    OAuth2LoginSecurityConfig(
         TenantLogin login,
         @Qualifier("oauth2UrlScheme") TenantUrlScheme oauth2UrlScheme,
         TenantAwareOneTimeTokenService oneTimeTokenService,
@@ -61,7 +61,7 @@ class OAuth2LoginSecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain oauth2LoginFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain oauth2LoginFilterChain(HttpSecurity http) throws Exception {
         HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
         Pattern logoutSlugPattern = Pattern.compile(".*/t/([^/]+)/logout$");
 

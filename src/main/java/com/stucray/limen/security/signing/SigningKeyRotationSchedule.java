@@ -26,7 +26,7 @@ class SigningKeyRotationSchedule {
 
     private final SigningKeyRotator rotator;
 
-    public SigningKeyRotationSchedule(SigningKeyRotator rotator) {
+    SigningKeyRotationSchedule(SigningKeyRotator rotator) {
         this.rotator = rotator;
     }
 
@@ -35,7 +35,7 @@ class SigningKeyRotationSchedule {
         name = "rotate-signing-keys",
         lockAtMostFor = "10m",
         lockAtLeastFor = "30s")
-    public void run() {
+    void run() {
         rotator.runScheduledRotation();
     }
 }

@@ -31,7 +31,7 @@ class MembersController {
     private final RoleManagementService roleManagementService;
     private final UserRepository userRepository;
 
-    public MembersController(
+    MembersController(
         ApplicationMembershipService membershipService,
         ApplicationService applicationService,
         RoleManagementService roleManagementService,
@@ -44,7 +44,7 @@ class MembersController {
     }
 
     @GetMapping
-    public String list(
+    String list(
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -62,7 +62,7 @@ class MembersController {
     }
 
     @GetMapping("/new")
-    public String newForm(
+    String newForm(
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -76,7 +76,7 @@ class MembersController {
     }
 
     @PostMapping
-    public String create(
+    String create(
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -97,7 +97,7 @@ class MembersController {
     }
 
     @GetMapping("/{membershipId}/edit")
-    public String editForm(
+    String editForm(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable Long membershipId,
@@ -119,7 +119,7 @@ class MembersController {
     }
 
     @PostMapping("/{membershipId}/edit")
-    public String update(
+    String update(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable Long membershipId,
@@ -149,7 +149,7 @@ class MembersController {
     }
 
     @PostMapping("/{membershipId}/delete")
-    public String delete(
+    String delete(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable Long membershipId,

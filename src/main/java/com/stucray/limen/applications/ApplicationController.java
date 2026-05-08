@@ -12,12 +12,12 @@ class ApplicationController {
 
     private final ApplicationService applicationService;
 
-    public ApplicationController(ApplicationService applicationService) {
+    ApplicationController(ApplicationService applicationService) {
         this.applicationService = applicationService;
     }
 
     @GetMapping
-    public String list(
+    String list(
         @PathVariable String slug,
         @AuthenticationPrincipal TenantUserDetails principal,
         Model model
@@ -28,13 +28,13 @@ class ApplicationController {
     }
 
     @GetMapping("/new")
-    public String newForm(@PathVariable String slug, Model model) {
+    String newForm(@PathVariable String slug, Model model) {
         model.addAttribute("slug", slug);
         return "manage/applications/new";
     }
 
     @PostMapping
-    public String create(
+    String create(
         @PathVariable String slug,
         @AuthenticationPrincipal TenantUserDetails principal,
         @RequestParam String name,
@@ -54,7 +54,7 @@ class ApplicationController {
     }
 
     @GetMapping("/{appId}/edit")
-    public String editForm(
+    String editForm(
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -66,7 +66,7 @@ class ApplicationController {
     }
 
     @PostMapping("/{appId}/edit")
-    public String update(
+    String update(
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -78,7 +78,7 @@ class ApplicationController {
     }
 
     @PostMapping("/{appId}/delete")
-    public String delete(
+    String delete(
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,

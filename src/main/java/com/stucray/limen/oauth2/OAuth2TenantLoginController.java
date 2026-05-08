@@ -12,12 +12,12 @@ class OAuth2TenantLoginController {
 
     private final TenantRepository tenantRepository;
 
-    public OAuth2TenantLoginController(TenantRepository tenantRepository) {
+    OAuth2TenantLoginController(TenantRepository tenantRepository) {
         this.tenantRepository = tenantRepository;
     }
 
     @GetMapping("/t/{slug}/login")
-    public String loginForm(@PathVariable String slug, Model model) {
+    String loginForm(@PathVariable String slug, Model model) {
         Tenant tenant = tenantRepository.findBySlug(slug).orElse(null);
         if (tenant == null) {
             return "redirect:/manage/t/system/login";

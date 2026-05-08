@@ -24,7 +24,7 @@ class OtelLogbackInstaller {
 
     private static final Logger log = LoggerFactory.getLogger(OtelLogbackInstaller.class);
 
-    public OtelLogbackInstaller(OpenTelemetry openTelemetry) {
+    OtelLogbackInstaller(OpenTelemetry openTelemetry) {
         OpenTelemetryAppender.install(openTelemetry);
         log.info("OpenTelemetry Logback appender installed; subsequent logs forward to OTLP.");
     }

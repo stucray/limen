@@ -18,8 +18,8 @@ public sealed abstract class UserAdminException extends RuntimeException
             UserAdminException.TargetNotEligible,
             UserAdminException.UserNotInTenant {
 
-    public final String userMessage;
-    public final String operation;
+    final String userMessage;
+    final String operation;
 
     protected UserAdminException(String operation, String userMessage) {
         super("[" + operation + "] " + userMessage);
@@ -28,28 +28,28 @@ public sealed abstract class UserAdminException extends RuntimeException
     }
 
     /** The actor and the target are the same user — actor would lock themselves out. */
-    public static final class CannotTargetSelf extends UserAdminException {
+    static final class CannotTargetSelf extends UserAdminException {
         public CannotTargetSelf(String operation, String userMessage) {
             super(operation, userMessage);
         }
     }
 
     /** The action would leave the tenant with zero enabled tenant-owners. */
-    public static final class WouldOrphanTenant extends UserAdminException {
+    static final class WouldOrphanTenant extends UserAdminException {
         public WouldOrphanTenant(String operation, String userMessage) {
             super(operation, userMessage);
         }
     }
 
     /** Target user is in an ineligible state for this operation (e.g., disabled, unverified). */
-    public static final class TargetNotEligible extends UserAdminException {
+    static final class TargetNotEligible extends UserAdminException {
         public TargetNotEligible(String operation, String userMessage) {
             super(operation, userMessage);
         }
     }
 
     /** Target userId either doesn't exist or belongs to a different tenant. */
-    public static final class UserNotInTenant extends UserAdminException {
+    static final class UserNotInTenant extends UserAdminException {
         public UserNotInTenant(String operation) {
             super(operation, "User not found");
         }

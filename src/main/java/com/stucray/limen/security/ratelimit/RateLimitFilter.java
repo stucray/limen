@@ -51,7 +51,7 @@ class RateLimitFilter extends OncePerRequestFilter {
     private final List<CompiledRule> compiledRules;
     private final ConcurrentHashMap<RuleKey, Bucket> buckets = new ConcurrentHashMap<>();
 
-    public RateLimitFilter(RateLimitProperties properties, ApplicationEventPublisher publisher) {
+    RateLimitFilter(RateLimitProperties properties, ApplicationEventPublisher publisher) {
         this.properties = properties;
         this.publisher = publisher;
         this.compiledRules = properties.rules().entrySet().stream()
@@ -98,7 +98,7 @@ class RateLimitFilter extends OncePerRequestFilter {
      * remaining wait of any in-flight bucket. Tests use it to keep one
      * scenario from polluting the next within a single Spring context.
      */
-    public void resetBucketsForTesting() {
+    void resetBucketsForTesting() {
         buckets.clear();
     }
 

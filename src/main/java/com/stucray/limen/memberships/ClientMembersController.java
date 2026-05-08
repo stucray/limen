@@ -35,7 +35,7 @@ class ClientMembersController {
     private final RoleManagementService roleManagementService;
     private final UserRepository userRepository;
 
-    public ClientMembersController(
+    ClientMembersController(
         ClientMembershipService membershipService,
         ApplicationService applicationService,
         ClientManagementService clientManagementService,
@@ -50,7 +50,7 @@ class ClientMembersController {
     }
 
     @GetMapping
-    public String list(
+    String list(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable String registeredClientId,
@@ -71,7 +71,7 @@ class ClientMembersController {
     }
 
     @GetMapping("/new")
-    public String newForm(
+    String newForm(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable String registeredClientId,
@@ -89,7 +89,7 @@ class ClientMembersController {
     }
 
     @PostMapping
-    public String create(
+    String create(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable String registeredClientId,
@@ -114,7 +114,7 @@ class ClientMembersController {
     }
 
     @GetMapping("/{membershipId}/edit")
-    public String editForm(
+    String editForm(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable String registeredClientId,
@@ -139,7 +139,7 @@ class ClientMembersController {
     }
 
     @PostMapping("/{membershipId}/edit")
-    public String update(
+    String update(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable String registeredClientId,
@@ -172,7 +172,7 @@ class ClientMembersController {
     }
 
     @PostMapping("/{membershipId}/delete")
-    public String delete(
+    String delete(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable String registeredClientId,

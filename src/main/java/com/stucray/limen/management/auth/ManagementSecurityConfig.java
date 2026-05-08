@@ -19,7 +19,7 @@ class ManagementSecurityConfig {
     private final TenantLogin login;
     private final TenantUrlScheme managementUrlScheme;
 
-    public ManagementSecurityConfig(
+    ManagementSecurityConfig(
         TenantLogin login,
         @Qualifier("managementUrlScheme") TenantUrlScheme managementUrlScheme
     ) {
@@ -28,7 +28,7 @@ class ManagementSecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain managementFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain managementFilterChain(HttpSecurity http) throws Exception {
         login.applyTo(http, managementUrlScheme);
 
         http

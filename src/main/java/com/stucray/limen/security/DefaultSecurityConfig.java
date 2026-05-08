@@ -22,7 +22,7 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 class DefaultSecurityConfig {
 
     @Bean
-    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/", "/login", "/actuator/health").permitAll()
