@@ -9,7 +9,7 @@ import java.util.Base64;
 
 @ConfigurationProperties("limen.security")
 @Validated
-public record SecurityProperties(@NotBlank String kek) {
+record SecurityProperties(@NotBlank String kek) {
 
     private static final int KEK_BYTES = 32;
 

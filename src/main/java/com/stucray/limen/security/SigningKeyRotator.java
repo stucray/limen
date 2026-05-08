@@ -43,7 +43,7 @@ import java.util.List;
  * AFTER_COMMIT audit + counter listeners fire per tenant.
  */
 @Component
-public class SigningKeyRotator {
+class SigningKeyRotator {
 
     private static final Logger log = LoggerFactory.getLogger(SigningKeyRotator.class);
 

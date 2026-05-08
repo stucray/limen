@@ -27,7 +27,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @Configuration
 @EnableScheduling
 @EnableSchedulerLock(defaultLockAtMostFor = "PT10M")
-public class SigningKeyRotationConfig {
+class SigningKeyRotationConfig {
 
     @Bean
     public LockProvider lockProvider(JdbcTemplate jdbcTemplate) {
