@@ -49,7 +49,7 @@ public final class TenantPersistentTokenBasedRememberMeServices extends Abstract
     private final List<TenantUrlScheme> schemes;
     private final SecureRandom random = new SecureRandom();
 
-    public TenantPersistentTokenBasedRememberMeServices(
+    TenantPersistentTokenBasedRememberMeServices(
         String key,
         TenantUserDetailsService userDetailsService,
         TenantPersistentTokenRepository tokenRepository,

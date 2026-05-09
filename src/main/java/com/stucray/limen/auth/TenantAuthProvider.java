@@ -29,7 +29,7 @@ public class TenantAuthProvider implements AuthenticationProvider {
     private final Clock clock;
 
     @Autowired
-    public TenantAuthProvider(
+    TenantAuthProvider(
         TenantRepository tenantRepository,
         UserRepository userRepository,
         PasswordEncoder passwordEncoder
@@ -41,7 +41,7 @@ public class TenantAuthProvider implements AuthenticationProvider {
     }
 
     /** Test seam: inject a clock so the lockout-window check is deterministic. */
-    public TenantAuthProvider(
+    TenantAuthProvider(
         TenantRepository tenantRepository,
         UserRepository userRepository,
         PasswordEncoder passwordEncoder,
