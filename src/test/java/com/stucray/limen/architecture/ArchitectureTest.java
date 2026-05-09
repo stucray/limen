@@ -3,22 +3,35 @@ package com.stucray.limen.architecture;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.lang.ArchCondition;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.EventListener;
+import org.springframework.modulith.events.ApplicationModuleListener;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.annotation.Annotation;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
 import static com.tngtech.archunit.core.importer.ImportOption.Predefined.DO_NOT_INCLUDE_TESTS;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static java.util.stream.Collectors.toUnmodifiableSet;
 
 /**
@@ -80,6 +93,98 @@ class ArchitectureTest {
         classes().that().areAnnotatedWith(Configuration.class)
             .and(notIn(autoConfigs))
             .should().notBePublic().check(CLASSES);
+    }
+
+    /**
+     * Public methods on @Service classes that have NO cross-package caller in the
+     * main classpath as of writing. These have only same-package main callers
+     * (typically a controller) plus a cross-package test caller, and are pending
+     * the same repo-write-or-MockMvc substitution that PRs #235/#236/#237 applied
+     * to the createX factories. Each entry should disappear when its corresponding
+     * test refactor lands.
+     *
+     * <p>Plus one true-public-by-Java entry: {@code loadUserByUsername} implements
+     * Spring Security's {@code UserDetailsService} interface, so Java forces it
+     * public. That entry will not be narrowed; it documents the structural carve-out.
+     */
+    private static final Set<String> SERVICE_METHODS_AWAITING_NARROWING = Set.of(
+        // TODO: ClientMembershipServiceIntegrationTest:311 calls deleteClient cross-package.
+        // Substitute repo writes (mirror PR #237's pattern), then narrow.
+        "com.stucray.limen.clients.ClientManagementService.deleteClient(java.lang.String, java.lang.Long)",
+        // TODO: AuditEventEmitIntegrationTest's clientSecretRotationEmitsAuditRow calls
+        // rotateSecret cross-package. Drive through ClientManagementController via
+        // MockMvc (the rotation IS the SUT here, not fixture), then narrow.
+        "com.stucray.limen.clients.ClientManagementService.rotateSecret(java.lang.String, java.lang.Long, long)",
+        // TODO: EmailVerificationFlowIntegrationTest:197 calls signup cross-package as
+        // tenant fixture setup. Substitute direct TenantRepository.save +
+        // UserRepository.save (same pattern as TestTenantFactory), then narrow.
+        "com.stucray.limen.signup.SignupService.signup(com.stucray.limen.signup.SignupForm)",
+        // TODO: AuditEventEmitIntegrationTest's adminResetPasswordEmitsAuditRow calls
+        // resetPassword cross-package. Drive through UserManagementController via
+        // MockMvc (the reset IS the SUT for this audit test), then narrow.
+        "com.stucray.limen.useradmin.UserAdministrationService.resetPassword("
+            + "java.lang.Long, java.lang.Long, java.lang.Long, java.lang.String)",
+        // Structural exemption: implements Spring Security's UserDetailsService.
+        // Java forces public on interface implementations; this entry will not be narrowed.
+        "com.stucray.limen.auth.TenantUserDetailsService.loadUserByUsername(java.lang.String)"
+    );
+
+    private static final List<Class<? extends Annotation>> REFLECTION_ENTRY_POINT_ANNOTATIONS = List.of(
+        EventListener.class,
+        TransactionalEventListener.class,
+        ApplicationModuleListener.class,
+        Scheduled.class,
+        Async.class
+    );
+
+    @Test
+    @DisplayName("Public methods on @Service classes have a main-classpath cross-package caller")
+    void servicePublicMethodsHaveMainCrossPackageCaller() {
+        methods()
+            .that().areDeclaredInClassesThat().areAnnotatedWith(Service.class)
+            .and().arePublic()
+            .and(notReflectionEntryPoint())
+            .and(methodFullNameNotIn(SERVICE_METHODS_AWAITING_NARROWING))
+            .should(haveCrossPackageCallerInMainClasspath())
+            .check(CLASSES);
+    }
+
+    private static DescribedPredicate<JavaMethod> notReflectionEntryPoint() {
+        return new DescribedPredicate<>("not a Spring reflection entry point") {
+            @Override
+            public boolean test(JavaMethod m) {
+                return REFLECTION_ENTRY_POINT_ANNOTATIONS.stream().noneMatch(m::isAnnotatedWith);
+            }
+        };
+    }
+
+    private static DescribedPredicate<JavaMethod> methodFullNameNotIn(Set<String> excluded) {
+        return new DescribedPredicate<>("not in service-method narrowing-TODO list") {
+            @Override
+            public boolean test(JavaMethod m) {
+                return !excluded.contains(m.getFullName());
+            }
+        };
+    }
+
+    private static ArchCondition<JavaMethod> haveCrossPackageCallerInMainClasspath() {
+        return new ArchCondition<>("have a cross-package caller in the main classpath") {
+            @Override
+            public void check(JavaMethod method, ConditionEvents events) {
+                String declaringPackage = method.getOwner().getPackageName();
+                boolean hasCrossPackageCaller = method.getAccessesToSelf().stream()
+                    .map(access -> access.getOriginOwner().getPackageName())
+                    .anyMatch(pkg -> !pkg.equals(declaringPackage));
+                if (!hasCrossPackageCaller) {
+                    events.add(SimpleConditionEvent.violated(method,
+                        method.getFullName() + " is public on an @Service class but has no main-classpath "
+                            + "cross-package caller. Narrow to package-private, or — if it's only public for "
+                            + "a cross-package test — substitute repo writes / MockMvc in the test and "
+                            + "narrow. Add to SERVICE_METHODS_AWAITING_NARROWING with a TODO if a clean-up "
+                            + "is staged for a follow-up PR."));
+                }
+            }
+        };
     }
 
     private static Set<String> readAutoConfigurationImports() {
