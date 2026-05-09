@@ -68,7 +68,7 @@ public class UserAdministrationService {
 
     @Transactional
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
-    public void createUser(Long tenantId, Long actorUserId, String email, String temporaryPassword) {
+    void createUser(Long tenantId, Long actorUserId, String email, String temporaryPassword) {
         if (userRepository.existsByEmailAndTenantId(email, tenantId)) {
             throw new IllegalArgumentException("Email already exists in this tenant");
         }
