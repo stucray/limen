@@ -1,7 +1,7 @@
 package com.stucray.limen.ui.support;
 
 import com.stucray.limen.applications.Application;
-import com.stucray.limen.applications.ApplicationService;
+import com.stucray.limen.applications.ApplicationRepository;
 import com.stucray.limen.clients.TenantClient;
 import com.stucray.limen.clients.TenantClientRepository;
 import com.stucray.limen.memberships.ApplicationMembershipService;
@@ -46,7 +46,7 @@ public class TestTenantFactory {
     private final TenantRepository tenantRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final ApplicationService applicationService;
+    private final ApplicationRepository applicationRepository;
     private final RegisteredClientRepository registeredClientRepository;
     private final TenantClientRepository tenantClientRepository;
     private final ApplicationMembershipService applicationMembershipService;
@@ -57,7 +57,7 @@ public class TestTenantFactory {
         TenantRepository tenantRepository,
         UserRepository userRepository,
         PasswordEncoder passwordEncoder,
-        ApplicationService applicationService,
+        ApplicationRepository applicationRepository,
         RegisteredClientRepository registeredClientRepository,
         TenantClientRepository tenantClientRepository,
         ApplicationMembershipService applicationMembershipService,
@@ -67,18 +67,21 @@ public class TestTenantFactory {
         this.tenantRepository = tenantRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.applicationService = applicationService;
+        this.applicationRepository = applicationRepository;
         this.registeredClientRepository = registeredClientRepository;
         this.tenantClientRepository = tenantClientRepository;
         this.applicationMembershipService = applicationMembershipService;
         this.clientMembershipService = clientMembershipService;
     }
 
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     @Transactional
     public SeededApplication seedApplication(SeededTenant tenant) {
         String suffix = uniqueSuffix();
         String name = "App " + suffix;
-        Application app = applicationService.createApplication(tenant.tenantId(), name, "Seeded for UI test");
+        Application app = applicationRepository.save(
+            new Application(null, tenant.tenantId(), name, "Seeded for UI test", LocalDateTime.now())
+        );
         return new SeededApplication(app.id(), name);
     }
 
