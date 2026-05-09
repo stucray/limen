@@ -33,9 +33,12 @@ import java.util.UUID;
  * so concurrent tests cannot collide on slug/email and no teardown is needed —
  * the Testcontainers Postgres is discarded at JVM exit.
  *
- * <p>Goes through real service-layer code ({@link TenantProvisioningService} +
- * {@link UserRepository} + {@link PasswordEncoder}) rather than raw SQL, so test
- * preconditions exercise the same code paths production uses.
+ * <p>Fixture state is built via repository writes, not service calls. Service contracts
+ * are shaped around production scenarios (require an actor, publish events, hardcode
+ * temporary-password / force-change semantics) — correct for production, wrong for
+ * fixtures. Tests that need to assert on a production code path drive that path
+ * through MockMvc directly in the test class; this factory only produces precondition
+ * state.
  */
 @Component
 public class TestTenantFactory {
