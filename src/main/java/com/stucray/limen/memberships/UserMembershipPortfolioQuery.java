@@ -24,7 +24,7 @@ public class UserMembershipPortfolioQuery {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public UserMembershipPortfolioQuery(JdbcTemplate jdbcTemplate) {
+    UserMembershipPortfolioQuery(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

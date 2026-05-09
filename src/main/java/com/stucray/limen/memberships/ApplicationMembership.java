@@ -18,7 +18,7 @@ public record ApplicationMembership(
     @MappedCollection(idColumn = "application_membership_id")
     Set<ApplicationMembershipRole> roles
 ) {
-    public ApplicationMembership withRoles(Set<Long> roleIds) {
+    ApplicationMembership withRoles(Set<Long> roleIds) {
         Set<ApplicationMembershipRole> assignments = new LinkedHashSet<>();
         for (Long roleId : roleIds) {
             assignments.add(new ApplicationMembershipRole(roleId));

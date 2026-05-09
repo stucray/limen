@@ -41,7 +41,7 @@ public class ClientMembershipService {
     private final UserRepository userRepository;
     private final RoleResolver roleResolver;
 
-    public ClientMembershipService(
+    ClientMembershipService(
         ClientMembershipRepository membershipRepository,
         ApplicationMembershipRepository applicationMembershipRepository,
         TenantClientRepository tenantClientRepository,
@@ -55,19 +55,19 @@ public class ClientMembershipService {
         this.roleResolver = roleResolver;
     }
 
-    public List<ClientMembership> listMemberships(String registeredClientId, Long applicationId, Long tenantId) {
+    List<ClientMembership> listMemberships(String registeredClientId, Long applicationId, Long tenantId) {
         TenantClient client = requireClient(registeredClientId, applicationId, tenantId);
         return membershipRepository.findAllByClientMetadataId(client.id());
     }
 
-    public ClientMembership getMembership(Long membershipId, String registeredClientId, Long applicationId, Long tenantId) {
+    ClientMembership getMembership(Long membershipId, String registeredClientId, Long applicationId, Long tenantId) {
         TenantClient client = requireClient(registeredClientId, applicationId, tenantId);
         return membershipRepository.findByIdAndClientMetadataId(membershipId, client.id())
             .orElseThrow(() -> new IllegalArgumentException("Client membership not found"));
     }
 
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
-    public ClientMembership grant(
+    ClientMembership grant(
         String registeredClientId, Long applicationId, Long tenantId,
         Long userId, Long grantedByUserId
     ) {
@@ -91,7 +91,7 @@ public class ClientMembershipService {
         ));
     }
 
-    public void updateRoles(
+    void updateRoles(
         Long membershipId, String registeredClientId, Long applicationId, Long tenantId,
         Set<Long> roleIds
     ) {
@@ -101,7 +101,7 @@ public class ClientMembershipService {
         membershipRepository.save(membership.withRoles(requested));
     }
 
-    public void revoke(Long membershipId, String registeredClientId, Long applicationId, Long tenantId) {
+    void revoke(Long membershipId, String registeredClientId, Long applicationId, Long tenantId) {
         ClientMembership membership = getMembership(membershipId, registeredClientId, applicationId, tenantId);
         membershipRepository.delete(membership);
     }
@@ -111,7 +111,7 @@ public class ClientMembershipService {
      * Client's parent App but do not yet have a Client Membership for this
      * specific Client. Drives the "Add Client Member" form's user picker.
      */
-    public List<User> listGrantableUsers(String registeredClientId, Long applicationId, Long tenantId) {
+    List<User> listGrantableUsers(String registeredClientId, Long applicationId, Long tenantId) {
         TenantClient client = requireClient(registeredClientId, applicationId, tenantId);
         List<ApplicationMembership> appMembers = applicationMembershipRepository.findAllByApplicationId(applicationId);
         List<User> grantable = new ArrayList<>();

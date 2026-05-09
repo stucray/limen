@@ -19,7 +19,7 @@ public record ClientMembership(
     @MappedCollection(idColumn = "client_membership_id")
     Set<ClientMembershipRole> roles
 ) {
-    public ClientMembership withRoles(Set<Long> roleIds) {
+    ClientMembership withRoles(Set<Long> roleIds) {
         Set<ClientMembershipRole> assignments = new LinkedHashSet<>();
         for (Long roleId : roleIds) {
             assignments.add(new ClientMembershipRole(roleId));
