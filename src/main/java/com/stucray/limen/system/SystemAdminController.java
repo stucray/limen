@@ -26,7 +26,7 @@ class SystemAdminController {
     private final TenantProvisioningService tenantProvisioningService;
     private final TenantProvisioner tenantProvisioner;
 
-    public SystemAdminController(
+    SystemAdminController(
         TenantRepository tenantRepository,
         TenantProvisioningService tenantProvisioningService,
         TenantProvisioner tenantProvisioner
@@ -37,13 +37,13 @@ class SystemAdminController {
     }
 
     @GetMapping("/tenants")
-    public String listTenants(Model model) {
+    String listTenants(Model model) {
         model.addAttribute("tenants", tenantRepository.findAll());
         return "manage/system/tenants";
     }
 
     @GetMapping("/tenants/new")
-    public String newTenantForm(Model model) {
+    String newTenantForm(Model model) {
         if (!model.containsAttribute("form")) {
             model.addAttribute("form", new TenantCreateForm("", "", ""));
         }
@@ -51,7 +51,7 @@ class SystemAdminController {
     }
 
     @PostMapping("/tenants/new")
-    public String createTenant(
+    String createTenant(
         @RequestParam String slug,
         @RequestParam String displayName,
         @RequestParam String ownerEmail,
@@ -77,7 +77,7 @@ class SystemAdminController {
     }
 
     @PostMapping("/tenants/{tenantId}/suspend")
-    public String suspendTenant(
+    String suspendTenant(
         @PathVariable Long tenantId,
         @AuthenticationPrincipal TenantUserDetails principal,
         RedirectAttributes redirectAttributes
@@ -93,7 +93,7 @@ class SystemAdminController {
     }
 
     @PostMapping("/tenants/{tenantId}/unsuspend")
-    public String unsuspendTenant(
+    String unsuspendTenant(
         @PathVariable Long tenantId,
         @AuthenticationPrincipal TenantUserDetails principal
     ) {
@@ -104,7 +104,7 @@ class SystemAdminController {
     }
 
     @PostMapping("/tenants/{tenantId}/delete")
-    public String deleteTenant(
+    String deleteTenant(
         @PathVariable Long tenantId,
         @AuthenticationPrincipal TenantUserDetails principal,
         RedirectAttributes redirectAttributes

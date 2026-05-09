@@ -28,7 +28,7 @@ class SmtpEmailSender implements EmailSender {
 
     private final JavaMailSender mailSender;
 
-    public SmtpEmailSender(JavaMailSender mailSender) {
+    SmtpEmailSender(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
 

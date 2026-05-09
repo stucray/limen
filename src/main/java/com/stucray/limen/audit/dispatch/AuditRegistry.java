@@ -208,7 +208,7 @@ public class AuditRegistry {
 
     private final Map<CacheKey, Optional<AuditRule<?>>> resolutionCache = new ConcurrentHashMap<>();
 
-    public AuditRegistry() {
+    AuditRegistry() {
         // Same event class registered twice would silently double-write. Catch
         // it at startup, where it's a one-line fix in this file.
         Map<Class<?>, AuditRule<?>> seen = new HashMap<>();
@@ -227,7 +227,7 @@ public class AuditRegistry {
      * registered event class is a superclass of {@code eventClass} matches.
      * Results are cached per (class, binding) pair.
      */
-    public @Nullable AuditRule<?> findRule(Class<?> eventClass, AuditBinding binding) {
+    @Nullable AuditRule<?> findRule(Class<?> eventClass, AuditBinding binding) {
         return resolutionCache
             .computeIfAbsent(new CacheKey(eventClass, binding), this::resolve)
             .orElse(null);
@@ -249,7 +249,7 @@ public class AuditRegistry {
         return Optional.ofNullable(exact != null ? exact : assignable);
     }
 
-    public List<AuditRule<?>> rules() {
+    List<AuditRule<?>> rules() {
         return rules;
     }
 

@@ -30,7 +30,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 class SigningKeyRotationConfig {
 
     @Bean
-    public LockProvider lockProvider(JdbcTemplate jdbcTemplate) {
+    LockProvider lockProvider(JdbcTemplate jdbcTemplate) {
         return new JdbcTemplateLockProvider(JdbcTemplateLockProvider.Configuration.builder()
             .withJdbcTemplate(jdbcTemplate)
             .usingDbTime()

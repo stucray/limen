@@ -14,7 +14,7 @@ public record SecurityProperties(@NotBlank String kek) {
     private static final int KEK_BYTES = 32;
 
     @AssertTrue(message = "limen.security.kek must be base64 decoding to exactly 32 bytes (256 bits)")
-    public boolean isKekValid() {
+    boolean isKekValid() {
         if (kek == null || kek.isBlank()) return true;
         try {
             return Base64.getDecoder().decode(kek).length == KEK_BYTES;

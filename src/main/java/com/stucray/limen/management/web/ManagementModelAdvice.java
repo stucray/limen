@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 class ManagementModelAdvice {
 
     @ModelAttribute("currentEmail")
-    public @Nullable String currentEmail(@AuthenticationPrincipal @Nullable TenantUserDetails principal) {
+    @Nullable String currentEmail(@AuthenticationPrincipal @Nullable TenantUserDetails principal) {
         return principal == null ? null : principal.displayEmail();
     }
 }

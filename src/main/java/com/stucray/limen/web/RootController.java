@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 class RootController {
 
     @GetMapping("/")
-    public String landing() {
+    String landing() {
         return "landing";
     }
 }
