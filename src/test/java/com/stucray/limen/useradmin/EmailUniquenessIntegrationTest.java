@@ -1,10 +1,11 @@
-package com.stucray.limen.user;
+package com.stucray.limen.useradmin;
 
 import com.stucray.limen.TestcontainersConfiguration;
-import com.stucray.limen.useradmin.UserAdministrationService;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.provisioning.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
+import com.stucray.limen.user.User;
+import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
