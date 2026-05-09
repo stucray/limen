@@ -20,7 +20,7 @@ public class ClientMembershipQuery {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public ClientMembershipQuery(JdbcTemplate jdbcTemplate) {
+    ClientMembershipQuery(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

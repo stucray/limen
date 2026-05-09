@@ -30,7 +30,7 @@ public class ApplicationMembershipService {
     private final UserRepository userRepository;
     private final RoleResolver roleResolver;
 
-    public ApplicationMembershipService(
+    ApplicationMembershipService(
         ApplicationMembershipRepository membershipRepository,
         ApplicationLookup applicationLookup,
         UserRepository userRepository,
@@ -42,19 +42,19 @@ public class ApplicationMembershipService {
         this.roleResolver = roleResolver;
     }
 
-    public List<ApplicationMembership> listMemberships(Long applicationId, Long tenantId) {
+    List<ApplicationMembership> listMemberships(Long applicationId, Long tenantId) {
         applicationLookup.require(applicationId, tenantId);
         return membershipRepository.findAllByApplicationId(applicationId);
     }
 
-    public ApplicationMembership getMembership(Long membershipId, Long applicationId, Long tenantId) {
+    ApplicationMembership getMembership(Long membershipId, Long applicationId, Long tenantId) {
         applicationLookup.require(applicationId, tenantId);
         return membershipRepository.findByIdAndApplicationId(membershipId, applicationId)
             .orElseThrow(() -> new IllegalArgumentException("Membership not found"));
     }
 
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
-    public ApplicationMembership grant(Long applicationId, Long tenantId, Long userId, Long grantedByUserId) {
+    ApplicationMembership grant(Long applicationId, Long tenantId, Long userId, Long grantedByUserId) {
         Application app = applicationLookup.require(applicationId, tenantId);
         User user = userRepository.findByIdAndTenantId(userId, tenantId)
             .orElseThrow(() -> new IllegalArgumentException("User not found in this tenant"));
@@ -72,14 +72,14 @@ public class ApplicationMembershipService {
         ));
     }
 
-    public void updateRoles(Long membershipId, Long applicationId, Long tenantId, Set<Long> roleIds) {
+    void updateRoles(Long membershipId, Long applicationId, Long tenantId, Set<Long> roleIds) {
         ApplicationMembership membership = getMembership(membershipId, applicationId, tenantId);
         Set<Long> requested = roleIds == null ? Set.of() : new LinkedHashSet<>(roleIds);
         roleResolver.requireRolesInApplication(applicationId, requested);
         membershipRepository.save(membership.withRoles(requested));
     }
 
-    public void revoke(Long membershipId, Long applicationId, Long tenantId) {
+    void revoke(Long membershipId, Long applicationId, Long tenantId) {
         ApplicationMembership membership = getMembership(membershipId, applicationId, tenantId);
         membershipRepository.delete(membership);
     }
@@ -88,7 +88,7 @@ public class ApplicationMembershipService {
      * Users in the tenant who do not yet have a Membership for this Application.
      * Used to populate the "Add member" form's user picker.
      */
-    public List<User> listGrantableUsers(Long applicationId, Long tenantId) {
+    List<User> listGrantableUsers(Long applicationId, Long tenantId) {
         applicationLookup.require(applicationId, tenantId);
         List<User> all = userRepository.findAllByTenantId(tenantId);
         List<User> grantable = new java.util.ArrayList<>();
