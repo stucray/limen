@@ -28,7 +28,7 @@ public class ClientManagementService {
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
 
-    public ClientManagementService(
+    ClientManagementService(
         RegisteredClientRepository registeredClientRepository,
         TenantClientRepository tenantClientRepository,
         PasswordEncoder passwordEncoder,
@@ -40,7 +40,7 @@ public class ClientManagementService {
         this.eventPublisher = eventPublisher;
     }
 
-    public List<TenantClient> listClients(Long applicationId, Long tenantId) {
+    List<TenantClient> listClients(Long applicationId, Long tenantId) {
         return tenantClientRepository.findAllByApplicationIdAndTenantId(applicationId, tenantId);
     }
 
@@ -108,7 +108,7 @@ public class ClientManagementService {
             .orElseThrow(() -> new IllegalArgumentException("Client not found"));
     }
 
-    public ClientWithSettings getClientWithSettings(String registeredClientId, Long tenantId) {
+    ClientWithSettings getClientWithSettings(String registeredClientId, Long tenantId) {
         TenantClient tc = getClient(registeredClientId, tenantId);
         RegisteredClient rc = registeredClientRepository.findById(registeredClientId);
         if (rc == null) throw new IllegalArgumentException("Client not found");
@@ -122,7 +122,7 @@ public class ClientManagementService {
         );
     }
 
-    public void updateClientSettings(
+    void updateClientSettings(
         String registeredClientId, Long tenantId,
         long accessTokenTtlMinutes,
         long refreshTokenTtlDays,
