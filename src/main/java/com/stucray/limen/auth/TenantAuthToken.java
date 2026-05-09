@@ -18,7 +18,7 @@ public final class TenantAuthToken extends UsernamePasswordAuthenticationToken {
     }
 
     /** Authenticated — returned by the AuthenticationProvider after successful verification. */
-    public TenantAuthToken(String tenantSlug, TenantUserDetails principal, Collection<? extends GrantedAuthority> authorities) {
+    TenantAuthToken(String tenantSlug, TenantUserDetails principal, Collection<? extends GrantedAuthority> authorities) {
         super(principal, null, authorities);
         this.tenantSlug = tenantSlug;
     }

@@ -26,7 +26,7 @@ public class TenantUserDetailsService implements UserDetailsService {
     private final TenantRepository tenantRepository;
     private final UserRepository userRepository;
 
-    public TenantUserDetailsService(TenantRepository tenantRepository, UserRepository userRepository) {
+    TenantUserDetailsService(TenantRepository tenantRepository, UserRepository userRepository) {
         this.tenantRepository = tenantRepository;
         this.userRepository = userRepository;
     }
