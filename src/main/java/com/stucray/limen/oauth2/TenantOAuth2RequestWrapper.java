@@ -13,7 +13,7 @@ class TenantOAuth2RequestWrapper extends HttpServletRequestWrapper {
     private final String strippedUri;
     private final String strippedServletPath;
 
-    public TenantOAuth2RequestWrapper(HttpServletRequest request, String slug) {
+    TenantOAuth2RequestWrapper(HttpServletRequest request, String slug) {
         super(request);
         String prefix = "/t/" + slug;
         String originalUri = request.getRequestURI();

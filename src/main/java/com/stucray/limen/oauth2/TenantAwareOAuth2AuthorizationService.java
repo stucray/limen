@@ -29,7 +29,7 @@ public class TenantAwareOAuth2AuthorizationService implements OAuth2Authorizatio
     private final JdbcTemplate jdbcTemplate;
     private final JdbcOAuth2AuthorizationService.JsonMapperOAuth2AuthorizationRowMapper rowMapper;
 
-    public TenantAwareOAuth2AuthorizationService(
+    TenantAwareOAuth2AuthorizationService(
         OAuth2AuthorizationService delegate,
         JdbcTemplate jdbcTemplate,
         RegisteredClientRepository registeredClientRepository,
