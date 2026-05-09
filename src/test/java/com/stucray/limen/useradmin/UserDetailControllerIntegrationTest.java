@@ -1,12 +1,10 @@
 package com.stucray.limen.useradmin;
 
-import com.stucray.limen.clients.CreateClientCommand;
-
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.applications.Application;
 import com.stucray.limen.applications.ApplicationRepository;
-import com.stucray.limen.clients.ClientManagementService;
 import com.stucray.limen.clients.TenantClient;
+import com.stucray.limen.clients.TenantClientRepository;
 import com.stucray.limen.memberships.ApplicationMembership;
 import com.stucray.limen.memberships.ApplicationMembershipRepository;
 import com.stucray.limen.memberships.ApplicationMembershipRole;
@@ -31,11 +29,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -59,7 +63,8 @@ class UserDetailControllerIntegrationTest {
     @Autowired RoleRepository roleRepository;
     @Autowired ApplicationMembershipRepository appMembershipRepository;
     @Autowired ClientMembershipRepository clientMembershipRepository;
-    @Autowired ClientManagementService clientManagementService;
+    @Autowired RegisteredClientRepository registeredClientRepository;
+    @Autowired TenantClientRepository tenantClientRepository;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired JdbcTemplate jdbcTemplate;
 
@@ -87,12 +92,7 @@ class UserDetailControllerIntegrationTest {
         ownerA = userRepository.save(new User(null, tenantA.id(), "owner@example.test", passwordEncoder.encode("pass"), true, false, true, true,  LocalDateTime.now()));
         aliceA = userRepository.save(new User(null, tenantA.id(), "alice@example.test", passwordEncoder.encode("pass"), true, false, false, true, LocalDateTime.now()));
         appA = applicationRepository.save(new Application(null, tenantA.id(), "Acme Web", "desc", LocalDateTime.now()));
-        clientA = clientManagementService.createClient(new CreateClientCommand(
-            appA.id(), tenantA.id(), "acme-spa",
-            Set.of(AuthorizationGrantType.AUTHORIZATION_CODE),
-            Set.of("http://localhost/callback"), Set.of(), Set.of("openid"),
-            false, true, 5, 30, false
-        )).client();
+        clientA = seedPublicClient(appA.id(), tenantA.id(), "acme-spa");
 
         MvcResult login = mockMvc.perform(post("/manage/t/user-detail-a/login")
                 .param("email", "owner@example.test").param("password", "pass").with(csrf()))
@@ -198,5 +198,25 @@ class UserDetailControllerIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(content().string(containsString("No Memberships yet")))
             .andExpect(content().string(not(containsString("Acme Web"))));
+    }
+
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
+    private TenantClient seedPublicClient(Long applicationId, Long tenantId, String name) {
+        String registeredClientId = UUID.randomUUID().toString();
+        RegisteredClient rc = RegisteredClient.withId(registeredClientId)
+            .clientId(UUID.randomUUID().toString())
+            .clientName(name)
+            .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+            .redirectUri("http://localhost/callback")
+            .scope(OidcScopes.OPENID)
+            .clientSettings(ClientSettings.builder()
+                .requireProofKey(true)
+                .requireAuthorizationConsent(true)
+                .build())
+            .build();
+        registeredClientRepository.save(rc);
+        return tenantClientRepository.save(new TenantClient(
+            null, registeredClientId, applicationId, tenantId, name, false));
     }
 }

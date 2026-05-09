@@ -59,7 +59,7 @@ public class ClientManagementService {
     ) {}
 
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
-    public ClientCreationResult createClient(CreateClientCommand cmd) {
+    ClientCreationResult createClient(CreateClientCommand cmd) {
         String rawSecret = null;
         String hashedSecret = null;
         if (cmd.confidential()) {
