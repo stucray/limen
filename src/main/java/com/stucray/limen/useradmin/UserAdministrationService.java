@@ -46,7 +46,7 @@ public class UserAdministrationService {
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
 
-    public UserAdministrationService(
+    UserAdministrationService(
         UserRepository userRepository,
         PasswordEncoder passwordEncoder,
         ApplicationEventPublisher eventPublisher
@@ -56,11 +56,11 @@ public class UserAdministrationService {
         this.eventPublisher = eventPublisher;
     }
 
-    public List<User> listUsers(Long tenantId) {
+    List<User> listUsers(Long tenantId) {
         return userRepository.findAllByTenantId(tenantId);
     }
 
-    public User getUser(Long userId, Long tenantId) {
+    User getUser(Long userId, Long tenantId) {
         return userRepository.findById(userId)
             .filter(u -> u.tenantId().equals(tenantId))
             .orElseThrow(() -> new UserAdminException.UserNotInTenant("lookup"));
@@ -81,7 +81,7 @@ public class UserAdministrationService {
     }
 
     @Transactional
-    public void enable(Long userId, Long tenantId, Long actorUserId) {
+    void enable(Long userId, Long tenantId, Long actorUserId) {
         User user = getUser(userId, tenantId);
         if (user.enabled()) return; // idempotent
         userRepository.save(user.withEnabled(true));
@@ -89,7 +89,7 @@ public class UserAdministrationService {
     }
 
     @Transactional
-    public void disable(Long userId, Long tenantId, Long actorUserId) {
+    void disable(Long userId, Long tenantId, Long actorUserId) {
         User user = getUser(userId, tenantId);
         if (Objects.equals(actorUserId, userId)) {
             throw new UserAdminException.CannotTargetSelf("disable",
@@ -105,7 +105,7 @@ public class UserAdministrationService {
     }
 
     @Transactional
-    public void deleteUser(Long userId, Long tenantId, Long actorUserId) {
+    void deleteUser(Long userId, Long tenantId, Long actorUserId) {
         User user = getUser(userId, tenantId);
         if (Objects.equals(actorUserId, userId)) {
             throw new UserAdminException.CannotTargetSelf("delete",
@@ -120,7 +120,7 @@ public class UserAdministrationService {
     }
 
     @Transactional
-    public void grantTenantOwnership(Long userId, Long tenantId, Long actorUserId) {
+    void grantTenantOwnership(Long userId, Long tenantId, Long actorUserId) {
         User user = getUser(userId, tenantId);
         if (!user.enabled()) {
             throw new UserAdminException.TargetNotEligible("grantOwner",
@@ -136,7 +136,7 @@ public class UserAdministrationService {
     }
 
     @Transactional
-    public void revokeTenantOwnership(Long userId, Long tenantId, Long actorUserId) {
+    void revokeTenantOwnership(Long userId, Long tenantId, Long actorUserId) {
         User user = getUser(userId, tenantId);
         if (Objects.equals(actorUserId, userId)) {
             throw new UserAdminException.CannotTargetSelf("revokeOwner",
@@ -176,7 +176,7 @@ public class UserAdministrationService {
     }
 
     @Transactional
-    public void unlockAccount(Long userId, Long tenantId, Long actorUserId) {
+    void unlockAccount(Long userId, Long tenantId, Long actorUserId) {
         User user = getUser(userId, tenantId);
         if (user.lockedUntil() == null && user.failedLoginAttempts() == 0) return; // idempotent
         userRepository.save(user.withFailedLoginAttempts(0).withLockedUntil(null));
