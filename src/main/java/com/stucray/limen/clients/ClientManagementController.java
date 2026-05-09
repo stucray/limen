@@ -22,7 +22,7 @@ class ClientManagementController {
     private final ClientManagementService clientManagementService;
     private final ApplicationService applicationService;
 
-    public ClientManagementController(
+    ClientManagementController(
         ClientManagementService clientManagementService,
         ApplicationService applicationService
     ) {
@@ -31,7 +31,7 @@ class ClientManagementController {
     }
 
     @GetMapping
-    public String list(
+    String list(
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -44,7 +44,7 @@ class ClientManagementController {
     }
 
     @GetMapping("/new")
-    public String newClientForm(
+    String newClientForm(
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -56,7 +56,7 @@ class ClientManagementController {
     }
 
     @PostMapping
-    public String createClient(
+    String createClient(
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -93,7 +93,7 @@ class ClientManagementController {
     }
 
     @GetMapping("/{registeredClientId}/edit")
-    public String editClientForm(
+    String editClientForm(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable String registeredClientId,
@@ -107,7 +107,7 @@ class ClientManagementController {
     }
 
     @PostMapping("/{registeredClientId}/edit")
-    public String updateClient(
+    String updateClient(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable String registeredClientId,
@@ -125,7 +125,7 @@ class ClientManagementController {
     }
 
     @PostMapping("/{registeredClientId}/delete")
-    public String deleteClient(
+    String deleteClient(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable String registeredClientId,
@@ -136,7 +136,7 @@ class ClientManagementController {
     }
 
     @PostMapping("/{registeredClientId}/rotate-secret")
-    public String rotateSecret(
+    String rotateSecret(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable String registeredClientId,
