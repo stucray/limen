@@ -27,12 +27,12 @@ public record TenantUrlScheme(
     String changePasswordUrlTemplate
 ) {
     /** Matcher for the login form submission. */
-    public RequestMatcher loginMatcher() {
+    RequestMatcher loginMatcher() {
         return PathPatternRequestMatcher.withDefaults().matcher(loginMethod, loginPathPattern);
     }
 
     /** Extract the slug from a request URI, or {@code null} if the URI does not match this scheme. */
-    public @Nullable String slugFrom(@Nullable HttpServletRequest request) {
+    @Nullable String slugFrom(@Nullable HttpServletRequest request) {
         return request == null ? null : slugFrom(request.getRequestURI());
     }
 
@@ -46,11 +46,11 @@ public record TenantUrlScheme(
         return render(loginUrlTemplate, slug);
     }
 
-    public String homeUrl(String slug) {
+    String homeUrl(String slug) {
         return render(homeUrlTemplate, slug);
     }
 
-    public String changePasswordUrl(String slug) {
+    String changePasswordUrl(String slug) {
         return render(changePasswordUrlTemplate, slug);
     }
 

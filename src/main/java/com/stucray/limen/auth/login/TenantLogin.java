@@ -46,7 +46,7 @@ public final class TenantLogin {
     private final List<TenantUrlScheme> allSchemes;
     private final boolean rememberMeEnabled;
 
-    public TenantLogin(
+    TenantLogin(
         AuthenticationManager authenticationManager,
         TenantPersistentTokenBasedRememberMeServices rememberMeServices,
         String rememberMeKey,
@@ -85,21 +85,21 @@ public final class TenantLogin {
         }
     }
 
-    public TenantLogin withIntents(List<PostLoginIntent> newIntents) {
+    TenantLogin withIntents(List<PostLoginIntent> newIntents) {
         return new TenantLogin(authenticationManager, rememberMeServices, rememberMeKey,
             newIntents, allSchemes, rememberMeEnabled);
     }
 
-    public TenantLogin withRememberMe(boolean enabled) {
+    TenantLogin withRememberMe(boolean enabled) {
         return new TenantLogin(authenticationManager, rememberMeServices, rememberMeKey,
             intents, allSchemes, enabled);
     }
 
-    public List<PostLoginIntent> intents() {
+    List<PostLoginIntent> intents() {
         return intents;
     }
 
-    public boolean rememberMeEnabled() {
+    boolean rememberMeEnabled() {
         return rememberMeEnabled;
     }
 
@@ -113,7 +113,7 @@ public final class TenantLogin {
     }
 
     /** Build the form-login filter for {@code scheme}. */
-    public AbstractAuthenticationProcessingFilter filter(TenantUrlScheme scheme) {
+    AbstractAuthenticationProcessingFilter filter(TenantUrlScheme scheme) {
         TenantLoginFilter filter = new TenantLoginFilter(scheme, authenticationManager);
         filter.setSecurityContextRepository(new HttpSessionSecurityContextRepository());
         if (rememberMeEnabled) {
