@@ -47,7 +47,7 @@ public class TenantAwareOAuth2AuthorizationConsentService implements OAuth2Autho
     private final JdbcTemplate jdbcTemplate;
     private final JdbcOAuth2AuthorizationConsentService.OAuth2AuthorizationConsentRowMapper rowMapper;
 
-    public TenantAwareOAuth2AuthorizationConsentService(
+    TenantAwareOAuth2AuthorizationConsentService(
         JdbcTemplate jdbcTemplate,
         RegisteredClientRepository registeredClientRepository
     ) {

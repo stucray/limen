@@ -44,7 +44,7 @@ public class TenantJwkSource implements JWKSource<SecurityContext> {
     private final TenantRepository tenantRepository;
     private final SigningKeyStore signingKeyStore;
 
-    public TenantJwkSource(TenantRepository tenantRepository, SigningKeyStore signingKeyStore) {
+    TenantJwkSource(TenantRepository tenantRepository, SigningKeyStore signingKeyStore) {
         this.tenantRepository = tenantRepository;
         this.signingKeyStore = signingKeyStore;
     }

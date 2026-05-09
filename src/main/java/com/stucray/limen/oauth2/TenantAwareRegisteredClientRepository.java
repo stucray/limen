@@ -15,7 +15,7 @@ public class TenantAwareRegisteredClientRepository implements RegisteredClientRe
     private final RegisteredClientRepository delegate;
     private final TenantClientRepository tenantClientRepository;
 
-    public TenantAwareRegisteredClientRepository(
+    TenantAwareRegisteredClientRepository(
         RegisteredClientRepository delegate,
         TenantClientRepository tenantClientRepository
     ) {

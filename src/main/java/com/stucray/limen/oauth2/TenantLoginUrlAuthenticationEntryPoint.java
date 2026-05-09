@@ -26,13 +26,13 @@ public class TenantLoginUrlAuthenticationEntryPoint extends LoginUrlAuthenticati
 
     private final Function<HttpServletRequest, @Nullable String> slugResolver;
 
-    public TenantLoginUrlAuthenticationEntryPoint(Function<HttpServletRequest, @Nullable String> slugResolver) {
+    TenantLoginUrlAuthenticationEntryPoint(Function<HttpServletRequest, @Nullable String> slugResolver) {
         super("/manage/t/system/login");
         this.slugResolver = slugResolver;
     }
 
     /** Resolves the slug from the un-stripped request URL (e.g. for the OAuth2-login chain). */
-    public static TenantLoginUrlAuthenticationEntryPoint fromUrl() {
+    static TenantLoginUrlAuthenticationEntryPoint fromUrl() {
         return new TenantLoginUrlAuthenticationEntryPoint(req -> {
             Matcher m = SLUG_PATTERN.matcher(req.getRequestURI());
             return m.matches() ? m.group(1) : null;
@@ -40,7 +40,7 @@ public class TenantLoginUrlAuthenticationEntryPoint extends LoginUrlAuthenticati
     }
 
     /** Resolves the slug from the routing filter's TenantScope binding (e.g. for the SAS chain). */
-    public static TenantLoginUrlAuthenticationEntryPoint fromTenantScope() {
+    static TenantLoginUrlAuthenticationEntryPoint fromTenantScope() {
         return new TenantLoginUrlAuthenticationEntryPoint(req -> TenantScope.slug());
     }
 
