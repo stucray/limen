@@ -29,7 +29,7 @@ public class ForgotPasswordController {
     private final TenantRepository tenantRepository;
     private final OttDispatcher ottDispatcher;
 
-    public ForgotPasswordController(
+    ForgotPasswordController(
         TenantRepository tenantRepository,
         OttDispatcher ottDispatcher
     ) {
@@ -38,7 +38,7 @@ public class ForgotPasswordController {
     }
 
     @GetMapping("/t/{slug}/forgot-password")
-    public String form(
+    String form(
         @PathVariable String slug,
         @RequestParam(required = false) String email,
         Model model
@@ -54,7 +54,7 @@ public class ForgotPasswordController {
     }
 
     @PostMapping("/t/{slug}/forgot-password")
-    public String submit(
+    String submit(
         @PathVariable String slug,
         @RequestParam String email
     ) {

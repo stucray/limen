@@ -29,7 +29,7 @@ public class ResendVerificationController {
     private final TenantRepository tenantRepository;
     private final OttDispatcher ottDispatcher;
 
-    public ResendVerificationController(
+    ResendVerificationController(
         TenantRepository tenantRepository,
         OttDispatcher ottDispatcher
     ) {
@@ -38,7 +38,7 @@ public class ResendVerificationController {
     }
 
     @GetMapping("/t/{slug}/resend-verification")
-    public String form(
+    String form(
         @PathVariable String slug,
         @RequestParam(required = false) String email,
         Model model
@@ -52,7 +52,7 @@ public class ResendVerificationController {
     }
 
     @PostMapping("/t/{slug}/resend-verification")
-    public String submit(
+    String submit(
         @PathVariable String slug,
         @RequestParam String email
     ) {
