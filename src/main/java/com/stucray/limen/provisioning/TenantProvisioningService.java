@@ -46,7 +46,7 @@ public class TenantProvisioningService {
     private final SigningKeyStore signingKeyStore;
     private final ApplicationEventPublisher eventPublisher;
 
-    public TenantProvisioningService(
+    TenantProvisioningService(
         TenantRepository tenantRepository,
         SigningKeyStore signingKeyStore,
         ApplicationEventPublisher eventPublisher
@@ -87,7 +87,7 @@ public class TenantProvisioningService {
             new TenantDeletedEvent(tenant.id(), tenant.slug(), actorUserId));
     }
 
-    public void deleteTenant(long id) {
+    void deleteTenant(long id) {
         tenantRepository.deleteById(id);
     }
 
