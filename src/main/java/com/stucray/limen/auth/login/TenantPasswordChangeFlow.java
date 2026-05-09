@@ -45,7 +45,7 @@ import java.util.Objects;
  * surface.
  */
 @Component
-public class TenantPasswordChangeFlow {
+class TenantPasswordChangeFlow {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;

@@ -24,7 +24,7 @@ import java.nio.charset.StandardCharsets;
  * the form is not a user-existence oracle (PRD #120 user story 14).
  */
 @Controller
-public class ForgotPasswordController {
+class ForgotPasswordController {
 
     private final TenantRepository tenantRepository;
     private final OttDispatcher ottDispatcher;
