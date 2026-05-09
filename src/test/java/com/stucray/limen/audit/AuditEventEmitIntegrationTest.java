@@ -1,11 +1,11 @@
 package com.stucray.limen.audit;
 
-import com.stucray.limen.clients.CreateClientCommand;
-
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.applications.Application;
 import com.stucray.limen.applications.ApplicationRepository;
 import com.stucray.limen.clients.ClientManagementService;
+import com.stucray.limen.clients.TenantClient;
+import com.stucray.limen.clients.TenantClientRepository;
 import com.stucray.limen.useradmin.UserAdministrationService;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.provisioning.TenantProvisioningService;
@@ -14,6 +14,11 @@ import com.stucray.limen.tenant.TenantStatus;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,7 +31,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -55,6 +59,8 @@ class AuditEventEmitIntegrationTest {
     @Autowired UserRepository userRepository;
     @Autowired ClientManagementService clientManagementService;
     @Autowired ApplicationRepository applicationRepository;
+    @Autowired RegisteredClientRepository registeredClientRepository;
+    @Autowired TenantClientRepository tenantClientRepository;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired JdbcTemplate jdbcTemplate;
 
@@ -132,13 +138,7 @@ class AuditEventEmitIntegrationTest {
         long actor = seedSystemAdminId();
         Application app = applicationRepository.save(
             new Application(null, tenant.id(), "App " + uniqueSlug(), null, LocalDateTime.now()));
-        String registeredClientId = clientManagementService.createClient(new CreateClientCommand(
-            app.id(), tenant.id(), "Client",
-            Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
-            Set.of(), Set.of(), Set.of("openid"),
-            false, true,
-            5, 30, false
-        )).client().registeredClientId();
+        String registeredClientId = seedConfidentialClient(app.id(), tenant.id(), "Client");
 
         clientManagementService.rotateSecret(registeredClientId, tenant.id(), actor);
 
@@ -220,6 +220,28 @@ class AuditEventEmitIntegrationTest {
             null, system.id(), email, passwordEncoder.encode("pw"),
             true, false, false, true, LocalDateTime.now()));
         return admin.id();
+    }
+
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
+    private String seedConfidentialClient(Long applicationId, Long tenantId, String name) {
+        String registeredClientId = UUID.randomUUID().toString();
+        String rawSecret = UUID.randomUUID().toString();
+        RegisteredClient rc = RegisteredClient.withId(registeredClientId)
+            .clientId(UUID.randomUUID().toString())
+            .clientName(name)
+            .clientSecret(passwordEncoder.encode(rawSecret))
+            .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+            .scope(OidcScopes.OPENID)
+            .clientSettings(ClientSettings.builder()
+                .requireProofKey(false)
+                .requireAuthorizationConsent(true)
+                .build())
+            .build();
+        registeredClientRepository.save(rc);
+        tenantClientRepository.save(new TenantClient(
+            null, registeredClientId, applicationId, tenantId, name, true));
+        return registeredClientId;
     }
 
     private @org.jspecify.annotations.Nullable Map<String, Object> latestEventForTenant(Long tenantId) {

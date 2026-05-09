@@ -1,7 +1,5 @@
 package com.stucray.limen.memberships;
 
-import com.stucray.limen.clients.CreateClientCommand;
-
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.applications.Application;
 import com.stucray.limen.applications.ApplicationRepository;
@@ -24,9 +22,15 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,6 +46,7 @@ class ClientMembershipServiceIntegrationTest {
     @Autowired ApplicationMembershipRepository applicationMembershipRepository;
     @Autowired ApplicationRepository applicationRepository;
     @Autowired ClientManagementService clientManagementService;
+    @Autowired RegisteredClientRepository registeredClientRepository;
     @Autowired TenantClientRepository tenantClientRepository;
     @Autowired RoleRepository roleRepository;
     @Autowired TenantRepository tenantRepository;
@@ -87,14 +92,24 @@ class ClientMembershipServiceIntegrationTest {
         clientB  = createClient(appB.id(),  tenantB.id(), "client-b");
     }
 
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     private TenantClient createClient(Long applicationId, Long tenantId, String name) {
-        ClientManagementService.ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
-            applicationId, tenantId, name,
-            Set.of(AuthorizationGrantType.AUTHORIZATION_CODE),
-            Set.of("http://localhost/callback"), Set.of(), Set.of("openid"),
-            false, true, 5, 30, false
-        ));
-        return result.client();
+        String registeredClientId = UUID.randomUUID().toString();
+        RegisteredClient rc = RegisteredClient.withId(registeredClientId)
+            .clientId(UUID.randomUUID().toString())
+            .clientName(name)
+            .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+            .redirectUri("http://localhost/callback")
+            .scope(OidcScopes.OPENID)
+            .clientSettings(ClientSettings.builder()
+                .requireProofKey(true)
+                .requireAuthorizationConsent(true)
+                .build())
+            .build();
+        registeredClientRepository.save(rc);
+        return tenantClientRepository.save(new TenantClient(
+            null, registeredClientId, applicationId, tenantId, name, false));
     }
 
     @Test

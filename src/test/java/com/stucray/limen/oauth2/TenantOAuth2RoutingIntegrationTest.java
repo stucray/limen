@@ -1,7 +1,5 @@
 package com.stucray.limen.oauth2;
 
-import com.stucray.limen.clients.CreateClientCommand;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWK;
@@ -12,8 +10,6 @@ import com.nimbusds.jwt.SignedJWT;
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.applications.Application;
 import com.stucray.limen.applications.ApplicationRepository;
-import com.stucray.limen.clients.ClientManagementService;
-import com.stucray.limen.clients.ClientManagementService.ClientCreationResult;
 import com.stucray.limen.clients.TenantClient;
 import com.stucray.limen.clients.TenantClientRepository;
 import com.stucray.limen.memberships.ApplicationMembershipService;
@@ -73,7 +69,6 @@ class TenantOAuth2RoutingIntegrationTest {
     @Autowired TenantRepository tenantRepository;
     @Autowired TenantProvisioningService tenantProvisioningService;
     @Autowired ApplicationRepository applicationRepository;
-    @Autowired ClientManagementService clientManagementService;
     @Autowired RegisteredClientRepository registeredClientRepository;
     @Autowired TenantClientRepository tenantClientRepository;
     @Autowired UserRepository userRepository;
@@ -147,13 +142,7 @@ class TenantOAuth2RoutingIntegrationTest {
     @Test
     @DisplayName("client_credentials token flow at /t/{slug}/oauth2/token succeeds for a client created under that tenant")
     void clientCredentialsTokenFlowSucceedsForTenantClient() throws Exception {
-        ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
-            alphaApp.id(), alphaCorpTenant.id(),
-            "m2m-client",
-            Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
-            Set.of(), Set.of(), Set.of("read"),
-            false, true, 5, 30, false
-        ));
+        SeededConfidentialClient result = seedConfidentialClient(alphaApp.id(), alphaCorpTenant.id(), "m2m-client");
 
         String clientId = result.client().registeredClientId();
         String rawSecret = result.rawSecret();
@@ -180,13 +169,7 @@ class TenantOAuth2RoutingIntegrationTest {
     @DisplayName("A client registered under tenant alpha cannot exchange credentials at tenant beta's /oauth2/token — the request is rejected as 401")
     void crossTenantClientRejected() throws Exception {
         // Register a client under alpha-corp
-        ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
-            alphaApp.id(), alphaCorpTenant.id(),
-            "alpha-m2m",
-            Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
-            Set.of(), Set.of(), Set.of("read"),
-            false, true, 5, 30, false
-        ));
+        SeededConfidentialClient result = seedConfidentialClient(alphaApp.id(), alphaCorpTenant.id(), "alpha-m2m");
 
         String clientId = result.client().registeredClientId();
         String rawSecret = result.rawSecret();
@@ -207,13 +190,7 @@ class TenantOAuth2RoutingIntegrationTest {
     @Test
     @DisplayName("client_credentials access token carries tenant + iss claims and an empty roles array")
     void clientCredentialsTokenIncludesTenantAndRolesClaims() throws Exception {
-        ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
-            alphaApp.id(), alphaCorpTenant.id(),
-            "claims-m2m",
-            Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
-            Set.of(), Set.of(), Set.of("read"),
-            false, true, 5, 30, false
-        ));
+        SeededConfidentialClient result = seedConfidentialClient(alphaApp.id(), alphaCorpTenant.id(), "claims-m2m");
 
         String oauthClientId = jdbcTemplate.queryForObject(
             "SELECT client_id FROM oauth2_registered_client WHERE id = ?",
@@ -341,13 +318,7 @@ class TenantOAuth2RoutingIntegrationTest {
     @Test
     @DisplayName("Each tenant's JWKS endpoint serves only its own signing keys — alpha's token verifies against alpha's JWKS but not beta's")
     void tenantJwksEndpointsServeIsolatedKeys() throws Exception {
-        ClientCreationResult result = clientManagementService.createClient(new CreateClientCommand(
-            alphaApp.id(), alphaCorpTenant.id(),
-            "isolation-m2m",
-            Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
-            Set.of(), Set.of(), Set.of("read"),
-            false, true, 5, 30, false
-        ));
+        SeededConfidentialClient result = seedConfidentialClient(alphaApp.id(), alphaCorpTenant.id(), "isolation-m2m");
         String oauthClientId = jdbcTemplate.queryForObject(
             "SELECT client_id FROM oauth2_registered_client WHERE id = ?",
             String.class, result.client().registeredClientId()
@@ -473,5 +444,29 @@ class TenantOAuth2RoutingIntegrationTest {
                 .header("Authorization", "Bearer " + accessToken))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sub").isNotEmpty());
+    }
+
+    private record SeededConfidentialClient(TenantClient client, String rawSecret) {}
+
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
+    private SeededConfidentialClient seedConfidentialClient(Long applicationId, Long tenantId, String name) {
+        String registeredClientId = UUID.randomUUID().toString();
+        String rawSecret = UUID.randomUUID().toString();
+        RegisteredClient rc = RegisteredClient.withId(registeredClientId)
+            .clientId(UUID.randomUUID().toString())
+            .clientName(name)
+            .clientSecret(passwordEncoder.encode(rawSecret))
+            .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+            .scope("read")
+            .clientSettings(ClientSettings.builder()
+                .requireProofKey(false)
+                .requireAuthorizationConsent(true)
+                .build())
+            .build();
+        registeredClientRepository.save(rc);
+        TenantClient tc = tenantClientRepository.save(new TenantClient(
+            null, registeredClientId, applicationId, tenantId, name, true));
+        return new SeededConfidentialClient(tc, rawSecret);
     }
 }
