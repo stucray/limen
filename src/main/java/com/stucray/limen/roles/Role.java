@@ -13,11 +13,11 @@ public record Role(
     String description,
     LocalDateTime createdAt
 ) {
-    public Role withName(String newName) {
+    Role withName(String newName) {
         return new Role(id, applicationId, newName, description, createdAt);
     }
 
-    public Role withDescription(String newDescription) {
+    Role withDescription(String newDescription) {
         return new Role(id, applicationId, name, newDescription, createdAt);
     }
 }

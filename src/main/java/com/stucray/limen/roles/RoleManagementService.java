@@ -18,7 +18,7 @@ public class RoleManagementService {
     private final RoleRepository roleRepository;
     private final ApplicationLookup applicationLookup;
 
-    public RoleManagementService(RoleRepository roleRepository, ApplicationLookup applicationLookup) {
+    RoleManagementService(RoleRepository roleRepository, ApplicationLookup applicationLookup) {
         this.roleRepository = roleRepository;
         this.applicationLookup = applicationLookup;
     }
@@ -28,14 +28,14 @@ public class RoleManagementService {
         return roleRepository.findAllByApplicationId(applicationId);
     }
 
-    public Role getRole(Long roleId, Long applicationId, Long tenantId) {
+    Role getRole(Long roleId, Long applicationId, Long tenantId) {
         applicationLookup.require(applicationId, tenantId);
         return roleRepository.findByIdAndApplicationId(roleId, applicationId)
             .orElseThrow(() -> new IllegalArgumentException("Role not found"));
     }
 
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
-    public Role createRole(Long applicationId, Long tenantId, String name, String description) {
+    Role createRole(Long applicationId, Long tenantId, String name, String description) {
         applicationLookup.require(applicationId, tenantId);
         if (roleRepository.existsByNameAndApplicationId(name, applicationId)) {
             throw new IllegalArgumentException("A role named '" + name + "' already exists in this application");
@@ -45,7 +45,7 @@ public class RoleManagementService {
         );
     }
 
-    public void updateRole(Long roleId, Long applicationId, Long tenantId, String name, String description) {
+    void updateRole(Long roleId, Long applicationId, Long tenantId, String name, String description) {
         Role role = getRole(roleId, applicationId, tenantId);
         if (!role.name().equals(name) && roleRepository.existsByNameAndApplicationId(name, applicationId)) {
             throw new IllegalArgumentException("A role named '" + name + "' already exists in this application");
@@ -53,7 +53,7 @@ public class RoleManagementService {
         roleRepository.save(role.withName(name).withDescription(description));
     }
 
-    public void deleteRole(Long roleId, Long applicationId, Long tenantId) {
+    void deleteRole(Long roleId, Long applicationId, Long tenantId) {
         Role role = getRole(roleId, applicationId, tenantId);
         roleRepository.delete(role);
     }

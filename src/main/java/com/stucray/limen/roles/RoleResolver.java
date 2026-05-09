@@ -21,7 +21,7 @@ public class RoleResolver {
 
     private final RoleRepository roleRepository;
 
-    public RoleResolver(RoleRepository roleRepository) {
+    RoleResolver(RoleRepository roleRepository) {
         this.roleRepository = roleRepository;
     }
 
