@@ -12,12 +12,12 @@ public class ApplicationService {
     private final ApplicationRepository applicationRepository;
     private final JdbcTemplate jdbcTemplate;
 
-    public ApplicationService(ApplicationRepository applicationRepository, JdbcTemplate jdbcTemplate) {
+    ApplicationService(ApplicationRepository applicationRepository, JdbcTemplate jdbcTemplate) {
         this.applicationRepository = applicationRepository;
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public List<Application> listApplications(Long tenantId) {
+    List<Application> listApplications(Long tenantId) {
         return applicationRepository.findAllByTenantId(tenantId);
     }
 
@@ -36,12 +36,12 @@ public class ApplicationService {
         );
     }
 
-    public void updateApplication(Long appId, Long tenantId, String name, String description) {
+    void updateApplication(Long appId, Long tenantId, String name, String description) {
         Application app = getApplication(appId, tenantId);
         applicationRepository.save(app.withName(name).withDescription(description));
     }
 
-    public void deleteApplication(Long appId, Long tenantId) {
+    void deleteApplication(Long appId, Long tenantId) {
         Application app = getApplication(appId, tenantId);
         Integer clientCount = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM oauth2_registered_client WHERE application_id = ?",

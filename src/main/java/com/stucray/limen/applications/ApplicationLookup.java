@@ -16,7 +16,7 @@ public class ApplicationLookup {
 
     private final ApplicationRepository applicationRepository;
 
-    public ApplicationLookup(ApplicationRepository applicationRepository) {
+    ApplicationLookup(ApplicationRepository applicationRepository) {
         this.applicationRepository = applicationRepository;
     }
 

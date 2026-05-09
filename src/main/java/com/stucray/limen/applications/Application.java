@@ -13,11 +13,11 @@ public record Application(
     String description,
     LocalDateTime createdAt
 ) {
-    public Application withName(String newName) {
+    Application withName(String newName) {
         return new Application(id, tenantId, newName, description, createdAt);
     }
 
-    public Application withDescription(String newDescription) {
+    Application withDescription(String newDescription) {
         return new Application(id, tenantId, name, newDescription, createdAt);
     }
 }
