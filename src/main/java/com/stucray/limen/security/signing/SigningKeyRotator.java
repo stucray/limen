@@ -56,7 +56,7 @@ class SigningKeyRotator {
     private final Clock clock;
 
     @Autowired
-    public SigningKeyRotator(
+    SigningKeyRotator(
         SigningKeyStore signingKeyStore,
         ApplicationEventPublisher eventPublisher,
         SigningKeyRotationProperties properties,
@@ -81,7 +81,7 @@ class SigningKeyRotator {
     }
 
     @Transactional
-    public void rotate(long tenantId) {
+    void rotate(long tenantId) {
         SigningKeyStore.RotationOutcome outcome = signingKeyStore.rotateForTenant(tenantId);
         eventPublisher.publishEvent(new SigningKeyRotatedEvent(
             tenantId, outcome.oldKid(), outcome.newKid()));
@@ -96,7 +96,7 @@ class SigningKeyRotator {
      * this method returns successfully.
      */
     @Transactional
-    public void pruneRetired(Duration grace) {
+    void pruneRetired(Duration grace) {
         for (SigningKeyStore.PrunedKey pruned : signingKeyStore.pruneRetiredOlderThan(grace)) {
             eventPublisher.publishEvent(new SigningKeyPrunedEvent(pruned.tenantId(), pruned.kid()));
         }
@@ -112,7 +112,7 @@ class SigningKeyRotator {
      * continues for subsequent tenants. Pruning runs once at the end of the
      * batch regardless of per-tenant outcomes.
      */
-    public void runScheduledRotation() {
+    void runScheduledRotation() {
         List<Long> tenantIds = signingKeyStore.findTenantIdsWithActiveKeyOlderThan(properties.keyAge());
         log.info("Scheduled signing-key rotation: {} tenants eligible", tenantIds.size());
 

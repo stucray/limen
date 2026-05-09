@@ -28,7 +28,7 @@ class SmtpEmailSender implements EmailSender {
 
     private final JavaMailSender mailSender;
 
-    public SmtpEmailSender(JavaMailSender mailSender) {
+    SmtpEmailSender(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
 
@@ -57,7 +57,7 @@ class SmtpEmailSender implements EmailSender {
         }
     }
 
-    public static final class EmailDeliveryException extends RuntimeException {
+    static final class EmailDeliveryException extends RuntimeException {
         public EmailDeliveryException(String message, Throwable cause) {
             super(message, cause);
         }

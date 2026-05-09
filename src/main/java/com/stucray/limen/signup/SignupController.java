@@ -14,18 +14,18 @@ class SignupController {
 
     private final SignupService signupService;
 
-    public SignupController(SignupService signupService) {
+    SignupController(SignupService signupService) {
         this.signupService = signupService;
     }
 
     @GetMapping("/signup")
-    public String signupForm(Model model) {
+    String signupForm(Model model) {
         model.addAttribute("form", new SignupForm("", "", "", ""));
         return "signup";
     }
 
     @PostMapping("/signup")
-    public String signup(
+    String signup(
         @RequestParam String organizationName,
         @RequestParam String slug,
         @RequestParam String email,

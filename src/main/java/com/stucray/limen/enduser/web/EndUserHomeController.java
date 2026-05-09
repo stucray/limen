@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 class EndUserHomeController {
 
     @GetMapping("/t/{slug}/")
-    public String home(
+    String home(
         @PathVariable String slug,
         @AuthenticationPrincipal TenantUserDetails principal,
         Model model

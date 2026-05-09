@@ -25,7 +25,7 @@ class UserBootstrap implements CommandLineRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserBootstrap(
+    UserBootstrap(
         BootstrapAdminProperties adminProperties,
         TenantRepository tenantRepository,
         TenantProvisioningService tenantProvisioningService,

@@ -51,7 +51,7 @@ class AuditDispatcher {
     private final AuditEventWriter writer;
     private final AuditRegistry registry;
 
-    public AuditDispatcher(AuditEventWriter writer, AuditRegistry registry) {
+    AuditDispatcher(AuditEventWriter writer, AuditRegistry registry) {
         this.writer = writer;
         this.registry = registry;
     }
@@ -67,12 +67,12 @@ class AuditDispatcher {
      * persistence to the events the registry actually has rules for.
      */
     @ApplicationModuleListener
-    public void onAfterCommit(AuditedDomainEvent event) {
+    void onAfterCommit(AuditedDomainEvent event) {
         dispatch(event, AuditBinding.AFTER_COMMIT);
     }
 
     @EventListener
-    public void onImmediate(Object event) {
+    void onImmediate(Object event) {
         dispatch(event, AuditBinding.IMMEDIATE);
     }
 

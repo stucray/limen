@@ -37,7 +37,7 @@ class TenantOAuth2RoutingFilter extends OncePerRequestFilter {
 
     private final TenantRepository tenantRepository;
 
-    public TenantOAuth2RoutingFilter(TenantRepository tenantRepository) {
+    TenantOAuth2RoutingFilter(TenantRepository tenantRepository) {
         this.tenantRepository = tenantRepository;
     }
 

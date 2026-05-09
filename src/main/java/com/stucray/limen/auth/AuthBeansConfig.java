@@ -15,12 +15,12 @@ import java.util.List;
 class AuthBeansConfig {
 
     @Bean
-    public TenantPersistentTokenRepository tenantPersistentTokenRepository(JdbcTemplate jdbcTemplate) {
+    TenantPersistentTokenRepository tenantPersistentTokenRepository(JdbcTemplate jdbcTemplate) {
         return new TenantPersistentTokenRepository(jdbcTemplate);
     }
 
     @Bean
-    public TenantPersistentTokenBasedRememberMeServices tenantPersistentTokenBasedRememberMeServices(
+    TenantPersistentTokenBasedRememberMeServices tenantPersistentTokenBasedRememberMeServices(
         TenantUserDetailsService tenantUserDetailsService,
         TenantPersistentTokenRepository tenantPersistentTokenRepository,
         TenantRepository tenantRepository,

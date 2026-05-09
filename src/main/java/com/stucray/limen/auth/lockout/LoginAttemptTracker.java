@@ -56,7 +56,7 @@ class LoginAttemptTracker {
     private final Clock clock;
 
     @Autowired
-    public LoginAttemptTracker(
+    LoginAttemptTracker(
         UserRepository userRepository,
         TenantRepository tenantRepository,
         LockoutProperties lockoutProperties,
@@ -70,7 +70,7 @@ class LoginAttemptTracker {
     }
 
     /** Test seam: inject a clock so lockout-window expiry is deterministic. */
-    public LoginAttemptTracker(
+    LoginAttemptTracker(
         UserRepository userRepository,
         TenantRepository tenantRepository,
         LockoutProperties lockoutProperties,
@@ -86,7 +86,7 @@ class LoginAttemptTracker {
 
     @EventListener
     @Transactional
-    public void onAuthenticationFailure(AbstractAuthenticationFailureEvent event) {
+    void onAuthenticationFailure(AbstractAuthenticationFailureEvent event) {
         // The auth provider's pre-check throws LockedException for already-locked
         // users — incrementing again would extend the lock and prevent the user
         // from ever recovering naturally after the window expires.
@@ -119,7 +119,7 @@ class LoginAttemptTracker {
 
     @EventListener
     @Transactional
-    public void onAuthenticationSuccess(AuthenticationSuccessEvent event) {
+    void onAuthenticationSuccess(AuthenticationSuccessEvent event) {
         Authentication auth = event.getAuthentication();
         if (!(auth.getPrincipal() instanceof TenantUserDetails principal)) {
             return;

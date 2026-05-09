@@ -19,13 +19,13 @@ class RolesController {
     private final RoleManagementService roleManagementService;
     private final ApplicationService applicationService;
 
-    public RolesController(RoleManagementService roleManagementService, ApplicationService applicationService) {
+    RolesController(RoleManagementService roleManagementService, ApplicationService applicationService) {
         this.roleManagementService = roleManagementService;
         this.applicationService = applicationService;
     }
 
     @GetMapping
-    public String list(
+    String list(
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -39,7 +39,7 @@ class RolesController {
     }
 
     @GetMapping("/new")
-    public String newForm(
+    String newForm(
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -52,7 +52,7 @@ class RolesController {
     }
 
     @PostMapping
-    public String create(
+    String create(
         @PathVariable String slug,
         @PathVariable Long appId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -75,7 +75,7 @@ class RolesController {
     }
 
     @GetMapping("/{roleId}/edit")
-    public String editForm(
+    String editForm(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable Long roleId,
@@ -90,7 +90,7 @@ class RolesController {
     }
 
     @PostMapping("/{roleId}/edit")
-    public String update(
+    String update(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable Long roleId,
@@ -113,7 +113,7 @@ class RolesController {
     }
 
     @PostMapping("/{roleId}/delete")
-    public String delete(
+    String delete(
         @PathVariable String slug,
         @PathVariable Long appId,
         @PathVariable Long roleId,

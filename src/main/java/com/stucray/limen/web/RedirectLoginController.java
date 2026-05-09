@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 class RedirectLoginController {
 
     @GetMapping("/login")
-    public String login(@RequestParam(required = false) String slug) {
+    String login(@RequestParam(required = false) String slug) {
         if (slug == null || slug.isBlank()) {
             return "redirect:/";
         }

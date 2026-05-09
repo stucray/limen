@@ -28,7 +28,7 @@ class UserManagementController {
     private final UserAdministrationService userAdministration;
     private final UserMembershipPortfolioQuery userMembershipPortfolioQuery;
 
-    public UserManagementController(
+    UserManagementController(
         UserAdministrationService userAdministration,
         UserMembershipPortfolioQuery userMembershipPortfolioQuery
     ) {
@@ -37,7 +37,7 @@ class UserManagementController {
     }
 
     @GetMapping
-    public String list(
+    String list(
         @PathVariable String slug,
         @AuthenticationPrincipal TenantUserDetails principal,
         Model model
@@ -48,13 +48,13 @@ class UserManagementController {
     }
 
     @GetMapping("/new")
-    public String newUserForm(@PathVariable String slug, Model model) {
+    String newUserForm(@PathVariable String slug, Model model) {
         model.addAttribute("slug", slug);
         return "manage/users/new";
     }
 
     @PostMapping
-    public String createUser(
+    String createUser(
         @PathVariable String slug,
         @AuthenticationPrincipal TenantUserDetails principal,
         @RequestParam String email,
@@ -73,7 +73,7 @@ class UserManagementController {
     }
 
     @PostMapping("/{userId}/enable")
-    public String enable(
+    String enable(
         @PathVariable String slug,
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal
@@ -83,7 +83,7 @@ class UserManagementController {
     }
 
     @PostMapping("/{userId}/disable")
-    public String disable(
+    String disable(
         @PathVariable String slug,
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal
@@ -93,7 +93,7 @@ class UserManagementController {
     }
 
     @PostMapping("/{userId}/delete")
-    public String delete(
+    String delete(
         @PathVariable String slug,
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal
@@ -103,7 +103,7 @@ class UserManagementController {
     }
 
     @GetMapping("/{userId}")
-    public String detail(
+    String detail(
         @PathVariable String slug,
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -116,7 +116,7 @@ class UserManagementController {
     }
 
     @GetMapping("/{userId}/reset-password")
-    public String resetPasswordForm(
+    String resetPasswordForm(
         @PathVariable String slug,
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -128,7 +128,7 @@ class UserManagementController {
     }
 
     @PostMapping("/{userId}/reset-password")
-    public String resetPassword(
+    String resetPassword(
         @PathVariable String slug,
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal,
@@ -139,7 +139,7 @@ class UserManagementController {
     }
 
     @PostMapping("/{userId}/unlock")
-    public String unlock(
+    String unlock(
         @PathVariable String slug,
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal
@@ -149,7 +149,7 @@ class UserManagementController {
     }
 
     @PostMapping("/{userId}/grant-owner")
-    public String grantOwner(
+    String grantOwner(
         @PathVariable String slug,
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal
@@ -159,7 +159,7 @@ class UserManagementController {
     }
 
     @PostMapping("/{userId}/revoke-owner")
-    public String revokeOwner(
+    String revokeOwner(
         @PathVariable String slug,
         @PathVariable Long userId,
         @AuthenticationPrincipal TenantUserDetails principal
@@ -176,7 +176,7 @@ class UserManagementController {
      * with compile-time exhaustiveness.
      */
     @ExceptionHandler(UserAdminException.class)
-    public String onUserAdminFailure(
+    String onUserAdminFailure(
         UserAdminException ex,
         HttpServletRequest request,
         RedirectAttributes flash

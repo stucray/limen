@@ -33,7 +33,7 @@ record SigningKeyRotationProperties(
     @DefaultValue("30d") @NotNull Duration keyAge,
     @DefaultValue("24h") @NotNull Duration gracePeriod
 ) {
-    public SigningKeyRotationProperties {
+    SigningKeyRotationProperties {
         if (cron == null || cron.isBlank()) {
             throw new IllegalArgumentException(
                 "limen.signing-key-rotation.cron must be a non-blank Spring cron expression; got " + cron);
