@@ -11,7 +11,7 @@ public final class TenantScope {
 
     public record Data(String slug, Long tenantId) {}
 
-    public static final ScopedValue<Data> SCOPE = ScopedValue.newInstance();
+    static final ScopedValue<Data> SCOPE = ScopedValue.newInstance();
 
     private TenantScope() {}
 
