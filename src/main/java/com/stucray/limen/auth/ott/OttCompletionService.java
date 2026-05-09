@@ -36,7 +36,7 @@ public class OttCompletionService {
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-    public OttCompletionService(
+    OttCompletionService(
         UserRepository userRepository,
         ApplicationEventPublisher eventPublisher
     ) {
@@ -45,7 +45,7 @@ public class OttCompletionService {
     }
 
     @Transactional
-    public void markEmailVerified(Long userId, Long tenantId) {
+    void markEmailVerified(Long userId, Long tenantId) {
         User user = userRepository.findByIdAndTenantId(userId, tenantId)
             .orElseThrow(() -> new IllegalStateException(
                 "User missing for OTT consume: id=" + userId + " tenant=" + tenantId));

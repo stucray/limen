@@ -41,7 +41,7 @@ public class TenantOttRoutingFilter extends OncePerRequestFilter {
 
     private final TenantRepository tenantRepository;
 
-    public TenantOttRoutingFilter(TenantRepository tenantRepository) {
+    TenantOttRoutingFilter(TenantRepository tenantRepository) {
         this.tenantRepository = tenantRepository;
     }
 

@@ -26,11 +26,11 @@ public enum OttIntent {
         this.wire = wire;
     }
 
-    public String wire() {
+    String wire() {
         return wire;
     }
 
-    public static @Nullable OttIntent fromWire(String value) {
+    static @Nullable OttIntent fromWire(String value) {
         for (OttIntent i : values()) {
             if (i.wire.equals(value)) return i;
         }

@@ -19,12 +19,12 @@ public class CheckInboxController {
 
     private final TenantRepository tenantRepository;
 
-    public CheckInboxController(TenantRepository tenantRepository) {
+    CheckInboxController(TenantRepository tenantRepository) {
         this.tenantRepository = tenantRepository;
     }
 
     @GetMapping("/t/{slug}/check-inbox")
-    public String checkInbox(
+    String checkInbox(
         @PathVariable String slug,
         @RequestParam(required = false) String email,
         @RequestParam(required = false) String flow,

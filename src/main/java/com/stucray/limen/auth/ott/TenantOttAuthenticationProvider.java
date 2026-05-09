@@ -53,7 +53,7 @@ public class TenantOttAuthenticationProvider implements AuthenticationProvider {
     private final TenantUserDetailsService userDetailsService;
     private final OttCompletionService completionService;
 
-    public TenantOttAuthenticationProvider(
+    TenantOttAuthenticationProvider(
         OneTimeTokenService tokenService,
         TenantUserDetailsService userDetailsService,
         OttCompletionService completionService

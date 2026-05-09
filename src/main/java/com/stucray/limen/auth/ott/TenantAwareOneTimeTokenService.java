@@ -65,12 +65,12 @@ public class TenantAwareOneTimeTokenService implements OneTimeTokenService {
     private final Clock clock;
 
     @Autowired
-    public TenantAwareOneTimeTokenService(JdbcTemplate jdbcTemplate) {
+    TenantAwareOneTimeTokenService(JdbcTemplate jdbcTemplate) {
         this(jdbcTemplate, Clock.systemUTC());
     }
 
     /** Test seam: inject a clock to drive expiry deterministically. */
-    public TenantAwareOneTimeTokenService(JdbcTemplate jdbcTemplate, Clock clock) {
+    TenantAwareOneTimeTokenService(JdbcTemplate jdbcTemplate, Clock clock) {
         this.jdbcTemplate = jdbcTemplate;
         this.clock = clock;
     }

@@ -24,12 +24,12 @@ public class OttSubmitController {
 
     private final TenantRepository tenantRepository;
 
-    public OttSubmitController(TenantRepository tenantRepository) {
+    OttSubmitController(TenantRepository tenantRepository) {
         this.tenantRepository = tenantRepository;
     }
 
     @GetMapping("/t/{slug}/login/ott")
-    public String submitForm(
+    String submitForm(
         @PathVariable String slug,
         @RequestParam(required = false) String token,
         Model model

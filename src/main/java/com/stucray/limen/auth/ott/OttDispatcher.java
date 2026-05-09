@@ -57,7 +57,7 @@ public class OttDispatcher {
     private final EmailSender emailSender;
     private final ApplicationEventPublisher eventPublisher;
 
-    public OttDispatcher(
+    OttDispatcher(
         List<OttIntentHandler> handlers,
         TenantAwareOneTimeTokenService tokenService,
         UserRepository userRepository,
@@ -117,7 +117,7 @@ public class OttDispatcher {
      * the attempt without leaking which addresses are real.
      */
     @Transactional
-    public void issue(OttIntent intent, Tenant tenant, String email) {
+    void issue(OttIntent intent, Tenant tenant, String email) {
         OttIntentHandler handler = handlerFor(intent);
         Optional<User> maybeUser = userRepository.findByEmailAndTenantId(email, tenant.id());
         boolean delivered = false;
