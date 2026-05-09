@@ -57,7 +57,7 @@ public class TenantProvisioner {
     private final PasswordEncoder passwordEncoder;
     private final OttDispatcher ottDispatcher;
 
-    public TenantProvisioner(
+    TenantProvisioner(
         TenantRepository tenantRepository,
         TenantProvisioningService tenantProvisioningService,
         UserRepository userRepository,
