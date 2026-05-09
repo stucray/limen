@@ -36,7 +36,7 @@ public class AuditEventWriter {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public AuditEventWriter(JdbcTemplate jdbcTemplate) {
+    AuditEventWriter(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

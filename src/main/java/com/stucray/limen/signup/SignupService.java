@@ -17,7 +17,7 @@ public class SignupService {
 
     private final TenantProvisioner tenantProvisioner;
 
-    public SignupService(TenantProvisioner tenantProvisioner) {
+    SignupService(TenantProvisioner tenantProvisioner) {
         this.tenantProvisioner = tenantProvisioner;
     }
 
