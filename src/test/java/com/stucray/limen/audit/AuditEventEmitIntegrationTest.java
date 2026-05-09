@@ -4,7 +4,7 @@ import com.stucray.limen.clients.CreateClientCommand;
 
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.applications.Application;
-import com.stucray.limen.applications.ApplicationService;
+import com.stucray.limen.applications.ApplicationRepository;
 import com.stucray.limen.clients.ClientManagementService;
 import com.stucray.limen.useradmin.UserAdministrationService;
 import com.stucray.limen.tenant.Tenant;
@@ -54,7 +54,7 @@ class AuditEventEmitIntegrationTest {
     @Autowired UserAdministrationService userAdministration;
     @Autowired UserRepository userRepository;
     @Autowired ClientManagementService clientManagementService;
-    @Autowired ApplicationService applicationService;
+    @Autowired ApplicationRepository applicationRepository;
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired JdbcTemplate jdbcTemplate;
 
@@ -130,7 +130,8 @@ class AuditEventEmitIntegrationTest {
     void clientSecretRotationEmitsAuditRow() {
         Tenant tenant = tenantProvisioningService.createTenant(uniqueSlug(), "X");
         long actor = seedSystemAdminId();
-        Application app = applicationService.createApplication(tenant.id(), "App " + uniqueSlug(), null);
+        Application app = applicationRepository.save(
+            new Application(null, tenant.id(), "App " + uniqueSlug(), null, LocalDateTime.now()));
         String registeredClientId = clientManagementService.createClient(new CreateClientCommand(
             app.id(), tenant.id(), "Client",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
