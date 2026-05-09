@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * server behaviour, so a user reloading the page does not retrigger sending.
  */
 @Controller
-public class CheckInboxController {
+class CheckInboxController {
 
     private final TenantRepository tenantRepository;
 

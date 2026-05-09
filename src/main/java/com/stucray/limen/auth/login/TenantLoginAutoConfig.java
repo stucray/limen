@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
  * intents, so {@code @Order} on a user bean places it ahead of the defaults.
  */
 @Configuration(proxyBeanMethods = false)
-public class TenantLoginAutoConfig {
+class TenantLoginAutoConfig {
 
     @Bean
     TenantUrlScheme oauth2UrlScheme() {

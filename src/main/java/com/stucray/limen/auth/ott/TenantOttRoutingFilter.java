@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
  */
 @Component
 @Order(Integer.MIN_VALUE + 11)
-public class TenantOttRoutingFilter extends OncePerRequestFilter {
+class TenantOttRoutingFilter extends OncePerRequestFilter {
 
     private static final Pattern TENANT_OTT_PATH =
         Pattern.compile("^/t/([^/]+)/(login/ott|check-inbox|resend-verification|forgot-password)(?:[/?].*)?$");

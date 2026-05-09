@@ -24,7 +24,7 @@ import java.nio.charset.StandardCharsets;
  * laid out in PRD #120 story 14.
  */
 @Controller
-public class ResendVerificationController {
+class ResendVerificationController {
 
     private final TenantRepository tenantRepository;
     private final OttDispatcher ottDispatcher;

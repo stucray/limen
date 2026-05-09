@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  * resolved slug.
  */
 @Controller
-public class OttSubmitController {
+class OttSubmitController {
 
     private final TenantRepository tenantRepository;
 

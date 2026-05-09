@@ -53,7 +53,7 @@ import static com.stucray.limen.audit.dispatch.AuditBinding.IMMEDIATE;
  * {@link Class#isAssignableFrom(Class)}.
  */
 @Component
-public class AuditRegistry {
+class AuditRegistry {
 
     private final List<AuditRule<?>> rules = List.of(
         new AuditRule<>(AuthenticationSuccessEvent.class, "login_success", IMMEDIATE,
