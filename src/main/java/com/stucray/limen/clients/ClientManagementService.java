@@ -160,7 +160,7 @@ public class ClientManagementService {
     public record SecretRotationResult(String rawSecret) {}
 
     @Transactional
-    public SecretRotationResult rotateSecret(String registeredClientId, Long tenantId, long actorUserId) {
+    SecretRotationResult rotateSecret(String registeredClientId, Long tenantId, long actorUserId) {
         getClient(registeredClientId, tenantId); // assert ownership
         RegisteredClient existing = registeredClientRepository.findById(registeredClientId);
         if (existing == null) throw new IllegalArgumentException("Client not found");
