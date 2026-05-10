@@ -2,6 +2,8 @@
 
 > A companion to `ubiquitous-language.md`. That file defines *what we call things*; this file describes *how the system is built*.
 
+> **Heading convention.** Section headings are plain prose — no markdown decoration (backticks, bold, links) and no clarifying parentheticals; put those in the section body. `package-info.java` files cite sections from this document as `§N.M (<heading text>)` and must match the heading byte-for-byte. `ArchitectureDocCitationTest` enforces this on every CI build.
+
 ## 1. Purpose
 
 Limen is a **multi-tenant OAuth2 / OIDC Authorization Server** built on top of Spring Authorization Server (SAS). It is a SaaS-style product: a single deployment hosts many independent **Tenants**, each with its own User pool, Applications, Clients, signing keys, and issuer URL.
@@ -425,7 +427,7 @@ Properties:
 - **Response:** 429 with `Retry-After` (seconds until the bucket has at least one token), and the filter publishes `RateLimitHitEvent` so the rule firing lands in the audit log.
 - **Test posture:** disabled by default in unit tests via `limen.rate-limit.enabled=false` so suite timing is not bucket-bound; integration tests that exercise the filter set the property explicitly.
 
-### 4.10 Authorization — Roles, Memberships, and the JWT `roles` claim
+### 4.10 Authorization — Roles, Memberships, and the JWT roles claim
 
 v1 left the `roles` JWT claim hardcoded to `[]`. v2 replaces that with a query against the new Membership tables and adds an explicit gate at `/oauth2/authorize` that rejects authenticated Users without a Client Membership.
 
@@ -567,7 +569,7 @@ Static analysis runs in two postures:
 
 CI is a single GitHub Actions workflow (`.github/workflows/ci.yml`) with one `verify` job on push and PR to `main`. The job sets up JDK 26 (Temurin, with Maven cache), runs `./mvnw -B -ntp verify`, and uploads the PMD bundle (30-day retention) and — on failure — the JaCoCo HTML report (14-day retention). The `LIMEN_SECURITY_KEK` is supplied as a GitHub Actions secret. Docs-only changes (`**.md`, `docs/**`, `LICENSE`, `.github/ISSUE_TEMPLATE/**`, `.github/PULL_REQUEST_TEMPLATE.md`) are skipped via `paths-ignore`; the same filter is applied to `publish-image.yml` so docs commits don't trigger a no-op image rebuild. A `workflow_dispatch` trigger on `ci.yml` provides a manual run lever when the path filter would otherwise skip a run you want to force.
 
-### 4.15 Package structure (application modules)
+### 4.15 Package structure
 
 Module boundaries are enforced mechanically via [Spring Modulith](https://spring.io/projects/spring-modulith). `LimenModuleArchitectureTest` calls `ApplicationModules.of(LimenApplication.class).verify()`, which fails the build on cycles between modules and on cross-module references into a module's internal sub-packages. The verifier runs as part of `./mvnw test` so every PR is checked.
 
