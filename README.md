@@ -25,6 +25,32 @@ direnv allow
 ./mvnw spring-boot:run
 ```
 
+## Running from the published image
+
+The container image lives at `ghcr.io/stucray/limen` and is private — see
+[`docs/process/container.md`](docs/process/container.md) for the
+`docker login` setup. Once authenticated, bring up the dev infrastructure
+and run the image against it:
+
+```bash
+docker compose up -d postgres            # publishes Postgres on host :5433
+docker run --rm -p 8090:8090 \
+  --network limen_default \
+  -e SPRING_DATASOURCE_URL='jdbc:postgresql://postgres:5432/auth' \
+  --env-file .env \
+  ghcr.io/stucray/limen:latest
+```
+
+`--network limen_default` joins the compose network so the container
+reaches Postgres by service name. `--env-file .env` supplies
+`LIMEN_SECURITY_KEK` (required) and any other `LIMEN_*` overrides — the
+image has no defaults for those, so a bare `docker run` will fail on
+startup. The app listens on `http://localhost:8090`.
+
+> Keep `LIMEN_SECURITY_KEK` stable across runs — rotating it leaves
+> existing tenant signing keys in the DB un-decryptable. Wipe the
+> `auth_postgres_data` volume before changing keys.
+
 ## Documentation
 
 | Path | What's there |
