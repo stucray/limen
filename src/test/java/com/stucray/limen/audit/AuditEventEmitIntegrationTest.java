@@ -5,7 +5,6 @@ import com.stucray.limen.applications.Application;
 import com.stucray.limen.applications.ApplicationRepository;
 import com.stucray.limen.clients.TenantClient;
 import com.stucray.limen.clients.TenantClientRepository;
-import com.stucray.limen.useradmin.UserAdministrationService;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.provisioning.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
@@ -63,7 +62,6 @@ class AuditEventEmitIntegrationTest {
     @Autowired MockMvc mockMvc;
     @Autowired TenantProvisioningService tenantProvisioningService;
     @Autowired TenantRepository tenantRepository;
-    @Autowired UserAdministrationService userAdministration;
     @Autowired UserRepository userRepository;
     @Autowired ApplicationRepository applicationRepository;
     @Autowired RegisteredClientRepository registeredClientRepository;
@@ -163,12 +161,17 @@ class AuditEventEmitIntegrationTest {
 
     @Test
     @DisplayName("Admin-initiated password reset publishes PasswordChangedEvent → trigger=admin_reset")
-    void adminResetPasswordEmitsAuditRow() {
+    void adminResetPasswordEmitsAuditRow() throws Exception {
         Tenant tenant = tenantProvisioningService.createTenant(uniqueSlug(), "X");
+        User owner = seedTenantOwner(tenant);
+        MockHttpSession session = loginAs(tenant.slug(), owner.email(), "pass");
         User user = seedUser(tenant.id(), false);
-        long admin = seedSystemAdminId();
 
-        userAdministration.resetPassword(user.id(), tenant.id(), admin, "tempPass1234");
+        mockMvc.perform(post("/manage/t/" + tenant.slug()
+                + "/users/" + user.id() + "/reset-password")
+                .param("temporaryPassword", "tempPass1234")
+                .session(session).with(csrf()))
+            .andExpect(status().is3xxRedirection());
 
         awaitAuditRow(() -> latestEventForTenantOfType(tenant.id(), "password_changed"),
             row -> assertThat(row.get("details").toString().replace(" ", ""))
