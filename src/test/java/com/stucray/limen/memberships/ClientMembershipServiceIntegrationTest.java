@@ -3,7 +3,6 @@ package com.stucray.limen.memberships;
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.applications.Application;
 import com.stucray.limen.applications.ApplicationRepository;
-import com.stucray.limen.clients.ClientManagementService;
 import com.stucray.limen.clients.TenantClient;
 import com.stucray.limen.clients.TenantClientRepository;
 import com.stucray.limen.roles.Role;
@@ -45,7 +44,6 @@ class ClientMembershipServiceIntegrationTest {
     @Autowired ApplicationMembershipService applicationMembershipService;
     @Autowired ApplicationMembershipRepository applicationMembershipRepository;
     @Autowired ApplicationRepository applicationRepository;
-    @Autowired ClientManagementService clientManagementService;
     @Autowired RegisteredClientRepository registeredClientRepository;
     @Autowired TenantClientRepository tenantClientRepository;
     @Autowired RoleRepository roleRepository;
@@ -310,7 +308,11 @@ class ClientMembershipServiceIntegrationTest {
         applicationMembershipService.grant(appA.id(), tenantA.id(), aliceA.id(), adminA.id());
         ClientMembership cm = clientMembershipService.grant(clientA.registeredClientId(), appA.id(), tenantA.id(), aliceA.id(), adminA.id());
 
-        clientManagementService.deleteClient(clientA.registeredClientId(), tenantA.id());
+        // Mirror ClientManagementService.deleteClient via repo writes — keeps
+        // the production method package-private (its only caller is the
+        // controller in the same package).
+        tenantClientRepository.delete(clientA);
+        tenantClientRepository.deleteRegisteredClient(clientA.registeredClientId());
 
         assertThat(clientMembershipRepository.findById(cm.id())).isEmpty();
     }

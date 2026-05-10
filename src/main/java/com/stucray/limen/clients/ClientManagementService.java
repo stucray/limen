@@ -147,7 +147,7 @@ public class ClientManagementService {
         registeredClientRepository.save(updated);
     }
 
-    public void deleteClient(String registeredClientId, Long tenantId) {
+    void deleteClient(String registeredClientId, Long tenantId) {
         TenantClient tenantClient = getClient(registeredClientId, tenantId);
         RegisteredClient rc = registeredClientRepository.findById(registeredClientId);
         if (rc != null) {
