@@ -8,8 +8,6 @@ import com.stucray.limen.clients.TenantClientRepository;
 import com.stucray.limen.memberships.ApplicationMembershipService;
 import com.stucray.limen.memberships.ClientMembershipService;
 import com.stucray.limen.memberships.ClientMembershipTestFixture;
-import com.stucray.limen.signup.SignupForm;
-import com.stucray.limen.signup.SignupService;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.provisioning.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantScope;
@@ -75,7 +73,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class EmailVerificationFlowIntegrationTest {
 
     @Autowired MockMvc mockMvc;
-    @Autowired SignupService signupService;
     @Autowired TenantProvisioningService tenantProvisioningService;
     @Autowired ApplicationRepository applicationRepository;
     @Autowired ApplicationMembershipService applicationMembershipService;
@@ -188,15 +185,19 @@ class EmailVerificationFlowIntegrationTest {
 
         @Test
         @DisplayName("Signup publishes VerificationOttIssuedEvent → verification_ott_issued row with email in details")
-        void signupEmitsVerificationOttIssuedAuditRow() {
+        void signupEmitsVerificationOttIssuedAuditRow() throws Exception {
             String suffix = uniqueSuffix();
             String slug = "audit-" + suffix;
             String email = "owner-" + suffix + "@example.test";
 
-            SignupService.SignupResult result =
-                signupService.signup(new SignupForm("Audit " + suffix, slug, email, "password"));
+            mockMvc.perform(post("/signup")
+                    .param("organizationName", "Audit " + suffix)
+                    .param("slug", slug)
+                    .param("email", email)
+                    .param("password", "password")
+                    .with(csrf()))
+                .andExpect(status().is3xxRedirection());
 
-            assertThat(result).isInstanceOf(SignupService.SignupResult.Success.class);
             await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
                 List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                     "SELECT event_type, target_type, details::text AS details FROM audit_event "
