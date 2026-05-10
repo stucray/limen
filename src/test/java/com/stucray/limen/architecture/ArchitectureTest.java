@@ -115,10 +115,6 @@ class ArchitectureTest {
         // rotateSecret cross-package. Drive through ClientManagementController via
         // MockMvc (the rotation IS the SUT here, not fixture), then narrow.
         "com.stucray.limen.clients.ClientManagementService.rotateSecret(java.lang.String, java.lang.Long, long)",
-        // TODO: EmailVerificationFlowIntegrationTest:197 calls signup cross-package as
-        // tenant fixture setup. Substitute direct TenantRepository.save +
-        // UserRepository.save (same pattern as TestTenantFactory), then narrow.
-        "com.stucray.limen.signup.SignupService.signup(com.stucray.limen.signup.SignupForm)",
         // TODO: AuditEventEmitIntegrationTest's adminResetPasswordEmitsAuditRow calls
         // resetPassword cross-package. Drive through UserManagementController via
         // MockMvc (the reset IS the SUT for this audit test), then narrow.

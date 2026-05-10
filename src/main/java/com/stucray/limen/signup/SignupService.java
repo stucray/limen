@@ -26,7 +26,7 @@ public class SignupService {
         record Error(String field, String message) implements SignupResult {}
     }
 
-    public SignupResult signup(SignupForm form) {
+    SignupResult signup(SignupForm form) {
         return switch (tenantProvisioner.provision(NewTenantRequest.fromSignupForm(
             form.slug(), form.organizationName(), form.email(), form.password()
         ))) {
