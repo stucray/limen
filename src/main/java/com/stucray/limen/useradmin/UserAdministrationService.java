@@ -160,7 +160,7 @@ public class UserAdministrationService {
      * iff the user was carrying lockout state at reset time.
      */
     @Transactional
-    public void resetPassword(Long userId, Long tenantId, Long actorUserId, String temporaryPassword) {
+    void resetPassword(Long userId, Long tenantId, Long actorUserId, String temporaryPassword) {
         User user = getUser(userId, tenantId);
         boolean wasLocked = user.lockedUntil() != null;
         userRepository.save(user

@@ -108,11 +108,6 @@ class ArchitectureTest {
      * public. That entry will not be narrowed; it documents the structural carve-out.
      */
     private static final Set<String> SERVICE_METHODS_AWAITING_NARROWING = Set.of(
-        // TODO: AuditEventEmitIntegrationTest's adminResetPasswordEmitsAuditRow calls
-        // resetPassword cross-package. Drive through UserManagementController via
-        // MockMvc (the reset IS the SUT for this audit test), then narrow.
-        "com.stucray.limen.useradmin.UserAdministrationService.resetPassword("
-            + "java.lang.Long, java.lang.Long, java.lang.Long, java.lang.String)",
         // Structural exemption: implements Spring Security's UserDetailsService.
         // Java forces public on interface implementations; this entry will not be narrowed.
         "com.stucray.limen.auth.TenantUserDetailsService.loadUserByUsername(java.lang.String)"
