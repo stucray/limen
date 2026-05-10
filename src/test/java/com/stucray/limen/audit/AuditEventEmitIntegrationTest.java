@@ -3,7 +3,6 @@ package com.stucray.limen.audit;
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.applications.Application;
 import com.stucray.limen.applications.ApplicationRepository;
-import com.stucray.limen.clients.ClientManagementService;
 import com.stucray.limen.clients.TenantClient;
 import com.stucray.limen.clients.TenantClientRepository;
 import com.stucray.limen.useradmin.UserAdministrationService;
@@ -24,9 +23,13 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -36,6 +39,9 @@ import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * One assertion per emit source: the user-facing action triggers a row in
@@ -50,14 +56,15 @@ import static org.awaitility.Awaitility.await;
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
+@AutoConfigureMockMvc
 @DisplayName("Audit event emit at every existing surface")
 class AuditEventEmitIntegrationTest {
 
+    @Autowired MockMvc mockMvc;
     @Autowired TenantProvisioningService tenantProvisioningService;
     @Autowired TenantRepository tenantRepository;
     @Autowired UserAdministrationService userAdministration;
     @Autowired UserRepository userRepository;
-    @Autowired ClientManagementService clientManagementService;
     @Autowired ApplicationRepository applicationRepository;
     @Autowired RegisteredClientRepository registeredClientRepository;
     @Autowired TenantClientRepository tenantClientRepository;
@@ -133,14 +140,19 @@ class AuditEventEmitIntegrationTest {
 
     @Test
     @DisplayName("Client secret rotation publishes ClientSecretRotatedEvent → client_secret_rotated row")
-    void clientSecretRotationEmitsAuditRow() {
+    void clientSecretRotationEmitsAuditRow() throws Exception {
         Tenant tenant = tenantProvisioningService.createTenant(uniqueSlug(), "X");
-        long actor = seedSystemAdminId();
+        User owner = seedTenantOwner(tenant);
+        MockHttpSession session = loginAs(tenant.slug(), owner.email(), "pass");
         Application app = applicationRepository.save(
             new Application(null, tenant.id(), "App " + uniqueSlug(), null, LocalDateTime.now()));
         String registeredClientId = seedConfidentialClient(app.id(), tenant.id(), "Client");
 
-        clientManagementService.rotateSecret(registeredClientId, tenant.id(), actor);
+        mockMvc.perform(post("/manage/t/" + tenant.slug()
+                + "/applications/" + app.id()
+                + "/clients/" + registeredClientId + "/rotate-secret")
+                .session(session).with(csrf()))
+            .andExpect(status().is3xxRedirection());
 
         awaitAuditRow(() -> latestEventForTenantOfType(tenant.id(), "client_secret_rotated"), row -> {
             assertThat(row).isNotNull();
@@ -210,6 +222,21 @@ class AuditEventEmitIntegrationTest {
         return userRepository.save(new User(
             null, tenantId, email, passwordEncoder.encode("oldPass1234"),
             true, mustChangePassword, false, true, LocalDateTime.now()));
+    }
+
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
+    private User seedTenantOwner(Tenant tenant) {
+        String email = "owner-" + UUID.randomUUID().toString().substring(0, 8) + "@example.test";
+        return userRepository.save(new User(
+            null, tenant.id(), email, passwordEncoder.encode("pass"),
+            true, false, true, true, LocalDateTime.now()));
+    }
+
+    private MockHttpSession loginAs(String slug, String email, String password) throws Exception {
+        MvcResult login = mockMvc.perform(post("/manage/t/" + slug + "/login")
+                .param("email", email).param("password", password).with(csrf()))
+            .andReturn();
+        return (MockHttpSession) login.getRequest().getSession(false);
     }
 
     @SuppressWarnings("NullAway") // Spring Data convention

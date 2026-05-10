@@ -108,10 +108,6 @@ class ArchitectureTest {
      * public. That entry will not be narrowed; it documents the structural carve-out.
      */
     private static final Set<String> SERVICE_METHODS_AWAITING_NARROWING = Set.of(
-        // TODO: AuditEventEmitIntegrationTest's clientSecretRotationEmitsAuditRow calls
-        // rotateSecret cross-package. Drive through ClientManagementController via
-        // MockMvc (the rotation IS the SUT here, not fixture), then narrow.
-        "com.stucray.limen.clients.ClientManagementService.rotateSecret(java.lang.String, java.lang.Long, long)",
         // TODO: AuditEventEmitIntegrationTest's adminResetPasswordEmitsAuditRow calls
         // resetPassword cross-package. Drive through UserManagementController via
         // MockMvc (the reset IS the SUT for this audit test), then narrow.
