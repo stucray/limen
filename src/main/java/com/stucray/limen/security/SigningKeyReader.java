@@ -7,7 +7,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Read surface for per-tenant signing keys: the ACTIVE key for signing and
  * the full key set for the JWKS endpoint. Cross-module public API consumed
- * by {@code oauth2.TenantJwkSource}.
+ * by {@code oauth2.sas.TenantJwkSource}.
  */
 public interface SigningKeyReader {
 

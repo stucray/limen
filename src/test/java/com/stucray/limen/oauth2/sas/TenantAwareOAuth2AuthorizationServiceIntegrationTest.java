@@ -1,4 +1,4 @@
-package com.stucray.limen.oauth2;
+package com.stucray.limen.oauth2.sas;
 
 import com.stucray.limen.TestcontainersConfiguration;
 import com.stucray.limen.applications.Application;

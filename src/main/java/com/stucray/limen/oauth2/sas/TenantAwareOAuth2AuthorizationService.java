@@ -1,6 +1,5 @@
-package com.stucray.limen.oauth2;
+package com.stucray.limen.oauth2.sas;
 
-import com.stucray.limen.tenant.TenantScope;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
@@ -23,7 +22,7 @@ import java.util.List;
  *
  * All operations require an active TenantScope; missing scope throws IllegalStateException.
  */
-public class TenantAwareOAuth2AuthorizationService implements OAuth2AuthorizationService {
+class TenantAwareOAuth2AuthorizationService implements OAuth2AuthorizationService {
 
     private final OAuth2AuthorizationService delegate;
     private final JdbcTemplate jdbcTemplate;
@@ -44,7 +43,7 @@ public class TenantAwareOAuth2AuthorizationService implements OAuth2Authorizatio
     @Override
     public void save(OAuth2Authorization authorization) {
         Assert.notNull(authorization, "authorization cannot be null");
-        Long tenantId = requireTenantId();
+        Long tenantId = SasTenantScope.requireTenantId("TenantAwareOAuth2AuthorizationService");
         delegate.save(authorization);
         jdbcTemplate.update(
             "UPDATE oauth2_authorization SET tenant_id = ? WHERE id = ? AND (tenant_id IS NULL OR tenant_id = ?)",
@@ -55,14 +54,14 @@ public class TenantAwareOAuth2AuthorizationService implements OAuth2Authorizatio
     @Override
     public void remove(OAuth2Authorization authorization) {
         Assert.notNull(authorization, "authorization cannot be null");
-        requireTenantId();
+        SasTenantScope.requireTenantId("TenantAwareOAuth2AuthorizationService");
         delegate.remove(authorization);
     }
 
     @Override
     public @Nullable OAuth2Authorization findById(String id) {
         Assert.hasText(id, "id cannot be empty");
-        Long tenantId = requireTenantId();
+        Long tenantId = SasTenantScope.requireTenantId("TenantAwareOAuth2AuthorizationService");
         List<OAuth2Authorization> result = jdbcTemplate.query(
             "SELECT * FROM oauth2_authorization WHERE id = ? AND tenant_id = ?",
             rowMapper, id, tenantId
@@ -73,7 +72,7 @@ public class TenantAwareOAuth2AuthorizationService implements OAuth2Authorizatio
     @Override
     public @Nullable OAuth2Authorization findByToken(String token, @Nullable OAuth2TokenType tokenType) {
         Assert.hasText(token, "token cannot be empty");
-        Long tenantId = requireTenantId();
+        Long tenantId = SasTenantScope.requireTenantId("TenantAwareOAuth2AuthorizationService");
         String sql;
         Object[] params;
         String column = tokenColumn(tokenType);
@@ -105,13 +104,4 @@ public class TenantAwareOAuth2AuthorizationService implements OAuth2Authorizatio
         };
     }
 
-    private static Long requireTenantId() {
-        Long tenantId = TenantScope.tenantId();
-        if (tenantId == null) {
-            throw new IllegalStateException(
-                "TenantAwareOAuth2AuthorizationService called without TenantScope"
-            );
-        }
-        return tenantId;
-    }
 }

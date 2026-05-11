@@ -1,4 +1,4 @@
-package com.stucray.limen.oauth2;
+package com.stucray.limen.oauth2.sas;
 
 import com.stucray.limen.clients.TenantClientRepository;
 import com.stucray.limen.tenant.TenantScope;
@@ -9,8 +9,13 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 /**
  * Wraps JdbcRegisteredClientRepository and rejects lookups for clients that do not
  * belong to the tenant currently bound on TenantScope.
+ *
+ * <p>Deliberately allows a null TenantScope so the management console (which
+ * reads across tenants) can list clients without binding a scope. This is the
+ * one adapter in {@code oauth2.sas} that does not delegate to
+ * {@link SasTenantScope#requireTenantId} — see that helper's javadoc.
  */
-public class TenantAwareRegisteredClientRepository implements RegisteredClientRepository {
+class TenantAwareRegisteredClientRepository implements RegisteredClientRepository {
 
     private final RegisteredClientRepository delegate;
     private final TenantClientRepository tenantClientRepository;

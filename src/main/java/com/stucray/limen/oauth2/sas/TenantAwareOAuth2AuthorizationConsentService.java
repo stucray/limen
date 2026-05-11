@@ -1,6 +1,5 @@
-package com.stucray.limen.oauth2;
+package com.stucray.limen.oauth2.sas;
 
-import com.stucray.limen.tenant.TenantScope;
 import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.GrantedAuthority;
@@ -26,7 +25,7 @@ import java.util.Set;
  *
  * All operations require an active TenantScope; missing scope throws IllegalStateException.
  */
-public class TenantAwareOAuth2AuthorizationConsentService implements OAuth2AuthorizationConsentService {
+class TenantAwareOAuth2AuthorizationConsentService implements OAuth2AuthorizationConsentService {
 
     private static final String INSERT_SQL =
         "INSERT INTO oauth2_authorization_consent "
@@ -61,7 +60,7 @@ public class TenantAwareOAuth2AuthorizationConsentService implements OAuth2Autho
     @Override
     public void save(OAuth2AuthorizationConsent authorizationConsent) {
         Assert.notNull(authorizationConsent, "authorizationConsent cannot be null");
-        Long tenantId = requireTenantId();
+        Long tenantId = SasTenantScope.requireTenantId("TenantAwareOAuth2AuthorizationConsentService");
         String authorities = serializedAuthorities(authorizationConsent);
         OAuth2AuthorizationConsent existing = findById(
             authorizationConsent.getRegisteredClientId(),
@@ -89,7 +88,7 @@ public class TenantAwareOAuth2AuthorizationConsentService implements OAuth2Autho
     @Override
     public void remove(OAuth2AuthorizationConsent authorizationConsent) {
         Assert.notNull(authorizationConsent, "authorizationConsent cannot be null");
-        Long tenantId = requireTenantId();
+        Long tenantId = SasTenantScope.requireTenantId("TenantAwareOAuth2AuthorizationConsentService");
         jdbcTemplate.update(
             DELETE_SQL,
             tenantId,
@@ -102,7 +101,7 @@ public class TenantAwareOAuth2AuthorizationConsentService implements OAuth2Autho
     public @Nullable OAuth2AuthorizationConsent findById(String registeredClientId, String principalName) {
         Assert.hasText(registeredClientId, "registeredClientId cannot be empty");
         Assert.hasText(principalName, "principalName cannot be empty");
-        Long tenantId = requireTenantId();
+        Long tenantId = SasTenantScope.requireTenantId("TenantAwareOAuth2AuthorizationConsentService");
         List<OAuth2AuthorizationConsent> result = jdbcTemplate.query(
             SELECT_SQL, rowMapper, tenantId, registeredClientId, principalName
         );
@@ -117,13 +116,4 @@ public class TenantAwareOAuth2AuthorizationConsentService implements OAuth2Autho
         return StringUtils.collectionToDelimitedString(authorities, ",");
     }
 
-    private static Long requireTenantId() {
-        Long tenantId = TenantScope.tenantId();
-        if (tenantId == null) {
-            throw new IllegalStateException(
-                "TenantAwareOAuth2AuthorizationConsentService called without TenantScope"
-            );
-        }
-        return tenantId;
-    }
 }

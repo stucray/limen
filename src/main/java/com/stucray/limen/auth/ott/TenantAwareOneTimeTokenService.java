@@ -34,7 +34,7 @@ import java.util.UUID;
  * the row. {@link #consume(OneTimeTokenAuthenticationToken)} returns null if
  * the row's tenant does not match the calling tenant — that is the
  * cross-tenant defence in depth that the {@code TenantAwareOAuth2AuthorizationService}
- * pattern at {@code oauth2/TenantAwareOAuth2AuthorizationService.java} already
+ * pattern at {@code oauth2/sas/TenantAwareOAuth2AuthorizationService.java} already
  * established.
  *
  * <p>Intent: callers that know which flow they are issuing (signup,

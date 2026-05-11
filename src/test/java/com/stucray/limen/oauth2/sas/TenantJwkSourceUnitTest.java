@@ -1,4 +1,4 @@
-package com.stucray.limen.oauth2;
+package com.stucray.limen.oauth2.sas;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;

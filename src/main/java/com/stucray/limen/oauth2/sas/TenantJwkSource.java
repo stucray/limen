@@ -1,4 +1,4 @@
-package com.stucray.limen.oauth2;
+package com.stucray.limen.oauth2.sas;
 
 import com.nimbusds.jose.KeySourceException;
 import com.nimbusds.jose.jwk.JWK;
