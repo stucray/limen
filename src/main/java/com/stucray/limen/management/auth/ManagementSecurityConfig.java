@@ -30,6 +30,7 @@ class ManagementSecurityConfig {
     @Bean
     SecurityFilterChain managementFilterChain(HttpSecurity http) throws Exception {
         login.applyTo(http, managementUrlScheme);
+        login.applyLogoutTo(http, managementUrlScheme);
 
         http
             .securityMatcher("/manage/**", "/signup")
@@ -40,21 +41,6 @@ class ManagementSecurityConfig {
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex.authenticationEntryPoint(new ManagementAuthEntryPoint()))
-            .logout(logout -> logout
-                .logoutUrl("/manage/logout")
-                .logoutSuccessHandler((req, res, auth) -> {
-                    String referer = req.getHeader("Referer");
-                    String redirectUrl = "/manage/t/system/login";
-                    if (referer != null) {
-                        java.util.regex.Matcher m = java.util.regex.Pattern
-                            .compile(".*/manage/t/([^/]+)/.*").matcher(referer);
-                        if (m.matches()) redirectUrl = "/manage/t/" + m.group(1) + "/login";
-                    }
-                    res.sendRedirect(redirectUrl);
-                })
-                .deleteCookies("JSESSIONID", "remember-me")
-                .invalidateHttpSession(true)
-            )
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())

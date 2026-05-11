@@ -116,7 +116,10 @@ class SyntheticSchemeIntegrationTest {
                 Pattern.compile("^/api/t/([^/]+)(?:/.*)?$"),
                 "/api/t/{slug}/login",
                 "/api/t/{slug}/",
-                "/api/t/{slug}/change-password"
+                "/api/t/{slug}/change-password",
+                "/api/t/*/logout",
+                LogoutSlugSource.REQUEST_URI,
+                "/"
             );
         }
 

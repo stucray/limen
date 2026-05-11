@@ -24,11 +24,19 @@ public record TenantUrlScheme(
     Pattern slugPattern,
     String loginUrlTemplate,
     String homeUrlTemplate,
-    String changePasswordUrlTemplate
+    String changePasswordUrlTemplate,
+    String logoutPathPattern,
+    LogoutSlugSource logoutSlugSource,
+    String fallbackLoginUrl
 ) {
     /** Matcher for the login form submission. */
     RequestMatcher loginMatcher() {
         return PathPatternRequestMatcher.withDefaults().matcher(loginMethod, loginPathPattern);
+    }
+
+    /** Matcher for the logout form submission. POST is the only supported method. */
+    RequestMatcher logoutMatcher() {
+        return PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, logoutPathPattern);
     }
 
     /** Extract the slug from a request URI, or {@code null} if the URI does not match this scheme. */

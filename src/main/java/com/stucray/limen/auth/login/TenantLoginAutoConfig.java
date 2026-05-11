@@ -32,7 +32,10 @@ class TenantLoginAutoConfig {
             Pattern.compile("^/t/([^/]+)(?:/.*)?$"),
             "/t/{slug}/login",
             "/t/{slug}/",
-            "/t/{slug}/change-password"
+            "/t/{slug}/change-password",
+            "/t/*/logout",
+            LogoutSlugSource.REQUEST_URI,
+            "/"
         );
     }
 
@@ -45,7 +48,10 @@ class TenantLoginAutoConfig {
             Pattern.compile("^/manage/t/([^/]+)(?:/.*)?$"),
             "/manage/t/{slug}/login",
             "/manage/t/{slug}/",
-            "/manage/t/{slug}/change-password"
+            "/manage/t/{slug}/change-password",
+            "/manage/logout",
+            LogoutSlugSource.REFERER_HEADER,
+            "/manage/t/system/login"
         );
     }
 

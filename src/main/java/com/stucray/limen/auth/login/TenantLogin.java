@@ -7,6 +7,7 @@ import com.stucray.limen.auth.TenantAccessFilter;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.jspecify.annotations.Nullable;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,10 +20,12 @@ import org.springframework.security.web.authentication.AbstractAuthenticationPro
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -135,6 +138,44 @@ public final class TenantLogin {
                 .key(rememberMeKey));
         }
         return http;
+    }
+
+    /**
+     * Wire logout for {@code scheme}: matcher, surface-aware redirect, cookie + session
+     * cleanup. Dual of {@link #applyTo(HttpSecurity, TenantUrlScheme)}; both halves
+     * share the scheme as vocabulary.
+     */
+    public HttpSecurity applyLogoutTo(HttpSecurity http, TenantUrlScheme scheme) throws Exception {
+        return http.logout(logout -> logout
+            .logoutRequestMatcher(scheme.logoutMatcher())
+            .logoutSuccessHandler(logoutSuccessHandler(scheme))
+            .deleteCookies("JSESSIONID", "remember-me")
+            .invalidateHttpSession(true)
+        );
+    }
+
+    private static LogoutSuccessHandler logoutSuccessHandler(TenantUrlScheme scheme) {
+        return (req, res, auth) -> {
+            String slug = switch (scheme.logoutSlugSource()) {
+                case REQUEST_URI    -> scheme.slugFrom(req.getRequestURI());
+                case REFERER_HEADER -> slugFromReferer(req.getHeader("Referer"), scheme);
+            };
+            String redirect = slug != null
+                ? req.getContextPath() + scheme.loginUrl(slug)
+                : req.getContextPath() + scheme.fallbackLoginUrl();
+            res.sendRedirect(redirect);
+        };
+    }
+
+    private static @Nullable String slugFromReferer(@Nullable String referer, TenantUrlScheme scheme) {
+        if (referer == null) return null;
+        // Browser Referer is an absolute URL (e.g. http://host/manage/t/alpha/users).
+        // scheme.slugFrom anchors on the path, so extract the path component first.
+        try {
+            return scheme.slugFrom(URI.create(referer).getPath());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private static AuthenticationFailureHandler failureHandler(TenantUrlScheme scheme) {

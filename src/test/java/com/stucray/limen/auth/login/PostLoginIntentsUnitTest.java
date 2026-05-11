@@ -42,7 +42,10 @@ class PostLoginIntentsUnitTest {
         Pattern.compile("^/t/([^/]+)(?:/.*)?$"),
         "/t/{slug}/login",
         "/t/{slug}/",
-        "/t/{slug}/change-password"
+        "/t/{slug}/change-password",
+        "/t/*/logout",
+        LogoutSlugSource.REQUEST_URI,
+        "/"
     );
 
     @Mock RequestCache requestCache;
