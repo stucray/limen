@@ -13,7 +13,7 @@ import com.stucray.limen.oauth2.TenantAwareRegisteredClientRepository;
 import com.stucray.limen.oauth2.TenantIssuerContextFilter;
 import com.stucray.limen.oauth2.TenantJwkSource;
 import com.stucray.limen.oauth2.TenantLoginUrlAuthenticationEntryPoint;
-import com.stucray.limen.security.SigningKeyStore;
+import com.stucray.limen.security.SigningKeyReader;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantScope;
 import org.springframework.context.annotation.Bean;
@@ -127,9 +127,9 @@ class SasConfig {
     @Bean
     JWKSource<SecurityContext> jwkSource(
         TenantRepository tenantRepository,
-        SigningKeyStore signingKeyStore
+        SigningKeyReader signingKeys
     ) {
-        return new TenantJwkSource(tenantRepository, signingKeyStore);
+        return new TenantJwkSource(tenantRepository, signingKeys);
     }
 
     @Bean

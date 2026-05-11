@@ -1,7 +1,8 @@
 package com.stucray.limen.security.signing;
 
 import com.stucray.limen.security.SecurityProperties;
-import com.stucray.limen.security.SigningKeyStore;
+import com.stucray.limen.security.SigningKeyProvisioning;
+import com.stucray.limen.security.SigningKeyReader;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -27,7 +28,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Component
-class JdbcSigningKeyStore implements SigningKeyStore {
+class JdbcSigningKeys
+    implements SigningKeyReader, SigningKeyProvisioning, SigningKeyLifecycle {
 
     private static final String ALGORITHM = "RS256";
     private static final int RSA_KEY_SIZE = 2048;
@@ -36,7 +38,7 @@ class JdbcSigningKeyStore implements SigningKeyStore {
     private final JdbcTemplate jdbcTemplate;
     private final String kekPassword;
 
-    JdbcSigningKeyStore(JdbcTemplate jdbcTemplate, SecurityProperties properties) {
+    JdbcSigningKeys(JdbcTemplate jdbcTemplate, SecurityProperties properties) {
         this.jdbcTemplate = jdbcTemplate;
         this.kekPassword = properties.kek();
     }

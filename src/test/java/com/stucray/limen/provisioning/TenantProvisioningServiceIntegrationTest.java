@@ -1,7 +1,7 @@
 package com.stucray.limen.provisioning;
 
 import com.stucray.limen.TestcontainersConfiguration;
-import com.stucray.limen.security.SigningKeyStore;
+import com.stucray.limen.security.SigningKeyProvisioning;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
@@ -26,7 +26,7 @@ class TenantProvisioningServiceIntegrationTest {
     @Autowired TenantProvisioningService service;
     @Autowired TenantRepository tenantRepository;
     @Autowired JdbcTemplate jdbcTemplate;
-    @MockitoSpyBean SigningKeyStore signingKeyStore;
+    @MockitoSpyBean SigningKeyProvisioning signingKeys;
 
     @Test
     @DisplayName("createTenant inserts the tenant row AND provisions an active signing key in one transaction")
@@ -68,7 +68,7 @@ class TenantProvisioningServiceIntegrationTest {
     @DisplayName("Signing-key failure rolls back the tenant insert — no orphaned tenant row")
     void signingKeyFailureRollsBackTenantInsert() {
         doThrow(new IllegalStateException("simulated key store failure"))
-            .when(signingKeyStore).createForTenant(anyLong());
+            .when(signingKeys).createForTenant(anyLong());
 
         String slug = "rollback-" + System.nanoTime();
 

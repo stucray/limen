@@ -1,18 +1,18 @@
 # Test Coverage Snapshot
 
 <!-- coverage:auto:start -->
-**Generated:** 2026-05-11 from commit `eb941f2` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
+**Generated:** 2026-05-11 from commit `b16a618` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
 
-**Run:** `./mvnw verify` — 468 tests, all passing. JaCoCo analyzes 178 production classes.
+**Run:** `./mvnw verify` — 486 tests, all passing. JaCoCo analyzes 178 production classes.
 
 ## Headline numbers
 
 | Metric       | Coverage | Δ from baseline | Δ from prev | Covered / Total |
 |--------------|---------:|----------------:|------------:|----------------:|
-| Instructions | 93.5 % | +9.5 % 🟢 | +5.8 % 🟢 | 12,175 / 13,021 |
-| Branches     | 77.4 % | +7.4 % 🟢 | +7.4 % 🟢 | 565 / 730 |
-| Lines        | 93.9 % | +7.8 % 🟢 | +6.1 % 🟢 | 2,484 / 2,644 |
-| Methods      | 94.5 % | +5.4 % 🟢 | +3.7 % 🟢 | 657 / 695 |
+| Instructions | 93.7 % | +9.7 % 🟢 | +0.2 % 🟢 | 12,204 / 13,021 |
+| Branches     | 77.5 % | +7.5 % 🟢 | +0.1 % 🟢 | 566 / 730 |
+| Lines        | 94.2 % | +8.1 % 🟢 | +0.3 % 🟢 | 2,490 / 2,644 |
+| Methods      | 94.7 % | +5.6 % 🟢 | +0.2 % 🟢 | 658 / 695 |
 
 Detailed HTML drill-down: `target/site/jacoco/index.html` (gitignored — regenerate with `./mvnw clean test`). Per-class CSV: `target/site/jacoco/jacoco.csv`.
 
@@ -26,12 +26,12 @@ Sorted by line coverage, weakest first. Δ Line (base) compares each package aga
 | com.stucray.limen.email | 77.4 % | +77.4 % 🟢 | +0.0 % ⚪ | 50.0 % | 87.5 % | 7 |
 | com.stucray.limen.auth.ott | 79.1 % | +79.1 % 🟢 | +0.0 % ⚪ | 62.9 % | 79.4 % | 58 |
 | com.stucray.limen.security.ratelimit | 85.7 % | +85.7 % 🟢 | +0.0 % ⚪ | 53.1 % | 100.0 % | 11 |
+| com.stucray.limen.security | 86.7 % | -5.8 % 🔴 | -1.5 % 🔴 | 50.0 % | 100.0 % | 2 |
 | com.stucray.limen.auth | 87.1 % | +0.5 % 🟢 | +0.0 % ⚪ | 75.0 % | 91.8 % | 25 |
-| com.stucray.limen.security | 88.2 % | -4.3 % 🔴 | +0.0 % ⚪ | 50.0 % | 100.0 % | 2 |
-| com.stucray.limen.useradmin | 89.9 % | +89.9 % 🟢 | +49.3 % 🟢 | 77.6 % | 94.3 % | 14 |
 | com.stucray.limen.auth.lockout | 91.1 % | +91.1 % 🟢 | +0.0 % ⚪ | 68.8 % | 100.0 % | 5 |
-| com.stucray.limen.security.signing | 91.9 % | +91.9 % 🟢 | +0.0 % ⚪ | 63.6 % | 100.0 % | 9 |
+| com.stucray.limen.security.signing | 92.0 % | +92.0 % 🟢 | +0.1 % 🟢 | 63.6 % | 100.0 % | 9 |
 | com.stucray.limen.user | 92.6 % | -7.4 % 🔴 | +0.0 % ⚪ | 100.0 % | 90.5 % | 2 |
+| com.stucray.limen.useradmin | 94.2 % | +94.2 % 🟢 | +4.3 % 🟢 | 79.3 % | 97.1 % | 8 |
 | com.stucray.limen.management.web | 95.2 % | +0.0 % ⚪ | +0.0 % ⚪ | 75.0 % | 100.0 % | 1 |
 | com.stucray.limen.oauth2 | 95.8 % | +8.0 % 🟢 | +0.0 % ⚪ | 82.8 % | 98.7 % | 15 |
 | com.stucray.limen.memberships | 98.1 % | +98.1 % 🟢 | +0.0 % ⚪ | 83.8 % | 91.0 % | 6 |
@@ -45,9 +45,9 @@ Sorted by line coverage, weakest first. Δ Line (base) compares each package aga
 | com.stucray.limen.provisioning | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 94.4 % | 100.0 % | 0 |
 | com.stucray.limen.roles | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 100.0 % | 100.0 % | 0 |
 | com.stucray.limen.system | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 80.0 % | 80.0 % | 0 |
-| com.stucray.limen.clients | 100.0 % | +100.0 % 🟢 | +51.5 % 🟢 | 70.6 % | 95.9 % | 0 |
+| com.stucray.limen.clients | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 70.6 % | 95.9 % | 0 |
 | com.stucray.limen.tenant | 100.0 % | +0.0 % ⚪ | +0.0 % ⚪ | 100.0 % | 100.0 % | 0 |
-| com.stucray.limen.signup | 100.0 % | +100.0 % 🟢 | +29.0 % 🟢 | 100.0 % | 100.0 % | 0 |
+| com.stucray.limen.signup | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 100.0 % | 100.0 % | 0 |
 | com.stucray.limen.audit.events | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | n/a | 100.0 % | 0 |
 | com.stucray.limen.observability | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 66.7 % | 100.0 % | 0 |
 | com.stucray.limen.audit | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 100.0 % | 100.0 % | 0 |

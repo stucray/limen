@@ -7,7 +7,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import com.stucray.limen.security.SigningKeyStore;
+import com.stucray.limen.security.SigningKeyReader;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantScope;
@@ -25,11 +25,11 @@ import java.util.List;
  *   <li><b>Signing</b> ({@code NimbusJwtEncoder.selectJwk}): the selector
  *       constrains keyType/keyUse/algorithm. The encoder throws if the source
  *       returns more than one match, so we return only the ACTIVE key (with
- *       private material decrypted by {@link SigningKeyStore#getActiveSigningKey}).</li>
+ *       private material decrypted by {@link SigningKeyReader#getActiveSigningKey}).</li>
  *   <li><b>JWKS endpoint</b> ({@code NimbusJwkSetEndpointFilter}): the selector
  *       has an empty matcher (match-all). We return every key for the tenant
  *       (ACTIVE + any RETIRED still inside the grace window), public-only via
- *       {@link SigningKeyStore#getJwkSet}, so resource servers can validate
+ *       {@link SigningKeyReader#getJwkSet}, so resource servers can validate
  *       tokens signed by either key throughout a rotation overlap.</li>
  * </ul>
  *
@@ -42,11 +42,11 @@ public class TenantJwkSource implements JWKSource<SecurityContext> {
     private static final String TENANT_PATH_SEGMENT = "/t/";
 
     private final TenantRepository tenantRepository;
-    private final SigningKeyStore signingKeyStore;
+    private final SigningKeyReader signingKeys;
 
-    TenantJwkSource(TenantRepository tenantRepository, SigningKeyStore signingKeyStore) {
+    TenantJwkSource(TenantRepository tenantRepository, SigningKeyReader signingKeys) {
         this.tenantRepository = tenantRepository;
-        this.signingKeyStore = signingKeyStore;
+        this.signingKeys = signingKeys;
     }
 
     @Override
@@ -58,13 +58,13 @@ public class TenantJwkSource implements JWKSource<SecurityContext> {
             );
         }
         if (isMatchAllSelector(selector)) {
-            JWKSet allPublic = signingKeyStore.getJwkSet(tenantId);
+            JWKSet allPublic = signingKeys.getJwkSet(tenantId);
             if (allPublic.getKeys().isEmpty()) {
                 throw new IllegalStateException("No signing keys for tenant " + tenantId);
             }
             return selector.select(allPublic);
         }
-        RSAKey activeKey = signingKeyStore.getActiveSigningKey(tenantId);
+        RSAKey activeKey = signingKeys.getActiveSigningKey(tenantId);
         if (activeKey == null) {
             throw new IllegalStateException("No active signing key for tenant " + tenantId);
         }

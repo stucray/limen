@@ -1,6 +1,5 @@
 package com.stucray.limen.security.signing;
 
-import com.stucray.limen.security.SigningKeyStore;
 import com.stucray.limen.audit.events.SigningKeyPrunedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotationFailedEvent;
@@ -30,7 +29,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @DisplayName("SigningKeyRotator: per-tenant rotation orchestration + event publication")
 class SigningKeyRotatorTest {
 
-    @Mock SigningKeyStore signingKeyStore;
+    @Mock SigningKeyLifecycle signingKeys;
     @Mock ApplicationEventPublisher eventPublisher;
 
     private final Clock clock = Clock.fixed(Instant.parse("2026-05-07T12:00:00Z"), ZoneOffset.UTC);
@@ -38,13 +37,13 @@ class SigningKeyRotatorTest {
     @Test
     @DisplayName("rotate() delegates to the store and publishes a SigningKeyRotatedEvent carrying the returned kids")
     void rotateDelegatesAndPublishesEvent() {
-        given(signingKeyStore.rotateForTenant(42L))
-            .willReturn(new SigningKeyStore.RotationOutcome("old-kid", "new-kid"));
+        given(signingKeys.rotateForTenant(42L))
+            .willReturn(new SigningKeyLifecycle.RotationOutcome("old-kid", "new-kid"));
         SigningKeyRotator rotator = rotator(null);
 
         rotator.rotate(42L);
 
-        verify(signingKeyStore).rotateForTenant(42L);
+        verify(signingKeys).rotateForTenant(42L);
         ArgumentCaptor<SigningKeyRotatedEvent> captor = ArgumentCaptor.forClass(SigningKeyRotatedEvent.class);
         verify(eventPublisher).publishEvent(captor.capture());
         SigningKeyRotatedEvent event = captor.getValue();
@@ -57,7 +56,7 @@ class SigningKeyRotatorTest {
     @DisplayName("rotate() propagates the store's IllegalStateException without publishing an event when there is no ACTIVE key to rotate")
     void rotatePropagatesStoreFailureAndDoesNotPublish() {
         willThrow(new IllegalStateException("no ACTIVE key"))
-            .given(signingKeyStore).rotateForTenant(42L);
+            .given(signingKeys).rotateForTenant(42L);
         SigningKeyRotator rotator = rotator(null);
 
         assertThatThrownBy(() -> rotator.rotate(42L))
@@ -69,10 +68,10 @@ class SigningKeyRotatorTest {
     @Test
     @DisplayName("pruneRetired() publishes one SigningKeyPrunedEvent per row the store deleted, carrying tenantId + kid from the store outcome")
     void prunePublishesOneEventPerDeletedRow() {
-        given(signingKeyStore.pruneRetiredOlderThan(Duration.ofHours(24))).willReturn(List.of(
-            new SigningKeyStore.PrunedKey(7L, "kid-a"),
-            new SigningKeyStore.PrunedKey(7L, "kid-b"),
-            new SigningKeyStore.PrunedKey(11L, "kid-c")
+        given(signingKeys.pruneRetiredOlderThan(Duration.ofHours(24))).willReturn(List.of(
+            new SigningKeyLifecycle.PrunedKey(7L, "kid-a"),
+            new SigningKeyLifecycle.PrunedKey(7L, "kid-b"),
+            new SigningKeyLifecycle.PrunedKey(11L, "kid-c")
         ));
         SigningKeyRotator rotator = rotator(null);
 
@@ -91,7 +90,7 @@ class SigningKeyRotatorTest {
     @Test
     @DisplayName("pruneRetired() publishes nothing when the store reports zero deletions")
     void prunePublishesNothingWhenNothingDeleted() {
-        given(signingKeyStore.pruneRetiredOlderThan(Duration.ofHours(24))).willReturn(List.of());
+        given(signingKeys.pruneRetiredOlderThan(Duration.ofHours(24))).willReturn(List.of());
         SigningKeyRotator rotator = rotator(null);
 
         rotator.pruneRetired(Duration.ofHours(24));
@@ -103,7 +102,7 @@ class SigningKeyRotatorTest {
     @DisplayName("runScheduledRotation() rotates each eligible tenant via the self-proxy and prunes once at the end")
     void runScheduledRotationIteratesAllEligibleTenantsThenPrunes() {
         SigningKeyRotator self = lenientMock();
-        given(signingKeyStore.findTenantIdsWithActiveKeyOlderThan(Duration.ofDays(30)))
+        given(signingKeys.findTenantIdsWithActiveKeyOlderThan(Duration.ofDays(30)))
             .willReturn(List.of(7L, 11L, 13L));
         SigningKeyRotator rotator = rotator(self);
 
@@ -121,7 +120,7 @@ class SigningKeyRotatorTest {
     @DisplayName("runScheduledRotation() catches a per-tenant exception, publishes a SigningKeyRotationFailedEvent with cause = exception simple name, and continues with later tenants and the prune")
     void runScheduledRotationContinuesPastFailureAndIncrementsFailureCounter() {
         SigningKeyRotator self = lenientMock();
-        given(signingKeyStore.findTenantIdsWithActiveKeyOlderThan(Duration.ofDays(30)))
+        given(signingKeys.findTenantIdsWithActiveKeyOlderThan(Duration.ofDays(30)))
             .willReturn(List.of(7L, 11L, 13L));
         org.mockito.Mockito.doThrow(new IllegalStateException("boom"))
             .when(self).rotate(11L);
@@ -146,7 +145,7 @@ class SigningKeyRotatorTest {
     @DisplayName("runScheduledRotation() with no eligible tenants still calls prune (RETIRED keys may still need reaping)")
     void runScheduledRotationStillPrunesWhenNoTenantsEligible() {
         SigningKeyRotator self = lenientMock();
-        given(signingKeyStore.findTenantIdsWithActiveKeyOlderThan(Duration.ofDays(30)))
+        given(signingKeys.findTenantIdsWithActiveKeyOlderThan(Duration.ofDays(30)))
             .willReturn(List.of());
         SigningKeyRotator rotator = rotator(self);
 
@@ -162,7 +161,7 @@ class SigningKeyRotatorTest {
             true, "0 0 3 * * *", Duration.ofDays(30), Duration.ofHours(24));
         // self can be null for tests that don't exercise the batch path.
         SigningKeyRotator nonNullSelf = self != null ? self : lenientMock();
-        return new SigningKeyRotator(signingKeyStore, eventPublisher, props, nonNullSelf, clock);
+        return new SigningKeyRotator(signingKeys, eventPublisher, props, nonNullSelf, clock);
     }
 
     /**

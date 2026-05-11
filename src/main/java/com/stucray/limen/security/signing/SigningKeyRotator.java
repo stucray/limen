@@ -1,6 +1,5 @@
 package com.stucray.limen.security.signing;
 
-import com.stucray.limen.security.SigningKeyStore;
 import com.stucray.limen.audit.events.SigningKeyPrunedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotatedEvent;
 import com.stucray.limen.audit.events.SigningKeyRotationFailedEvent;
@@ -48,7 +47,7 @@ class SigningKeyRotator {
 
     private static final Logger log = LoggerFactory.getLogger(SigningKeyRotator.class);
 
-    private final SigningKeyStore signingKeyStore;
+    private final SigningKeyLifecycle signingKeys;
     private final ApplicationEventPublisher eventPublisher;
     private final SigningKeyRotationProperties properties;
     private final SigningKeyRotator self;
@@ -57,23 +56,23 @@ class SigningKeyRotator {
 
     @Autowired
     SigningKeyRotator(
-        SigningKeyStore signingKeyStore,
+        SigningKeyLifecycle signingKeys,
         ApplicationEventPublisher eventPublisher,
         SigningKeyRotationProperties properties,
         @Lazy SigningKeyRotator self
     ) {
-        this(signingKeyStore, eventPublisher, properties, self, Clock.systemUTC());
+        this(signingKeys, eventPublisher, properties, self, Clock.systemUTC());
     }
 
     /** Test seam — accepts a stubbed self-proxy for batch-path tests; clock for timing-sensitive ones. */
     SigningKeyRotator(
-        SigningKeyStore signingKeyStore,
+        SigningKeyLifecycle signingKeys,
         ApplicationEventPublisher eventPublisher,
         SigningKeyRotationProperties properties,
         SigningKeyRotator self,
         Clock clock
     ) {
-        this.signingKeyStore = signingKeyStore;
+        this.signingKeys = signingKeys;
         this.eventPublisher = eventPublisher;
         this.properties = properties;
         this.self = self;
@@ -82,7 +81,7 @@ class SigningKeyRotator {
 
     @Transactional
     void rotate(long tenantId) {
-        SigningKeyStore.RotationOutcome outcome = signingKeyStore.rotateForTenant(tenantId);
+        SigningKeyLifecycle.RotationOutcome outcome = signingKeys.rotateForTenant(tenantId);
         eventPublisher.publishEvent(new SigningKeyRotatedEvent(
             tenantId, outcome.oldKid(), outcome.newKid()));
     }
@@ -97,7 +96,7 @@ class SigningKeyRotator {
      */
     @Transactional
     void pruneRetired(Duration grace) {
-        for (SigningKeyStore.PrunedKey pruned : signingKeyStore.pruneRetiredOlderThan(grace)) {
+        for (SigningKeyLifecycle.PrunedKey pruned : signingKeys.pruneRetiredOlderThan(grace)) {
             eventPublisher.publishEvent(new SigningKeyPrunedEvent(pruned.tenantId(), pruned.kid()));
         }
     }
@@ -113,7 +112,7 @@ class SigningKeyRotator {
      * batch regardless of per-tenant outcomes.
      */
     void runScheduledRotation() {
-        List<Long> tenantIds = signingKeyStore.findTenantIdsWithActiveKeyOlderThan(properties.keyAge());
+        List<Long> tenantIds = signingKeys.findTenantIdsWithActiveKeyOlderThan(properties.keyAge());
         log.info("Scheduled signing-key rotation: {} tenants eligible", tenantIds.size());
 
         for (long tenantId : tenantIds) {
