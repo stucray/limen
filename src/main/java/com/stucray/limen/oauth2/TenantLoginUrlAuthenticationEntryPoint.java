@@ -40,7 +40,7 @@ public class TenantLoginUrlAuthenticationEntryPoint extends LoginUrlAuthenticati
     }
 
     /** Resolves the slug from the routing filter's TenantScope binding (e.g. for the SAS chain). */
-    static TenantLoginUrlAuthenticationEntryPoint fromTenantScope() {
+    public static TenantLoginUrlAuthenticationEntryPoint fromTenantScope() {
         return new TenantLoginUrlAuthenticationEntryPoint(req -> TenantScope.slug());
     }
 

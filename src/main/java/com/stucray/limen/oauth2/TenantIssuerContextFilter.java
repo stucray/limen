@@ -22,7 +22,7 @@ public class TenantIssuerContextFilter extends OncePerRequestFilter {
 
     private final AuthorizationServerSettings baseSettings;
 
-    TenantIssuerContextFilter(AuthorizationServerSettings baseSettings) {
+    public TenantIssuerContextFilter(AuthorizationServerSettings baseSettings) {
         this.baseSettings = baseSettings;
     }
 

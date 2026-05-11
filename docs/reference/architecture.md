@@ -260,9 +260,20 @@ The login path does **not** go through `TenantOAuth2RoutingFilter` (its regex ma
 
 ### 4.3 OAuth2 storage decorators
 
-All three SAS storage interfaces are wrapped with a tenant-aware decorator. Two of them (`RegisteredClientRepository`, `OAuth2AuthorizationService`) use a *delegate-then-update* pattern: they call into the standard `JdbcXxx` implementation and then run a follow-up `UPDATE ... SET tenant_id = ?`. The third (`OAuth2AuthorizationConsentService`) writes its own SQL directly because the schema requires `tenant_id` to be part of the composite primary key, which makes the delegate-then-update approach unworkable.
+All three SAS storage interfaces are wrapped with a tenant-aware adapter, plus a tenant-aware `JWKSource`. They live in the internal sub-package `oauth2.sas` alongside their `@Configuration` (`SasConfig`); all four adapter classes are package-private — the rest of the application autowires the Spring SPI interface types published by `SasConfig`'s `@Bean` methods. Spring Modulith's default sub-package-internal rule is the boundary, locked in by `ApplicationModules.verify()`.
 
-The decorators all *read* by adding a `tenant_id = ?` predicate. A query that returns no row for the current Tenant looks identical to a row that does not exist, so cross-tenant lookups are invisible to the caller.
+The four adapters are intentionally different shapes — each Spring SPI it implements forces it:
+
+| Adapter | Shape |
+|---|---|
+| `TenantAwareRegisteredClientRepository` | Decorator over `JdbcRegisteredClientRepository`. **Allows null `TenantScope`** so the management console can read across tenants. |
+| `TenantAwareOAuth2AuthorizationService` | *Delegate-then-`UPDATE`*: calls into the standard `JdbcOAuth2AuthorizationService` then runs a follow-up `UPDATE ... SET tenant_id = ?`. |
+| `TenantAwareOAuth2AuthorizationConsentService` | Direct reimplementation — Spring's `INSERT` cannot supply `tenant_id`, which the composite PK requires. |
+| `TenantJwkSource` | Direct `JWKSource<SecurityContext>` impl with two-mechanism tenant resolution (issuer URL parse → `TenantScope` fallback). |
+
+Two of those four (Authorization and Consent services) share a one-line helper `SasTenantScope.requireTenantId(callerName)` that throws `IllegalStateException` when no scope is bound. The other two have *different* missing-scope semantics by design (RegisteredClient allows null, JwkSource runs the issuer-URL fallback first), so they don't call the shared helper. Which adapters call `SasTenantScope` is the load-bearing contract.
+
+The adapters all *read* by adding a `tenant_id = ?` predicate. A query that returns no row for the current Tenant looks identical to a row that does not exist, so cross-tenant lookups are invisible to the caller. `TenantScopedSasIntegrationTest` pins the invariant across all four SPIs in one boundary test.
 
 ### 4.4 Signing keys
 
@@ -587,7 +598,7 @@ Each direct sub-package of `com.stucray.limen` is one application module. **The 
 | `identity` | Bootstrap-admin properties + `UserBootstrap` startup runner |
 | `management` | Admin-console infrastructure (`/manage/...` filter chain, nav, model advice). Per-domain `/manage/...` features live in their own modules |
 | `memberships` | `ApplicationMembership` + `ClientMembership` + Role-join entities, queries, services, members UI |
-| `oauth2` | Spring Authorization Server integration: tenant-aware decorators, routing filter, issuer-context filter, JWK source |
+| `oauth2` | Spring Authorization Server integration: protocol-edge filters (routing, issuer-context, membership gate), OAuth2 login filter chain, OAuth2 controllers, the SAS-aware entry point. The tenant-scoped SAS persistence adapters (`TenantAware*`, `TenantJwkSource`) + `SasConfig` live in the internal sub-package `oauth2.sas` (all package-private; Modulith locks the boundary) |
 | `observability` | Cross-cutting OTel/Micrometer concerns: tenant-tagging filter, named auth counters, OTel logback bridge |
 | `provisioning` | Tenant lifecycle orchestration: `TenantProvisioningService` + `TenantProvisioner` |
 | `roles` | Per-Application `Role` catalogue + `RoleResolver` + management UI |

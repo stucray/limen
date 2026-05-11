@@ -6,7 +6,7 @@
  * request hits before more-specific chains (OAuth2, login, management) take over.
  * Per-Tenant RSA signing-key access is split into two cross-module public ports
  * by consumer role: {@code SigningKeyReader} (SAS sign + JWKS, consumed by
- * {@code oauth2.TenantJwkSource}) and {@code SigningKeyProvisioning} (key
+ * {@code oauth2.sas.TenantJwkSource}) and {@code SigningKeyProvisioning} (key
  * create/delete on tenant on/off-boarding, consumed by
  * {@code provisioning.TenantProvisioningService}). The third role —
  * {@code SigningKeyLifecycle} for rotation, pruning, eligibility scan — stays

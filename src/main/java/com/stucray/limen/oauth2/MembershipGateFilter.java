@@ -62,7 +62,7 @@ public final class MembershipGateFilter extends OncePerRequestFilter {
     private final ClientMembershipQuery clientMembershipQuery;
     private final RedirectStrategy redirectStrategy = new DefaultRedirectStrategy();
 
-    MembershipGateFilter(
+    public MembershipGateFilter(
         RegisteredClientRepository registeredClientRepository,
         ClientMembershipQuery clientMembershipQuery
     ) {

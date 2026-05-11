@@ -1,4 +1,4 @@
-package com.stucray.limen.oauth2;
+package com.stucray.limen.oauth2.sas;
 
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
@@ -7,11 +7,7 @@ import com.stucray.limen.user.TenantUserDetails;
 import com.stucray.limen.clients.TenantClientRepository;
 import com.stucray.limen.memberships.ClientMembershipQuery;
 import com.stucray.limen.oauth2.MembershipGateFilter;
-import com.stucray.limen.oauth2.TenantAwareOAuth2AuthorizationConsentService;
-import com.stucray.limen.oauth2.TenantAwareOAuth2AuthorizationService;
-import com.stucray.limen.oauth2.TenantAwareRegisteredClientRepository;
 import com.stucray.limen.oauth2.TenantIssuerContextFilter;
-import com.stucray.limen.oauth2.TenantJwkSource;
 import com.stucray.limen.oauth2.TenantLoginUrlAuthenticationEntryPoint;
 import com.stucray.limen.security.SigningKeyReader;
 import com.stucray.limen.tenant.TenantRepository;
