@@ -2,6 +2,7 @@ package com.stucray.limen.auth;
 
 import com.stucray.limen.user.TenantUserDetails;
 
+import com.stucray.limen.auth.login.LogoutSlugSource;
 import com.stucray.limen.auth.login.TenantUrlScheme;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
@@ -49,7 +50,10 @@ class TenantPersistentTokenBasedRememberMeServicesUnitTest {
         Pattern.compile("^/t/([^/]+)(?:/.*)?$"),
         "/t/{slug}/login",
         "/t/{slug}/",
-        "/t/{slug}/change-password"
+        "/t/{slug}/change-password",
+        "/t/*/logout",
+        LogoutSlugSource.REQUEST_URI,
+        "/"
     );
 
     @BeforeEach

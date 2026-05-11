@@ -4,9 +4,24 @@
     "tool_version": "7.24.0",
     "ruleset": "pmd-ruleset.xml",
     "generated_date": "2026-05-11",
-    "sha": "e925d08",
-    "total_findings": 0,
-    "by_priority": {}
+    "sha": "b16a618",
+    "total_findings": 1,
+    "by_priority": {
+      "3": 1
+    }
   },
-  "findings": []
+  "findings": [
+    {
+      "rule": "TooManyMethods",
+      "ruleset": "Design",
+      "priority": 3,
+      "package": "com.stucray.limen.auth.login",
+      "class": "TenantLogin",
+      "method": "",
+      "file": "src/main/java/com/stucray/limen/auth/login/TenantLogin.java",
+      "begin_line": 43,
+      "end_line": 241,
+      "message": "This class has too many methods, consider refactoring it."
+    }
+  ]
 }

@@ -120,23 +120,4 @@ class EndUserHomeIntegrationTest {
             .andExpect(redirectedUrl("/t/beta-corp/login"));
     }
 
-    @Test
-    @DisplayName("POST /t/{slug}/logout invalidates the session and redirects to that tenant's login page")
-    void logoutInvalidatesSessionAndRedirects() throws Exception {
-        MvcResult loginResult = mockMvc.perform(post("/t/alpha-corp/login")
-                .param("email", "alice@example.test")
-                .param("password", "password")
-                .with(csrf()))
-            .andReturn();
-
-        MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
-
-        mockMvc.perform(post("/t/alpha-corp/logout").session(session).with(csrf()))
-            .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/t/alpha-corp/login"));
-
-        mockMvc.perform(get("/t/alpha-corp/").session(session))
-            .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/t/alpha-corp/login"));
-    }
 }

@@ -18,7 +18,10 @@ class TenantUrlSchemeUnitTest {
         Pattern.compile("^/t/([^/]+)(?:/.*)?$"),
         "/t/{slug}/login",
         "/t/{slug}/",
-        "/t/{slug}/change-password"
+        "/t/{slug}/change-password",
+        "/t/*/logout",
+        LogoutSlugSource.REQUEST_URI,
+        "/"
     );
 
     private static final TenantUrlScheme MANAGEMENT = new TenantUrlScheme(
@@ -27,7 +30,10 @@ class TenantUrlSchemeUnitTest {
         Pattern.compile("^/manage/t/([^/]+)(?:/.*)?$"),
         "/manage/t/{slug}/login",
         "/manage/t/{slug}/",
-        "/manage/t/{slug}/change-password"
+        "/manage/t/{slug}/change-password",
+        "/manage/logout",
+        LogoutSlugSource.REFERER_HEADER,
+        "/manage/t/system/login"
     );
 
     @Test
