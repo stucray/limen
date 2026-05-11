@@ -496,6 +496,31 @@
 							</arguments>
 						</configuration>
 					</execution>
+					<!--
+						Run scripts/coverage-report.sh after JaCoCo's report
+						execution (bound to the test phase) has written
+						target/site/jacoco/jacoco.csv. The script splices the
+						auto-block between the markers in test-coverage.md and
+						appends a snapshot to test-coverage-history.jsonl. The
+						"Re-running this report" section of test-coverage.md
+						documents the flow.
+					-->
+					<execution>
+						<id>render-coverage-report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<executable>bash</executable>
+							<workingDirectory>${project.basedir}</workingDirectory>
+							<arguments>
+								<argument>scripts/coverage-report.sh</argument>
+								<argument>--write</argument>
+								<argument>docs/reports/test-coverage.md</argument>
+							</arguments>
+						</configuration>
+					</execution>
 				</executions>
 			</plugin>
 		</plugins>
