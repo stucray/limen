@@ -55,6 +55,25 @@ DATE_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 DATE_DISPLAY="$(date -u +%Y-%m-%d)"
 SHA="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 
+# Idempotence guard (issue #251). When --write is in effect, skip the JSONL
+# append and the markdown rewrite if HEAD is already the most recent entry
+# in the history *and* there are no uncommitted changes to source or build.
+# JaCoCo's <clinit> ordering is non-deterministic, so back-to-back `mvn
+# verify` runs on the same commit produce ~0.1–0.5 % coverage drift in
+# either direction. Without this guard every local verify leaves a phantom
+# diff in the working tree.
+#
+# Stdout mode (no --write) is intentionally unaffected — callers that pipe
+# the auto-block somewhere else still get fresh output every run.
+if [[ -n "$WRITE_PATH" && -f "$HISTORY_FILE" && -s "$HISTORY_FILE" && "$SHA" != "unknown" ]]; then
+    LAST_SHA="$(tail -n 1 "$HISTORY_FILE" | sed -nE 's/.*"sha":"([^"]+)".*/\1/p')"
+    if [[ -n "$LAST_SHA" && "$LAST_SHA" == "$SHA" ]] \
+       && git -C "$REPO_ROOT" diff --quiet -- src/ pom.xml 2>/dev/null; then
+        echo "[INFO] coverage-report: HEAD ($SHA) already snapshotted and source clean — skipping write."
+        exit 0
+    fi
+fi
+
 # Auto-compute test count if not supplied via --tests. Sums the
 # tests="N" attribute on each surefire/failsafe testsuite XML root.
 # Missing report dirs (e.g. running before any tests) leave TESTS empty,
