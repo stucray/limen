@@ -29,13 +29,15 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ET
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 PMD_NS = "{http://pmd.sourceforge.net/report/2.0.0}"
 HOT_SPOT_LIMIT = 10
@@ -43,6 +45,9 @@ HOT_SPOT_LIMIT = 10
 # relative GitHub source links use this prefix. If the report path moves,
 # update this constant.
 LINK_PREFIX = "../../"
+# Metadata fields written into every report but excluded when comparing
+# committed vs fresh output — they legitimately move on every run.
+_GENERATED_LINE_RE = re.compile(r"^\*\*Generated:\*\* .*\n", re.MULTILINE)
 
 
 @dataclass(frozen=True)
@@ -110,13 +115,19 @@ def sort_findings(findings: Iterable[Finding]) -> list[Finding]:
 
 
 def compute_summary(
-    findings: list[Finding], tool_version: str, ruleset_path: str
+    findings: list[Finding],
+    tool_version: str,
+    ruleset_path: str,
+    generated_date: str,
+    sha: str,
 ) -> dict:
     by_priority: Counter[int] = Counter(f.priority for f in findings)
     return {
         "tool": "pmd",
         "tool_version": tool_version,
         "ruleset": ruleset_path,
+        "generated_date": generated_date,
+        "sha": sha,
         "total_findings": len(findings),
         "by_priority": {str(k): by_priority[k] for k in sorted(by_priority)},
     }
@@ -148,6 +159,11 @@ def _finding_to_dict(f: Finding) -> dict:
 def render_markdown(findings: list[Finding], summary: dict) -> str:
     lines: list[str] = []
     lines.append("# Code Quality Snapshot")
+    lines.append("")
+    lines.append(
+        f"**Generated:** {summary['generated_date']} from commit "
+        f"`{summary['sha']}`"
+    )
     lines.append("")
     lines.append(
         f"**Tool:** PMD {summary['tool_version']} · "
@@ -270,6 +286,54 @@ def atomic_write(path: Path, content: str) -> None:
     os.replace(tmp, path)
 
 
+def _utc_today() -> str:
+    return time.strftime("%Y-%m-%d", time.gmtime())
+
+
+def _short_sha() -> str:
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+        return out.strip() or "unknown"
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return "unknown"
+
+
+def _strip_md_metadata(blob: str) -> str:
+    return _GENERATED_LINE_RE.sub("", blob)
+
+
+def _strip_json_metadata(blob: str) -> str:
+    """Return ``blob`` with ``summary.generated_date`` and ``summary.sha``
+    removed. Falls back to the raw blob if it isn't parseable JSON — the
+    caller will then treat it as "drifted" and overwrite it.
+    """
+    try:
+        data = json.loads(blob)
+    except json.JSONDecodeError:
+        return blob
+    summary = data.get("summary")
+    if isinstance(summary, dict):
+        summary.pop("generated_date", None)
+        summary.pop("sha", None)
+    return json.dumps(data, indent=2) + "\n"
+
+
+def _has_real_drift(
+    committed: Path, fresh: str, strip: Callable[[str], str]
+) -> bool:
+    """True when writing ``fresh`` to ``committed`` would change anything
+    beyond the ``generated_date`` / ``sha`` metadata. A missing committed
+    file counts as drift so the first-ever run writes through.
+    """
+    if not committed.is_file():
+        return True
+    return strip(committed.read_text(encoding="utf-8")) != strip(fresh)
+
+
 def gate_drift(paths: list[Path]) -> None:
     """In CI, fail the build when the freshly-written report files differ
     from what's committed. Locally (``CI`` unset) this is a no-op so the
@@ -312,18 +376,50 @@ def main() -> int:
         default="pmd-ruleset.xml",
         help="Ruleset path recorded in the summary (default: pmd-ruleset.xml)",
     )
+    parser.add_argument(
+        "--generated-date",
+        default=None,
+        help="Override the generated date (YYYY-MM-DD). Defaults to today (UTC); "
+             "tests + fixture regeneration pass a stable value.",
+    )
+    parser.add_argument(
+        "--sha",
+        default=None,
+        help="Override the recorded commit SHA. Defaults to `git rev-parse "
+             "--short HEAD`; tests + fixture regeneration pass a stable value.",
+    )
     args = parser.parse_args()
 
     in_path = Path(args.in_path)
     out_md = Path(args.out_md)
     out_json = Path(args.out_json)
+    generated_date = args.generated_date or _utc_today()
+    sha = args.sha or _short_sha()
 
     findings, tool_version = parse_pmd_xml(in_path)
     findings = sort_findings(findings)
-    summary = compute_summary(findings, tool_version, args.ruleset)
+    summary = compute_summary(
+        findings, tool_version, args.ruleset, generated_date, sha
+    )
 
-    atomic_write(out_json, render_json(findings, summary))
-    atomic_write(out_md, render_markdown(findings, summary))
+    new_json = render_json(findings, summary)
+    new_md = render_markdown(findings, summary)
+
+    # Idempotence guard (issue #252). PMD's output is deterministic — the
+    # only churn source on a same-source rerun is the date stamp + SHA
+    # we just stamped above. Skip the write (and the drift gate) when the
+    # committed copy matches the fresh render once metadata is stripped.
+    json_drifted = _has_real_drift(out_json, new_json, _strip_json_metadata)
+    md_drifted = _has_real_drift(out_md, new_md, _strip_md_metadata)
+    if not json_drifted and not md_drifted:
+        print(
+            "[INFO] render-pmd-report: findings unchanged from committed "
+            "snapshot — skipping write."
+        )
+        return 0
+
+    atomic_write(out_json, new_json)
+    atomic_write(out_md, new_md)
     gate_drift([out_json, out_md])
     return 0
 

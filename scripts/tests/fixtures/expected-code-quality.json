@@ -3,6 +3,8 @@
     "tool": "pmd",
     "tool_version": "7.24.0",
     "ruleset": "pmd-ruleset.xml",
+    "generated_date": "2026-01-01",
+    "sha": "0000000",
     "total_findings": 4,
     "by_priority": {
       "3": 4
