@@ -1,28 +1,38 @@
 #!/usr/bin/env bash
-# Emit the "Headline numbers" + "Per-package summary" markdown tables for
-# docs/reports/test-coverage.md from a JaCoCo CSV. Each table shows two Δ columns:
-# one against the PR #59 baseline (commit e2fcdb0) and one against the
-# previous run recorded in docs/reports/test-coverage-history.jsonl.
+# Emit the auto-block (Generated/Run lines, Headline numbers, Per-package
+# summary) for docs/reports/test-coverage.md from a JaCoCo CSV. Each table
+# shows two Δ columns: one against the PR #59 baseline (commit e2fcdb0)
+# and one against the previous run recorded in
+# docs/reports/test-coverage-history.jsonl.
 #
-# Side effect: appends a JSON Lines snapshot to docs/reports/test-coverage-history.jsonl
-# (resolved relative to this script).
+# Side effect: appends a JSON Lines snapshot to
+# docs/reports/test-coverage-history.jsonl (resolved relative to this script).
 #
 # Usage:
-#   ./mvnw clean test                                    # regenerate target/site/jacoco/jacoco.csv
-#   scripts/coverage-report.sh                           # print tables to stdout
-#   scripts/coverage-report.sh --tests 245               # also record test count in JSONL
-#   scripts/coverage-report.sh path/to/jacoco.csv        # custom CSV path
+#   ./mvnw clean test                                              # regenerate target/site/jacoco/jacoco.csv
+#   scripts/coverage-report.sh                                     # print auto-block to stdout
+#   scripts/coverage-report.sh --write docs/reports/test-coverage.md   # splice into markers in <path>
+#   scripts/coverage-report.sh --tests 245                         # override auto-computed test count
+#   scripts/coverage-report.sh path/to/jacoco.csv                  # custom CSV path
+#
+# When --write is given, replaces the region between
+#   <!-- coverage:auto:start --> ... <!-- coverage:auto:end -->
+# in <path>. Write is atomic (tmp + os-rename). This is the mode bound to
+# the Maven verify phase via exec-maven-plugin (see pom.xml).
 
 set -euo pipefail
 
 CSV=""
 TESTS=""
+WRITE_PATH=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --tests)     TESTS="${2:-}"; shift 2 ;;
         --tests=*)   TESTS="${1#*=}"; shift ;;
+        --write)     WRITE_PATH="${2:-}"; shift 2 ;;
+        --write=*)   WRITE_PATH="${1#*=}"; shift ;;
         -h|--help)
-            sed -n '2,16p' "$0"
+            sed -n '2,22p' "$0"
             exit 0
             ;;
         *)
@@ -42,7 +52,27 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 HISTORY_FILE="$REPO_ROOT/docs/reports/test-coverage-history.jsonl"
 
 DATE_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+DATE_DISPLAY="$(date -u +%Y-%m-%d)"
 SHA="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+
+# Auto-compute test count if not supplied via --tests. Sums the
+# tests="N" attribute on each surefire/failsafe testsuite XML root.
+# Missing report dirs (e.g. running before any tests) leave TESTS empty,
+# which renders as "tests, all passing" — same shape as before, just
+# without a number.
+if [[ -z "$TESTS" ]]; then
+    TESTS=$(
+        cat \
+            "$REPO_ROOT"/target/surefire-reports/TEST-*.xml \
+            "$REPO_ROOT"/target/failsafe-reports/TEST-*.xml 2>/dev/null \
+        | grep -hoE '<testsuite[^>]*tests="[0-9]+"' \
+        | grep -oE 'tests="[0-9]+"' \
+        | awk -F'"' '{ sum += $2 } END { if (NR > 0) print sum }'
+    ) || true
+fi
+
+# Class count from CSV (one row per analysed class, minus the header).
+CLASS_COUNT=$(awk 'END { print NR - 1 }' "$CSV")
 
 # Canonicalize the history file to one-object-per-line JSONL. `jq -c '.'`
 # accepts both already-correct JSONL and concatenated pretty-printed JSON,
@@ -70,7 +100,8 @@ fi
 
 TMP_JSON="$(mktemp)"
 PREV_PKG_FILE="$(mktemp)"
-trap 'rm -f "$TMP_JSON" "$PREV_PKG_FILE"' EXIT
+TMP_MD="$(mktemp)"
+trap 'rm -f "$TMP_JSON" "$PREV_PKG_FILE" "$TMP_MD"' EXIT
 
 # Dump prior run's per-package line coverage as `<pkg> <line%>` lines.
 # Tolerate missing/empty history; the new package map will simply be empty
@@ -83,8 +114,10 @@ fi
 
 awk -F, \
     -v date_utc="$DATE_UTC" \
+    -v date_display="$DATE_DISPLAY" \
     -v sha="$SHA" \
     -v tests="${TESTS:-}" \
+    -v class_count="$CLASS_COUNT" \
     -v prev_instr="$PREV_INSTR" \
     -v prev_branch="$PREV_BRANCH" \
     -v prev_line_v="$PREV_LINE" \
@@ -179,6 +212,12 @@ END {
     lp = 100 * lc / (lm + lc)
     mp = 100 * mc / (mm + mc)
 
+    tests_phrase = (tests == "" ? "tests" : tests " tests")
+    printf "**Generated:** %s from commit `%s` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.\n", date_display, sha
+    print ""
+    printf "**Run:** `./mvnw verify` — %s, all passing. JaCoCo analyzes %d production classes.\n", tests_phrase, class_count
+    print ""
+
     print "## Headline numbers"; print ""
     print "| Metric       | Coverage | Δ from baseline | Δ from prev | Covered / Total |"
     print "|--------------|---------:|----------------:|------------:|----------------:|"
@@ -186,6 +225,9 @@ END {
     printf "| Branches     | %.1f %% | %s | %s | %s / %s |\n", bp, delta(bp - base_branch), delta_or_dash(bp, prev_branch), comma(bc), comma(bm + bc)
     printf "| Lines        | %.1f %% | %s | %s | %s / %s |\n", lp, delta(lp - base_line),   delta_or_dash(lp, prev_line_v), comma(lc), comma(lm + lc)
     printf "| Methods      | %.1f %% | %s | %s | %s / %s |\n", mp, delta(mp - base_method), delta_or_dash(mp, prev_method), comma(mc), comma(mm + mc)
+
+    print ""
+    print "Detailed HTML drill-down: `target/site/jacoco/index.html` (gitignored — regenerate with `./mvnw clean test`). Per-class CSV: `target/site/jacoco/jacoco.csv`."
 
     print ""; print "## Per-package summary"; print ""
     print "Sorted by line coverage, weakest first. Δ Line (base) compares each package against the PR #59 baseline; Δ Line (prev) compares against the previous snapshot in docs/reports/test-coverage-history.jsonl."
@@ -242,7 +284,48 @@ END {
     json = json "}}"
     print json > jsonpath
 }
-' "$CSV"
+' "$CSV" > "$TMP_MD"
 
 mkdir -p "$(dirname "$HISTORY_FILE")"
 cat "$TMP_JSON" >> "$HISTORY_FILE"
+
+if [[ -z "$WRITE_PATH" ]]; then
+    cat "$TMP_MD"
+    exit 0
+fi
+
+# Splice mode: replace the region between
+#   <!-- coverage:auto:start -->
+#   <!-- coverage:auto:end -->
+# in WRITE_PATH with the freshly-generated block. Markers are preserved.
+# Write is atomic (tmp + mv) so a crash mid-splice never leaves a
+# half-written doc in the working tree.
+if [[ ! -f "$WRITE_PATH" ]]; then
+    echo "Error: $WRITE_PATH not found." >&2
+    exit 1
+fi
+if ! grep -q '<!-- coverage:auto:start -->' "$WRITE_PATH" \
+   || ! grep -q '<!-- coverage:auto:end -->' "$WRITE_PATH"; then
+    echo "Error: $WRITE_PATH is missing coverage:auto:start / coverage:auto:end markers." >&2
+    exit 1
+fi
+
+TMP_OUT="$(mktemp)"
+trap 'rm -f "$TMP_JSON" "$PREV_PKG_FILE" "$TMP_MD" "$TMP_OUT"' EXIT
+
+awk -v block="$TMP_MD" '
+    /<!-- coverage:auto:start -->/ {
+        print
+        while ((getline line < block) > 0) print line
+        skip = 1
+        next
+    }
+    /<!-- coverage:auto:end -->/ {
+        skip = 0
+        print
+        next
+    }
+    !skip { print }
+' "$WRITE_PATH" > "$TMP_OUT"
+
+mv "$TMP_OUT" "$WRITE_PATH"
