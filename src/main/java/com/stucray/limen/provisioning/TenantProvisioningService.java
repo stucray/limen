@@ -5,7 +5,7 @@ import com.stucray.limen.audit.events.TenantDeletedEvent;
 import com.stucray.limen.audit.events.TenantSuspendedEvent;
 import com.stucray.limen.audit.events.TenantUnsuspendedEvent;
 import com.stucray.limen.user.TenantUserDetails;
-import com.stucray.limen.security.SigningKeyStore;
+import com.stucray.limen.security.SigningKeyProvisioning;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
@@ -43,16 +43,16 @@ import java.time.LocalDateTime;
 public class TenantProvisioningService {
 
     private final TenantRepository tenantRepository;
-    private final SigningKeyStore signingKeyStore;
+    private final SigningKeyProvisioning signingKeys;
     private final ApplicationEventPublisher eventPublisher;
 
     TenantProvisioningService(
         TenantRepository tenantRepository,
-        SigningKeyStore signingKeyStore,
+        SigningKeyProvisioning signingKeys,
         ApplicationEventPublisher eventPublisher
     ) {
         this.tenantRepository = tenantRepository;
-        this.signingKeyStore = signingKeyStore;
+        this.signingKeys = signingKeys;
         this.eventPublisher = eventPublisher;
     }
 
@@ -62,7 +62,7 @@ public class TenantProvisioningService {
             new Tenant(null, slug, displayName, TenantStatus.ACTIVE, LocalDateTime.now())
         );
         if (!tenant.isSystem()) {
-            signingKeyStore.createForTenant(tenant.id());
+            signingKeys.createForTenant(tenant.id());
         }
         eventPublisher.publishEvent(
             new TenantCreatedEvent(tenant.id(), tenant.slug(), tenant.displayName(), currentActorUserId()));

@@ -10,7 +10,7 @@ import com.nimbusds.jose.jwk.KeyType;
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
-import com.stucray.limen.security.SigningKeyStore;
+import com.stucray.limen.security.SigningKeyReader;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantScope;
@@ -46,7 +46,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 class TenantJwkSourceUnitTest {
 
     @Mock TenantRepository tenantRepository;
-    @Mock SigningKeyStore signingKeyStore;
+    @Mock SigningKeyReader signingKeys;
 
     TenantJwkSource source;
     Tenant alpha;
@@ -55,7 +55,7 @@ class TenantJwkSourceUnitTest {
 
     @BeforeEach
     void setUp() throws JOSEException {
-        source = new TenantJwkSource(tenantRepository, signingKeyStore);
+        source = new TenantJwkSource(tenantRepository, signingKeys);
         alpha = new Tenant(1L, "alpha", "Alpha", TenantStatus.ACTIVE, LocalDateTime.now());
         activeKey = new RSAKeyGenerator(2048).keyID("active-kid").keyUse(KeyUse.SIGNATURE).generate();
         retiredKey = new RSAKeyGenerator(2048).keyID("retired-kid").keyUse(KeyUse.SIGNATURE).generate();
@@ -71,7 +71,7 @@ class TenantJwkSourceUnitTest {
     void issuerWithTenantSegmentResolvesViaRepositoryAndReturnsKeys() throws Exception {
         setIssuer("https://auth.example.com/t/alpha");
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.of(alpha));
-        given(signingKeyStore.getJwkSet(1L)).willReturn(new JWKSet(activeKey.toPublicJWK()));
+        given(signingKeys.getJwkSet(1L)).willReturn(new JWKSet(activeKey.toPublicJWK()));
 
         List<JWK> jwks = source.get(matchAllSelector(), null);
 
@@ -82,7 +82,7 @@ class TenantJwkSourceUnitTest {
     @DisplayName("Issuer URL without a /t/{slug} segment falls back to the bound TenantScope and skips the repo lookup entirely")
     void issuerWithoutTenantSegmentFallsBackToTenantScope() throws Exception {
         setIssuer("https://auth.example.com");
-        given(signingKeyStore.getJwkSet(1L)).willReturn(new JWKSet(activeKey.toPublicJWK()));
+        given(signingKeys.getJwkSet(1L)).willReturn(new JWKSet(activeKey.toPublicJWK()));
 
         List<JWK> jwks = TenantScope.call("alpha", 1L, () -> source.get(matchAllSelector(), null));
 
@@ -95,7 +95,7 @@ class TenantJwkSourceUnitTest {
     void issuerWithUnknownSlugFallsBackToTenantScope() throws Exception {
         setIssuer("https://auth.example.com/t/ghost");
         given(tenantRepository.findBySlug("ghost")).willReturn(Optional.empty());
-        given(signingKeyStore.getJwkSet(1L)).willReturn(new JWKSet(activeKey.toPublicJWK()));
+        given(signingKeys.getJwkSet(1L)).willReturn(new JWKSet(activeKey.toPublicJWK()));
 
         List<JWK> jwks = TenantScope.call("alpha", 1L, () -> source.get(matchAllSelector(), null));
 
@@ -108,7 +108,7 @@ class TenantJwkSourceUnitTest {
         assertThatThrownBy(() -> source.get(matchAllSelector(), null))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("no tenant context");
-        verifyNoInteractions(tenantRepository, signingKeyStore);
+        verifyNoInteractions(tenantRepository, signingKeys);
     }
 
     @Test
@@ -116,7 +116,7 @@ class TenantJwkSourceUnitTest {
     void matchAllWithNoKeysThrowsIllegalState() {
         setIssuer("https://auth.example.com/t/alpha");
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.of(alpha));
-        given(signingKeyStore.getJwkSet(1L)).willReturn(new JWKSet(List.of()));
+        given(signingKeys.getJwkSet(1L)).willReturn(new JWKSet(List.of()));
 
         assertThatThrownBy(() -> source.get(matchAllSelector(), null))
             .isInstanceOf(IllegalStateException.class)
@@ -128,7 +128,7 @@ class TenantJwkSourceUnitTest {
     void signingPathWithNoActiveKeyThrowsIllegalState() {
         setIssuer("https://auth.example.com/t/alpha");
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.of(alpha));
-        given(signingKeyStore.getActiveSigningKey(1L)).willReturn(null);
+        given(signingKeys.getActiveSigningKey(1L)).willReturn(null);
 
         assertThatThrownBy(() -> source.get(signingSelector(), null))
             .isInstanceOf(IllegalStateException.class)
@@ -140,7 +140,7 @@ class TenantJwkSourceUnitTest {
     void matchAllReturnsAllPublicKeysIncludingRetired() throws Exception {
         setIssuer("https://auth.example.com/t/alpha");
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.of(alpha));
-        given(signingKeyStore.getJwkSet(1L)).willReturn(new JWKSet(List.of(
+        given(signingKeys.getJwkSet(1L)).willReturn(new JWKSet(List.of(
             activeKey.toPublicJWK(),
             retiredKey.toPublicJWK()
         )));
@@ -160,7 +160,7 @@ class TenantJwkSourceUnitTest {
     void signingSelectorReturnsOnlyActiveWithPrivateMaterial() throws Exception {
         setIssuer("https://auth.example.com/t/alpha");
         given(tenantRepository.findBySlug("alpha")).willReturn(Optional.of(alpha));
-        given(signingKeyStore.getActiveSigningKey(1L)).willReturn(activeKey);
+        given(signingKeys.getActiveSigningKey(1L)).willReturn(activeKey);
 
         List<JWK> jwks = source.get(signingSelector(), null);
 
