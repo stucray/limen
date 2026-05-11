@@ -53,37 +53,29 @@ Sorted by line coverage, weakest first. Δ Line (base) compares each package aga
 | com.stucray.limen.audit | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 100.0 % | 100.0 % | 0 |
 <!-- coverage:auto:end -->
 
-## Closed in this round
-
-Four small additions, all targeting security-adjacent oauth2 / signup branches that the existing integration tests didn't exercise. Combined effect: branch coverage 74.5 → 79.5 % (+5.0 pp), `oauth2` package branch 71.2 → 81.8 %, `management.signup` package line 90.0 → 100.0 %.
-
-- `oauth2.OAuth2TenantLoginController` — unknown-slug redirect (the previously-deferred high-priority gap) and known-slug happy path, in `OAuth2TenantLoginControllerUnitTest`. Class is now 100 % line / 100 % branch.
-- `oauth2.TenantJwkSource` — all four arms of `resolveTenantId` (issuer-with-slug → repo, issuer-without-slug → fallback to `TenantScope`, issuer-with-unknown-slug → fallback, no context + no scope → `IllegalStateException`) plus the no-active-key throw, in `TenantJwkSourceUnitTest`. JWT signing-key resolution now branch-covered.
-- `oauth2.TenantIssuerContextFilter` — the no-tenant-scope short-circuit and the default-port branches in `buildBaseUrl` (http+80, https+443, http+8080, https+8443), in `TenantIssuerContextFilterUnitTest`. The `iss` claim built into tokens is now exercised across the port-handling matrix.
-- `management.signup.SignupService` — the previously-untested validation rejections (slug too short, slug too long, blank organization name, blank username, username too long, blank password) added as a parameterized test method on `SignupIntegrationTest`. All input rules now exercised.
-
-## Previously-closed (rolled forward from prior rounds)
-
-- `auth.TenantUserDetailsService` — happy/unknown-tenant/unknown-user paths and the unsupported `loadUserByUsername` are exercised by `TenantUserDetailsServiceUnitTest`.
-- `oauth2.MembershipGateFilter` — missing `client_id`, unknown `client_id`, single- and multi-redirect-uri fallbacks, and the unbound-`TenantScope` short-circuit are exercised by `MembershipGateFilterUnitTest`.
-- `auth.login.PasswordChangeController` (consolidated 2026-05-07; previously two thin per-surface controllers) — mismatched-password and blank-password redisplay paths, plus the no-saved-request fallback for the OAuth2 surface.
-- Management `*Controller` form-error redisplay paths in `MembersController.update()`, `ClientMembersController.update()`, `RolesController.update()`, `RolesController.delete()` (FK ON DELETE RESTRICT), and `ApplicationController.create()`.
-
 ## Remaining gaps
+
+These are the current line/branch shortfalls worth investigating, ordered roughly by yield-per-test-effort. The auto-block above is the authoritative source of percentages — this section captures the *why* and what to look at first.
 
 ### Medium-priority
 
 | Class | Line % | Notes |
 |-------|-------:|-------|
-| `management.users.UserManagementController` | 71 % | 10 missed lines, 0 missed branches — likely 1–2 unreachable / dead methods. Read before testing; may be deletion candidates. |
-| `oauth2.TenantAwareOAuth2AuthorizationService` | 74 % | 11 missed lines, 7 missed branches — probable JSON (de)serialization edges and lookup-miss paths in `findById` / `findByToken`. |
-| `auth.TenantPersistentTokenBasedRememberMeServices` | 79 % | 13 missed lines, 6 missed branches — token-expiry branch, swallow-on-DB-failure path in `onLoginSuccess`, and the `instanceof TenantUserDetails` else-branch in `logout`. |
-| `security.JdbcSigningKeyStore` | 87 % | 6 missed lines with full branch coverage — likely one straight-line method (rotation or error helper). Marginal value. |
+| `auth.ott.OttSpringContractHandler` | 31 % | 25 missed lines, 6 missed branches — bulk of the `auth.ott` package gap. Newer post-v1 module; tests likely cover the happy path only. Read before testing; some methods may be Spring-contract scaffolding that's hard to reach without an end-to-end harness. |
+| `auth.ott.ResendVerificationController` | 68 % | 6 missed lines, 5 missed branches — likely error paths (already-verified, unknown email). |
+| `security.ratelimit.RateLimitFilter.CompiledRule` | 69 % | 11 missed lines, 12 missed branches — inner-class rule matcher. Probably parameterised-test material across header/path/method variants. |
+| `auth.TenantPersistentTokenBasedRememberMeServices` | 72 % | 19 missed lines, 6 missed branches — token-expiry branch, swallow-on-DB-failure path in `onLoginSuccess`, and the `instanceof TenantUserDetails` else-branch in `logout`. Carried over from the v1 narrative; still open. |
+| `oauth2.TenantAwareOAuth2AuthorizationService` | 74 % | 11 missed lines, 7 missed branches — probable JSON (de)serialization edges and lookup-miss paths in `findById` / `findByToken`. Carried over from the v1 narrative; still open. |
+| `email.SmtpEmailSender` | 76 % | 5 missed lines, 2 missed branches — SMTP-delivery error path. Likely needs a mocked `JavaMailSender` to reach. |
+| `auth.ott.TenantOttRoutingFilter` | 78 % | 6 missed lines — pre-auth filter branches. |
+| `useradmin.UserManagementController` | 81 % | 8 missed lines — was 71 % as `management.users.UserManagementController` in the v1 narrative; targeted tests have closed most of the gap, but a small residue remains. |
 
 ## Likely-noise (informational, no action recommended)
 
-- `auth.TenantUserDetailsMixin` and `auth.TenantAuthTokenMixin` (0 %): abstract Jackson mixin classes. Their effects are observed indirectly via OAuth2 authorization (de)serialization round-trips.
-- `LimenApplication` (33 %): Spring Boot entry point.
+- `auth.TenantUserDetailsMixin` and `auth.TenantAuthTokenMixin` (0 %) — abstract Jackson mixin classes. Their effects are observed indirectly via OAuth2 authorization (de)serialization round-trips.
+- `email.SmtpEmailSender.EmailDeliveryException` and `auth.ott.OttSpringContractHandler.Lookup` (0 %) — inner exception / lookup helper types whose CSV lines are the declaration only; no executable code to cover.
+- `LimenApplication` (33 %) — Spring Boot entry point.
+- `@ConfigurationProperties` records (`SecurityProperties`, `LockoutProperties`, `SigningKeyRotationProperties`, `RateLimitProperties`, `BootstrapAdminProperties`) — getters are exercised via binding, but autogenerated `equals` / `hashCode` / `toString` branches inflate the missed-branch count. Marginal value to test directly.
 
 ## Re-running this report
 
