@@ -394,6 +394,8 @@ Properties:
 
 The `From:` address every outbound message carries is `limen.email.from` (default `no-reply@limen.local`, bound via `EmailProperties`). The default is fine for `logging` + Mailpit (both accept anything); real SMTP relays reject sends from domains they don't own, so production overrides `LIMEN_EMAIL_FROM` to a verified-domain address. The split between driver (`smtp`) and From-address (`limen.email.from`) means any of the v4 candidates in §6 is a pure-config swap — no provider-specific implementation class.
 
+Production wires Resend via the `resend` Spring profile (`application-resend.yaml`), which encodes the Resend-specific SMTP shape (`smtp.resend.com:587`, username `resend`, STARTTLS with `required=true` to defeat downgrade-stripping) and reads only `LIMEN_EMAIL_FROM` + `SPRING_MAIL_PASSWORD` from the environment. The profile is vendor-shaped, not environment-shaped: staging and prod both activate `SPRING_PROFILES_ACTIVE=resend`, varying only the two env vars. `EmailProperties.from` is `@NotBlank`-validated, so a missing `LIMEN_EMAIL_FROM` under the `resend` profile is a refused context-start, not a runtime failure on first send. A future provider swap (Postmark, SES, …) would land as a sibling `application-<provider>.yaml`; the rest of the codebase stays put.
+
 There is intentionally no third "real provider" implementation in v3 — vendor-specific wiring (webhooks, suppression-list ingestion) is the additive piece deferred to v4 (see §6 v4 item 18). All callers are OTT generation success handlers and audit-driven notifications; the rest of the codebase never names a concrete sender.
 
 ### 4.8 Audit log

@@ -1,0 +1,28 @@
+# Activated by SPRING_PROFILES_ACTIVE=resend in production. Encodes Resend's
+# SMTP shape (smtp.resend.com:587, username `resend`, STARTTLS required); the
+# password (Resend API key) comes from SPRING_MAIL_PASSWORD, the From-address
+# from LIMEN_EMAIL_FROM. EmailProperties' @NotBlank validation fails the
+# context startup if LIMEN_EMAIL_FROM is unset, so a missing override is a
+# refused deploy rather than a runtime 500.
+#
+# Resend requires the From-domain to be verified in your Resend dashboard.
+# For initial smoke-tests before DNS is set up, use `onboarding@resend.dev`
+# (delivers only to your logged-in Resend-account email).
+limen:
+  email:
+    driver: smtp
+    from: ${LIMEN_EMAIL_FROM:#{null}}
+spring:
+  mail:
+    host: smtp.resend.com
+    port: 587
+    username: resend
+    properties:
+      # STARTTLS upgrade from plaintext after greeting. `required: true` makes
+      # the session fail rather than fall back to cleartext if the upgrade
+      # response is stripped (downgrade-attack defence). With it set, port 587
+      # is functionally equivalent to port 465 (implicit TLS) in security
+      # while keeping firewall/tooling compatibility.
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true

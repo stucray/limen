@@ -86,27 +86,44 @@ on `spring-boot-maven-plugin`), so SMTP outbound email lands in the
 Mailpit web inbox at <http://localhost:8025>. To run with the dev
 observability stack instead, see [observability.md](observability.md).
 
-### Sending via a real SMTP relay
+### Profiles inventory
 
-To exercise a real provider (Resend, Brevo, SES, …) instead of Mailpit,
-override the dev defaults via env vars and run with the `mailpit` profile
-disabled. Resend example (using a verified-domain From-address):
+Three Spring profiles, each single-purpose, each activated automatically
+by its context:
+
+| Profile  | Activated by | Purpose |
+|----------|--------------|---------|
+| `mailpit` | `spring-boot-maven-plugin` `<profiles>` config in `pom.xml` — auto on `mvn spring-boot:run` | Dev SMTP via the Mailpit container in `docker-compose.yml` (web inbox at <http://localhost:8025>) |
+| `test`    | `@ActiveProfiles("test")` on `@SpringBootTest` classes | Test-DB + Testcontainer wiring; loads `application-test.yaml` |
+| `resend`  | `SPRING_PROFILES_ACTIVE=resend` in the deployment env | Production SMTP via Resend (`smtp.resend.com:587`, STARTTLS required) |
+
+The `resend` profile is vendor-shaped, not environment-shaped — it encodes
+the Resend SMTP wiring, not the notion of "production." Staging and prod
+both activate it; only `LIMEN_EMAIL_FROM` and `SPRING_MAIL_PASSWORD` vary
+per-environment.
+
+### Sending via Resend
+
+Activate the `resend` profile and set two env vars:
 
 ```bash
-mvn spring-boot:run -Dspring-boot.run.profiles= \
-  -DLIMEN_EMAIL_DRIVER=smtp \
-  -DLIMEN_EMAIL_FROM=no-reply@yourdomain.com \
-  -DSPRING_MAIL_HOST=smtp.resend.com \
-  -DSPRING_MAIL_PORT=587 \
-  -DSPRING_MAIL_USERNAME=resend \
-  -DSPRING_MAIL_PASSWORD=re_xxxxxxxxxxxx \
-  -DSPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true \
-  -DSPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
+SPRING_PROFILES_ACTIVE=resend \
+LIMEN_EMAIL_FROM=no-reply@your-verified-domain.com \
+SPRING_MAIL_PASSWORD=re_xxxxxxxxxxxx \
+java -jar target/limen-*.jar
 ```
 
-In practice these live in your `.env` (gitignored); see `.env.example` for
-the full set. The empty `-Dspring-boot.run.profiles=` overrides the
-auto-activated `mailpit` profile so the env vars actually take effect.
+The profile (`src/main/resources/application-resend.yaml`) bakes in the
+Resend SMTP shape — host, port, username, STARTTLS-required — so deploy-time
+config is just the From-address and the API key. If `LIMEN_EMAIL_FROM` is
+unset under the `resend` profile, the context fails to start (`@NotBlank`
+on `EmailProperties.from`) — a refused deploy rather than a runtime 500.
+
+Before your domain's DNS is verified in the Resend dashboard, smoke-test
+with `LIMEN_EMAIL_FROM=onboarding@resend.dev`. Resend will only deliver
+from that address to your own logged-in Resend-account email, but it's
+enough to confirm the API key, profile activation, and the SMTP wiring
+are all correct.
 
 ## Troubleshooting
 
