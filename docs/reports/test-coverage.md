@@ -1,7 +1,7 @@
 # Test Coverage Snapshot
 
 <!-- coverage:auto:start -->
-**Generated:** 2026-05-12 from commit `ed728a1` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
+**Generated:** 2026-05-12 from commit `88c0d3f` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
 
 **Run:** `./mvnw verify` — 511 tests, all passing. JaCoCo analyzes 181 production classes.
 
@@ -23,7 +23,7 @@ Sorted by line coverage, weakest first. Δ Line (base) compares each package aga
 | Package | Line % | Δ Line (base) | Δ Line (prev) | Branch % | Method % | Missed lines |
 |---------|-------:|--------------:|--------------:|---------:|---------:|-------------:|
 | com.stucray.limen | 33.3 % | +0.0 % ⚪ | +0.0 % ⚪ | n/a | 50.0 % | 2 |
-| com.stucray.limen.email | 78.8 % | +78.8 % 🟢 | +1.4 % 🟢 | 50.0 % | 88.9 % | 7 |
+| com.stucray.limen.email | 78.8 % | +78.8 % 🟢 | +0.0 % ⚪ | 50.0 % | 88.9 % | 7 |
 | com.stucray.limen.auth.ott | 79.1 % | +79.1 % 🟢 | +0.0 % ⚪ | 62.9 % | 79.4 % | 58 |
 | com.stucray.limen.security.ratelimit | 85.7 % | +85.7 % 🟢 | +0.0 % ⚪ | 53.1 % | 100.0 % | 11 |
 | com.stucray.limen.security | 86.7 % | -5.8 % 🔴 | +0.0 % ⚪ | 50.0 % | 100.0 % | 2 |
