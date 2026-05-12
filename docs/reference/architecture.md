@@ -390,9 +390,11 @@ Properties:
 | Driver | Implementation | When |
 |---|---|---|
 | `logging` (default) | `LoggingEmailSender` | Dev: writes the rendered message to slf4j; click the magic link straight from the log. No outbound network. |
-| `smtp` | `SmtpEmailSender` | Test profile (Mailpit Testcontainer), local dev (the `mailpit` profile is auto-activated by `mvn spring-boot:run` via the spring-boot-maven-plugin's `<profiles>` config in `pom.xml`; Mailpit lives in `docker-compose.yml`, web inbox at http://localhost:8025), and production (real SMTP host). |
+| `smtp` | `SmtpEmailSender` | Test profile (Mailpit Testcontainer), local dev (the `mailpit` profile is auto-activated by `mvn spring-boot:run` via the spring-boot-maven-plugin's `<profiles>` config in `pom.xml`; Mailpit lives in `docker-compose.yml`, web inbox at http://localhost:8025), and production (real SMTP relay — Resend / Brevo / SES / etc., username + API-key-as-password via `SPRING_MAIL_*`). |
 
-There is intentionally no third "real provider" implementation in v3 — Resend / Brevo / SendGrid wiring is a deferred config swap on top of this abstraction (see §6 v4). All callers are OTT generation success handlers and audit-driven notifications; the rest of the codebase never names a concrete sender.
+The `From:` address every outbound message carries is `limen.email.from` (default `no-reply@limen.local`, bound via `EmailProperties`). The default is fine for `logging` + Mailpit (both accept anything); real SMTP relays reject sends from domains they don't own, so production overrides `LIMEN_EMAIL_FROM` to a verified-domain address. The split between driver (`smtp`) and From-address (`limen.email.from`) means any of the v4 candidates in §6 is a pure-config swap — no provider-specific implementation class.
+
+There is intentionally no third "real provider" implementation in v3 — vendor-specific wiring (webhooks, suppression-list ingestion) is the additive piece deferred to v4 (see §6 v4 item 18). All callers are OTT generation success handlers and audit-driven notifications; the rest of the codebase never names a concrete sender.
 
 ### 4.8 Audit log
 

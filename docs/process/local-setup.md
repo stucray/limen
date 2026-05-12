@@ -86,6 +86,28 @@ on `spring-boot-maven-plugin`), so SMTP outbound email lands in the
 Mailpit web inbox at <http://localhost:8025>. To run with the dev
 observability stack instead, see [observability.md](observability.md).
 
+### Sending via a real SMTP relay
+
+To exercise a real provider (Resend, Brevo, SES, …) instead of Mailpit,
+override the dev defaults via env vars and run with the `mailpit` profile
+disabled. Resend example (using a verified-domain From-address):
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles= \
+  -DLIMEN_EMAIL_DRIVER=smtp \
+  -DLIMEN_EMAIL_FROM=no-reply@yourdomain.com \
+  -DSPRING_MAIL_HOST=smtp.resend.com \
+  -DSPRING_MAIL_PORT=587 \
+  -DSPRING_MAIL_USERNAME=resend \
+  -DSPRING_MAIL_PASSWORD=re_xxxxxxxxxxxx \
+  -DSPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true \
+  -DSPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
+```
+
+In practice these live in your `.env` (gitignored); see `.env.example` for
+the full set. The empty `-Dspring-boot.run.profiles=` overrides the
+auto-activated `mailpit` profile so the env vars actually take effect.
+
 ## Troubleshooting
 
 - **`direnv: error .envrc is blocked`** — you skipped `direnv allow`.
