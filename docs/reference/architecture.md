@@ -661,7 +661,7 @@ These are known limitations of the current surface. None of them block the produ
 - **No consent revocation UI.** Consents are persisted per Tenant but end-users have no way to view or revoke them; only direct DB or admin action would clear them.
 - **Rate-limit state is per-process.** Bucket4j in-memory is the right call for a single-container deployment; horizontal scaling will need the Postgres-backed swap (§6 v3.5).
 - **Audit delivery is at-least-once for transactional events only.** Domain events emitted from inside a transaction (every `tenant_*`, `user_*`, `client_*`, `password_*`, `email_*`, `account_*`, etc.) survive a JVM crash between commit and listener execution via the Modulith publication registry. Spring-Security-derived audit rows (`login_success`, `login_failure`) and `rate_limit_hit` still fire synchronously through `@EventListener` and remain best-effort — those events have no enclosing transaction the registry can attach to. Closing this last gap needs an outbox-style approach and is out of scope. (See §4.8.)
-- **No real email provider wired.** `EmailSender` has `logging` (default) and `smtp` drivers. Resend / Brevo / SendGrid / SES is a config swap deferred to v4.
+- **No real email provider wired.** `EmailSender` has `logging` (default) and `smtp` drivers. Resend / Brevo / Postmark / SES is a config swap deferred to v4 (see §6 v4 item 18).
 
 ### Code-level
 
@@ -705,7 +705,7 @@ A single PRD covering five gaps that blocked Limen being credible as a hosted Id
 15. **MFA** — TOTP first, WebAuthn / passkeys after. Spring Security 7 ships `@EnableMultiFactorAuthentication` as a starting point.
 16. **Session management UI** — for end-users (revoke my own sessions and consents) and for Tenant Owners (revoke a User's sessions).
 17. **Consent / OAuth2 scope revocation UI.** `OAuth2AuthorizationConsent` rows persist today but are invisible to end-users.
-18. **Real email provider wiring.** Resend / Brevo / SendGrid / SES / etc. — a one-slice config swap on top of the v3 `EmailSender` abstraction.
+18. **Real email provider wiring.** A one-slice config swap on top of the v3 `EmailSender` abstraction — every candidate below speaks SMTP, so the existing `smtp` driver covers them all unless we want vendor-specific webhooks (bounces, suppression lists). Dev-tier shortlist: **Resend** (3,000/mo permanent free, 100/day, modern REST + SMTP), **Brevo** (300/day ≈ 9,000/mo permanent free, REST + SMTP, but the daily quota is shared across marketing + transactional so volume spikes can starve password resets), and **Postmark** (100/mo permanent free, ~94 % inbox placement in independent tests — the deliverability play for auth emails). **AWS SES** stays on the list as the cheapest-at-scale option ($0.10/1,000 after a 12-month 3,000/mo free tier) but isn't a dev-stage story. **SendGrid** is removed — the permanent free tier was discontinued in March 2025; new accounts get a 60-day trial only, then $19.95/mo minimum.
 
 ### v4+ — platform
 
