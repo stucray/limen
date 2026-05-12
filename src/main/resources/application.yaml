@@ -13,6 +13,12 @@ limen:
     # default still applies to `mvn test`/`verify` and the production image,
     # which override via env vars in real deployments.
     driver: logging
+    # From-address on every outbound message. The base default is fine for
+    # logging + Mailpit (both accept anything). Real SMTP providers (Resend,
+    # Brevo, SES, …) reject sends from a domain they don't own — override
+    # via LIMEN_EMAIL_FROM per environment so the domain matches whatever
+    # has been verified at the provider.
+    from: no-reply@limen.local
   lockout:
     # Consecutive failed-login attempts before the account is locked. Small
     # enough to defeat credential stuffing, large enough to absorb fat-finger.

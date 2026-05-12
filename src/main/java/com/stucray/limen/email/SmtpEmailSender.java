@@ -24,12 +24,12 @@ import java.util.Objects;
 @ConditionalOnProperty(name = "limen.email.driver", havingValue = "smtp")
 class SmtpEmailSender implements EmailSender {
 
-    private static final String DEFAULT_FROM = "no-reply@limen.local";
-
     private final JavaMailSender mailSender;
+    private final EmailProperties properties;
 
-    SmtpEmailSender(JavaMailSender mailSender) {
+    SmtpEmailSender(JavaMailSender mailSender, EmailProperties properties) {
         this.mailSender = mailSender;
+        this.properties = properties;
     }
 
     @Override
@@ -39,7 +39,7 @@ class SmtpEmailSender implements EmailSender {
             String html = message.htmlBody();
             boolean multipart = html != null;
             MimeMessageHelper helper = new MimeMessageHelper(mime, multipart, "UTF-8");
-            helper.setFrom(DEFAULT_FROM);
+            helper.setFrom(properties.from());
             helper.setTo(message.recipient());
             helper.setSubject(message.subject());
             if (multipart) {
