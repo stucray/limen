@@ -56,13 +56,15 @@ public class OttDispatcher {
     private final UserRepository userRepository;
     private final EmailSender emailSender;
     private final ApplicationEventPublisher eventPublisher;
+    private final MagicLinkBuilder magicLinkBuilder;
 
     OttDispatcher(
         List<OttIntentHandler> handlers,
         TenantAwareOneTimeTokenService tokenService,
         UserRepository userRepository,
         EmailSender emailSender,
-        ApplicationEventPublisher eventPublisher
+        ApplicationEventPublisher eventPublisher,
+        MagicLinkBuilder magicLinkBuilder
     ) {
         // Spring's collection-injection delivers every OttIntentHandler bean
         // in the context. Index by intent() so dispatch is a constant-time
@@ -89,6 +91,7 @@ public class OttDispatcher {
         this.userRepository = userRepository;
         this.emailSender = emailSender;
         this.eventPublisher = eventPublisher;
+        this.magicLinkBuilder = magicLinkBuilder;
     }
 
     /**
@@ -142,7 +145,7 @@ public class OttDispatcher {
     }
 
     private void sendEmail(Tenant tenant, String recipient, String tokenValue, OttIntentHandler handler) {
-        String magicLink = "/t/" + tenant.slug() + "/login/ott?token=" + tokenValue;
+        String magicLink = magicLinkBuilder.build(tenant.slug(), tokenValue);
         emailSender.send(new EmailMessage(
             recipient, handler.subject(tenant), handler.body(tenant, magicLink)));
     }

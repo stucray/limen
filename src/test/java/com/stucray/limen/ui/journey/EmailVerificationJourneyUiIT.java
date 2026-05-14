@@ -44,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class EmailVerificationJourneyUiIT {
 
     private static final Pattern MAGIC_LINK_PATTERN =
-        Pattern.compile("(/t/[^/]+/login/ott\\?token=[A-Fa-f0-9-]+)");
+        Pattern.compile("(https?://[^\\s/]+(?::\\d+)?/t/[^/]+/login/ott\\?token=[A-Fa-f0-9-]+)");
 
     @LocalServerPort int port;
     @Autowired MailpitContainer mailpit;
@@ -69,12 +69,13 @@ class EmailVerificationJourneyUiIT {
             .assertEmailShown(email);
 
         // Verification mail arrives in Mailpit; pull the magic link out of the body.
-        String magicPath = waitForMagicLink(email);
-        // Quick sanity: the link points at this tenant's prefix, not somebody else's.
-        assertThat(magicPath).startsWith("/t/" + slug + "/login/ott?token=");
+        String magicLink = waitForMagicLink(email);
+        // Quick sanity: the link points at this tenant's prefix, not somebody else's,
+        // and is absolute (clickable from any mail client without prepending a host).
+        assertThat(magicLink).startsWith(baseUrl() + "/t/" + slug + "/login/ott?token=");
 
         // Clicking the link is a GET → renders the auto-submit OTT form.
-        page.navigate(baseUrl() + magicPath);
+        page.navigate(magicLink);
         page.getByTestId("ott-submit").click();
         // Post-OTT dispatch lands on the tenant home (no saved request, no
         // pending password change, just the terminal tenantHome() intent).
