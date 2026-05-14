@@ -6,6 +6,7 @@ import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantScope;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,7 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -48,6 +52,26 @@ class OttDispatcherIntegrationTest {
     void cleanAudit() {
         jdbcTemplate.execute("DELETE FROM audit_event WHERE event_type IN "
             + "('verification_ott_issued', 'password_reset_ott_issued')");
+    }
+
+    /**
+     * OttDispatcher resolves the magic-link base URL from the inbound servlet
+     * request via {@link MagicLinkBuilder}. These tests drive the dispatcher
+     * directly (no real HTTP), so we bind a mock request to the thread before
+     * each test and clear it afterwards.
+     */
+    @BeforeEach
+    void bindRequestContext() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setScheme("http");
+        request.setServerName("localhost");
+        request.setServerPort(8090);
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    }
+
+    @AfterEach
+    void clearRequestContext() {
+        RequestContextHolder.resetRequestAttributes();
     }
 
     @ParameterizedTest
