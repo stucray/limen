@@ -147,6 +147,9 @@ public class OttDispatcher {
     private void sendEmail(Tenant tenant, String recipient, String tokenValue, OttIntentHandler handler) {
         String magicLink = magicLinkBuilder.build(tenant.slug(), tokenValue);
         emailSender.send(new EmailMessage(
-            recipient, handler.subject(tenant), handler.body(tenant, magicLink)));
+            recipient,
+            handler.subject(tenant),
+            handler.body(tenant, magicLink),
+            handler.htmlBody(tenant, magicLink)));
     }
 }

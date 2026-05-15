@@ -35,6 +35,16 @@ public interface OttIntentHandler {
     String body(Tenant tenant, String magicLink);
 
     /**
+     * HTML view of {@link #body}. The default derives an HTML body from the
+     * plain-text one (paragraphs split on blank lines, the magic-link
+     * paragraph rendered as a real {@code <a href>}). Handlers may override
+     * to produce intent-specific markup.
+     */
+    default String htmlBody(Tenant tenant, String magicLink) {
+        return OttEmailHtml.htmlFromTextBody(body(tenant, magicLink), magicLink);
+    }
+
+    /**
      * Build the audit event for an issue attempt. {@code userId} is null and
      * {@code delivered} is false on the existence-oracle silent-skip path
      * (the dispatcher applies that defence uniformly across intents).
