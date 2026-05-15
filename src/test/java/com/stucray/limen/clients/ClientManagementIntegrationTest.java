@@ -111,9 +111,9 @@ class ClientManagementIntegrationTest {
     }
 
     @Test
-    @DisplayName("Creating a confidential client flashes the one-time clientSecret + clientId for the owner to copy")
+    @DisplayName("Creating a confidential client flashes the one-time clientSecret + the wire client_id (not the internal SAS PK)")
     void ownerCanCreateConfidentialClient() throws Exception {
-        mockMvc.perform(post(clientsUrl()).session(sessionA).with(csrf())
+        MvcResult result = mockMvc.perform(post(clientsUrl()).session(sessionA).with(csrf())
                 .param("displayName", "Created Client")
                 .param("grantTypes", "authorization_code", "refresh_token")
                 .param("redirectUris", "http://localhost/cb1\nhttp://localhost/cb2")
@@ -127,10 +127,16 @@ class ClientManagementIntegrationTest {
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl(clientsUrl()))
             .andExpect(flash().attributeExists("clientSecret"))
-            .andExpect(flash().attributeExists("clientId"));
+            .andExpect(flash().attributeExists("clientId"))
+            .andReturn();
 
-        assertThat(tenantClientRepository.findAllByApplicationIdAndTenantId(appA.id(), tenantA.id()))
-            .extracting(TenantClient::displayName).containsExactly("Created Client");
+        TenantClient persisted = tenantClientRepository.findAllByApplicationIdAndTenantId(appA.id(), tenantA.id())
+            .stream().findFirst().orElseThrow();
+        RegisteredClient registered = registeredClientRepository.findById(persisted.registeredClientId());
+        String flashedClientId = (String) result.getFlashMap().get("clientId");
+        assertThat(flashedClientId).isEqualTo(registered.getClientId());
+        assertThat(flashedClientId).isNotEqualTo(persisted.registeredClientId());
+        assertThat(persisted.displayName()).isEqualTo("Created Client");
     }
 
     @Test
@@ -182,17 +188,18 @@ class ClientManagementIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /{clientId}/rotate-secret replaces the stored hash and flashes the new secret once")
+    @DisplayName("POST /{clientId}/rotate-secret replaces the stored hash and flashes the new secret + wire client_id")
     void ownerCanRotateClientSecret() throws Exception {
         TenantClient created = createConfidentialClient("Rotating Client");
-        String oldHash = registeredClientRepository.findById(created.registeredClientId()).getClientSecret();
+        RegisteredClient registered = registeredClientRepository.findById(created.registeredClientId());
+        String oldHash = registered.getClientSecret();
 
         mockMvc.perform(post(clientsUrl() + "/" + created.registeredClientId() + "/rotate-secret")
                 .session(sessionA).with(csrf()))
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl(clientsUrl()))
             .andExpect(flash().attributeExists("clientSecret"))
-            .andExpect(flash().attribute("clientId", created.registeredClientId()));
+            .andExpect(flash().attribute("clientId", registered.getClientId()));
 
         String newHash = registeredClientRepository.findById(created.registeredClientId()).getClientSecret();
         assertThat(newHash).isNotEqualTo(oldHash);
