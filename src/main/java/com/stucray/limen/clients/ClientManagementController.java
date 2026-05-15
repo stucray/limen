@@ -76,7 +76,7 @@ class ClientManagementController {
             grants,
             parseLines(form.getRedirectUris()),
             parseLines(form.getPostLogoutRedirectUris()),
-            parseLines(form.getScopes()),
+            parseScopes(form.getScopes()),
             form.isRequirePkce(), form.isRequireConsent(), form.isConfidential(),
             form.getAccessTokenTtlMinutes(), form.getRefreshTokenTtlDays(),
             form.isReuseRefreshTokens()
@@ -154,6 +154,13 @@ class ClientManagementController {
         if (input == null || input.isBlank()) return Set.of();
         return Arrays.stream(input.split("[\n,]+"))
             .map(String::trim)
+            .filter(s -> !s.isBlank())
+            .collect(Collectors.toSet());
+    }
+
+    private static Set<String> parseScopes(@Nullable String input) {
+        if (input == null || input.isBlank()) return Set.of();
+        return Arrays.stream(input.split("[\\s,]+"))
             .filter(s -> !s.isBlank())
             .collect(Collectors.toSet());
     }

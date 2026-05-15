@@ -28,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -197,6 +198,53 @@ class ClientManagementIntegrationTest {
 
         RegisteredClient afterOff = registeredClientRepository.findById(created.registeredClientId());
         assertThat(afterOff.getClientSettings().isRequireAuthorizationConsent()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Scopes input accepts whitespace-separated values (label-parser parity fix for #274)")
+    void scopesInputAcceptsWhitespaceSeparated() throws Exception {
+        mockMvc.perform(post(clientsUrl()).session(sessionA).with(csrf())
+                .param("displayName", "Whitespace Scopes Client")
+                .param("grantTypes", "authorization_code")
+                .param("redirectUris", "http://localhost/cb")
+                .param("scopes", "openid profile email")
+                .param("confidential", "true"))
+            .andExpect(status().is3xxRedirection());
+
+        TenantClient persisted = tenantClientRepository.findAllByApplicationIdAndTenantId(appA.id(), tenantA.id())
+            .stream().findFirst().orElseThrow();
+        RegisteredClient registered = registeredClientRepository.findById(persisted.registeredClientId());
+        assertThat(registered.getScopes()).containsExactlyInAnyOrder("openid", "profile", "email");
+    }
+
+    @Test
+    @DisplayName("Scopes input also accepts comma- and newline-separated values (back-compat)")
+    void scopesInputAcceptsCommaAndNewlineSeparated() throws Exception {
+        mockMvc.perform(post(clientsUrl()).session(sessionA).with(csrf())
+                .param("displayName", "Mixed Scopes Client")
+                .param("grantTypes", "authorization_code")
+                .param("redirectUris", "http://localhost/cb")
+                .param("scopes", "openid,profile\nemail")
+                .param("confidential", "true"))
+            .andExpect(status().is3xxRedirection());
+
+        TenantClient persisted = tenantClientRepository.findAllByApplicationIdAndTenantId(appA.id(), tenantA.id())
+            .stream().findFirst().orElseThrow();
+        RegisteredClient registered = registeredClientRepository.findById(persisted.registeredClientId());
+        assertThat(registered.getScopes()).containsExactlyInAnyOrder("openid", "profile", "email");
+    }
+
+    @Test
+    @DisplayName("authorization_code grant with empty scopes is rejected loudly, not silently stored (#274)")
+    void emptyScopesWithAuthorizationCodeGrantIsRejected() {
+        assertThatThrownBy(() -> clientManagementService.createClient(new CreateClientCommand(
+            appA.id(), tenantA.id(), "Empty Scopes Client",
+            Set.of(AuthorizationGrantType.AUTHORIZATION_CODE),
+            Set.of("http://localhost/cb"), Set.of(), Set.of(),
+            false, false, true, 5, 30, false
+        )))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Scopes are required for authorization_code grant");
     }
 
     @Test

@@ -43,8 +43,9 @@
                 <textarea name="postLogoutRedirectUris" rows="2"></textarea>
             </label>
             <label>
-                Scopes (space or comma separated)
-                <input type="text" name="scopes" placeholder="openid profile email"/>
+                Scopes
+                <input type="text" name="scopes"/>
+                <small>Whitespace- or comma-separated (e.g. <code>openid profile</code>). Required for the <code>authorization_code</code> grant.</small>
             </label>
         </section>
 
