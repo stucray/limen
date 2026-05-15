@@ -43,6 +43,17 @@ class PasswordResetHandlerTest {
     }
 
     @Test
+    @DisplayName("htmlBody contains a real <a href> anchor on the magic link and embeds the safe-to-ignore line")
+    void htmlBodyContainsAnchorAndSafeToIgnore() {
+        String html = handler.htmlBody(tenant, "https://example.test/t/acme/login/ott?token=abc");
+
+        assertThat(html)
+            .contains("<a href=\"https://example.test/t/acme/login/ott?token=abc\">"
+                + "https://example.test/t/acme/login/ott?token=abc</a>")
+            .contains("safely ignore");
+    }
+
+    @Test
     @DisplayName("issuedEvent factory builds a PasswordResetOttIssuedEvent with the canonical (tenantId, userId, email, delivered) shape")
     void issuedEventShape() {
         AuditedDomainEvent delivered =

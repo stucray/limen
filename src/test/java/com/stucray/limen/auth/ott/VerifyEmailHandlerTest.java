@@ -42,6 +42,17 @@ class VerifyEmailHandlerTest {
     }
 
     @Test
+    @DisplayName("htmlBody contains a real <a href> anchor on the magic link and embeds the tenant display name")
+    void htmlBodyContainsAnchorAndTenantName() {
+        String html = handler.htmlBody(tenant, "https://example.test/t/acme/login/ott?token=abc");
+
+        assertThat(html)
+            .contains("<a href=\"https://example.test/t/acme/login/ott?token=abc\">"
+                + "https://example.test/t/acme/login/ott?token=abc</a>")
+            .contains("Acme Inc");
+    }
+
+    @Test
     @DisplayName("issuedEvent factory builds a VerificationOttIssuedEvent with the canonical (tenantId, userId, email, delivered) shape")
     void issuedEventShape() {
         AuditedDomainEvent delivered =
