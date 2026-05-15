@@ -20,8 +20,8 @@
 
     <div class="alert alert--secret" th:if="${clientSecret}">
         <strong>Client secret (shown once — copy it now):</strong>
-        <code th:text="${clientSecret}"></code>
-        <span><strong>Client ID:</strong> <code th:text="${clientId}"></code></span>
+        <code th:text="${clientSecret}" data-test-flash="client-secret"></code>
+        <span><strong>Client ID:</strong> <code th:text="${clientId}" data-test-flash="client-id"></code></span>
     </div>
 
     <table>
