@@ -55,7 +55,8 @@ public class ClientManagementService {
         long accessTokenTtlMinutes,
         long refreshTokenTtlDays,
         boolean reuseRefreshTokens,
-        boolean requirePkce
+        boolean requirePkce,
+        boolean requireConsent
     ) {}
 
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
@@ -72,7 +73,7 @@ public class ClientManagementService {
             .clientName(cmd.displayName())
             .clientSettings(ClientSettings.builder()
                 .requireProofKey(cmd.requirePkce() || !cmd.confidential())
-                .requireAuthorizationConsent(true)
+                .requireAuthorizationConsent(cmd.requireConsent())
                 .build())
             .tokenSettings(TokenSettings.builder()
                 .accessTokenTimeToLive(Duration.ofMinutes(cmd.accessTokenTtlMinutes()))
@@ -118,7 +119,8 @@ public class ClientManagementService {
             ts.getAccessTokenTimeToLive().toMinutes(),
             ts.getRefreshTokenTimeToLive().toDays(),
             ts.isReuseRefreshTokens(),
-            rc.getClientSettings().isRequireProofKey()
+            rc.getClientSettings().isRequireProofKey(),
+            rc.getClientSettings().isRequireAuthorizationConsent()
         );
     }
 
@@ -127,7 +129,8 @@ public class ClientManagementService {
         long accessTokenTtlMinutes,
         long refreshTokenTtlDays,
         boolean reuseRefreshTokens,
-        boolean requirePkce
+        boolean requirePkce,
+        boolean requireConsent
     ) {
         TenantClient tc = getClient(registeredClientId, tenantId);
         RegisteredClient existing = registeredClientRepository.findById(registeredClientId);
@@ -141,7 +144,7 @@ public class ClientManagementService {
                 .build())
             .clientSettings(ClientSettings.builder()
                 .requireProofKey(requirePkce || !tc.confidential())
-                .requireAuthorizationConsent(existing.getClientSettings().isRequireAuthorizationConsent())
+                .requireAuthorizationConsent(requireConsent)
                 .build())
             .build();
         registeredClientRepository.save(updated);

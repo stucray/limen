@@ -60,6 +60,8 @@
             </label>
             <label><input type="checkbox" name="reuseRefreshTokens"/> Reuse refresh tokens (uncheck to rotate)</label>
             <label><input type="checkbox" name="requirePkce"/> Require PKCE</label>
+            <label><input type="checkbox" name="requireConsent"/> Require user consent on authorize</label>
+            <small>Known issue (<a href="https://github.com/stucray/limen/issues/276" target="_blank" rel="noopener">#276</a>): enabling consent currently breaks first authorize. Leave off until fixed.</small>
             <label><input type="checkbox" name="confidential" value="true" checked/> Confidential (has client secret)</label>
         </fieldset>
 

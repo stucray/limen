@@ -89,7 +89,7 @@ class ClientManagementIntegrationTest {
             appA.id(), tenantA.id(), name,
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
-            false, true, 5, 30, false
+            false, false, true, 5, 30, false
         )).client();
     }
 
@@ -137,6 +137,66 @@ class ClientManagementIntegrationTest {
         assertThat(flashedClientId).isEqualTo(registered.getClientId());
         assertThat(flashedClientId).isNotEqualTo(persisted.registeredClientId());
         assertThat(persisted.displayName()).isEqualTo("Created Client");
+    }
+
+    @Test
+    @DisplayName("Creating a client without requireConsent persists requireAuthorizationConsent=false (default-off; #273)")
+    void newClientDefaultsToConsentOff() throws Exception {
+        mockMvc.perform(post(clientsUrl()).session(sessionA).with(csrf())
+                .param("displayName", "No-Consent Client")
+                .param("grantTypes", "authorization_code")
+                .param("redirectUris", "http://localhost/cb")
+                .param("scopes", "openid")
+                .param("confidential", "true"))
+            .andExpect(status().is3xxRedirection());
+
+        TenantClient persisted = tenantClientRepository.findAllByApplicationIdAndTenantId(appA.id(), tenantA.id())
+            .stream().findFirst().orElseThrow();
+        RegisteredClient registered = registeredClientRepository.findById(persisted.registeredClientId());
+        assertThat(registered.getClientSettings().isRequireAuthorizationConsent()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Creating a client with requireConsent checked persists requireAuthorizationConsent=true (opt-in works)")
+    void newClientWithConsentCheckedPersistsConsentTrue() throws Exception {
+        mockMvc.perform(post(clientsUrl()).session(sessionA).with(csrf())
+                .param("displayName", "Consent Client")
+                .param("grantTypes", "authorization_code")
+                .param("redirectUris", "http://localhost/cb")
+                .param("scopes", "openid")
+                .param("confidential", "true")
+                .param("requireConsent", "true"))
+            .andExpect(status().is3xxRedirection());
+
+        TenantClient persisted = tenantClientRepository.findAllByApplicationIdAndTenantId(appA.id(), tenantA.id())
+            .stream().findFirst().orElseThrow();
+        RegisteredClient registered = registeredClientRepository.findById(persisted.registeredClientId());
+        assertThat(registered.getClientSettings().isRequireAuthorizationConsent()).isTrue();
+    }
+
+    @Test
+    @DisplayName("POST /{clientId}/edit can flip requireAuthorizationConsent on existing clients (escape hatch for clients created before #273 fix)")
+    void ownerCanFlipConsentOnExistingClient() throws Exception {
+        TenantClient created = createConfidentialClient("Flip-Consent Client");
+
+        mockMvc.perform(post(clientsUrl() + "/" + created.registeredClientId() + "/edit")
+                .session(sessionA).with(csrf())
+                .param("accessTokenTtlMinutes", "5")
+                .param("refreshTokenTtlDays", "30")
+                .param("requireConsent", "true"))
+            .andExpect(status().is3xxRedirection());
+
+        RegisteredClient afterOn = registeredClientRepository.findById(created.registeredClientId());
+        assertThat(afterOn.getClientSettings().isRequireAuthorizationConsent()).isTrue();
+
+        mockMvc.perform(post(clientsUrl() + "/" + created.registeredClientId() + "/edit")
+                .session(sessionA).with(csrf())
+                .param("accessTokenTtlMinutes", "5")
+                .param("refreshTokenTtlDays", "30"))
+            .andExpect(status().is3xxRedirection());
+
+        RegisteredClient afterOff = registeredClientRepository.findById(created.registeredClientId());
+        assertThat(afterOff.getClientSettings().isRequireAuthorizationConsent()).isFalse();
     }
 
     @Test
