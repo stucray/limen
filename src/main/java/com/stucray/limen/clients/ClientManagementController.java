@@ -86,7 +86,7 @@ class ClientManagementController {
 
         if (result.rawSecret() != null) {
             redirectAttributes.addFlashAttribute("clientSecret", result.rawSecret());
-            redirectAttributes.addFlashAttribute("clientId", result.client().registeredClientId());
+            redirectAttributes.addFlashAttribute("clientId", result.wireClientId());
         }
 
         return "redirect:/manage/t/" + slug + "/applications/" + appId + "/clients";
@@ -145,7 +145,7 @@ class ClientManagementController {
     ) {
         ClientManagementService.SecretRotationResult result = clientManagementService.rotateSecret(registeredClientId, principal.tenantId(), principal.userId());
         redirectAttributes.addFlashAttribute("clientSecret", result.rawSecret());
-        redirectAttributes.addFlashAttribute("clientId", registeredClientId);
+        redirectAttributes.addFlashAttribute("clientId", result.wireClientId());
         return "redirect:/manage/t/" + slug + "/applications/" + appId + "/clients";
     }
 

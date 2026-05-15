@@ -48,7 +48,7 @@ public class ClientManagementService {
     public static final long DEFAULT_REFRESH_TOKEN_TTL_DAYS = 30;
     public static final boolean DEFAULT_REUSE_REFRESH_TOKENS = false;
 
-    public record ClientCreationResult(TenantClient client, @Nullable String rawSecret) {}
+    public record ClientCreationResult(TenantClient client, String wireClientId, @Nullable String rawSecret) {}
 
     public record ClientWithSettings(
         TenantClient tenantClient,
@@ -100,7 +100,7 @@ public class ClientManagementService {
             null, registered.getId(), cmd.applicationId(), cmd.tenantId(), cmd.displayName(), cmd.confidential()
         ));
 
-        return new ClientCreationResult(tenantClient, rawSecret);
+        return new ClientCreationResult(tenantClient, registered.getClientId(), rawSecret);
     }
 
     public TenantClient getClient(String registeredClientId, Long tenantId) {
@@ -157,7 +157,7 @@ public class ClientManagementService {
         }
     }
 
-    public record SecretRotationResult(String rawSecret) {}
+    public record SecretRotationResult(String wireClientId, String rawSecret) {}
 
     @Transactional
     SecretRotationResult rotateSecret(String registeredClientId, Long tenantId, long actorUserId) {
@@ -172,7 +172,7 @@ public class ClientManagementService {
         registeredClientRepository.save(updated);
         eventPublisher.publishEvent(
             new ClientSecretRotatedEvent(tenantId, registeredClientId, actorUserId));
-        return new SecretRotationResult(rawSecret);
+        return new SecretRotationResult(existing.getClientId(), rawSecret);
     }
 
     private static String generateSecret() {
