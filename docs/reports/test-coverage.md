@@ -1,17 +1,17 @@
 # Test Coverage Snapshot
 
 <!-- coverage:auto:start -->
-**Generated:** 2026-05-15 from commit `b658495` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
+**Generated:** 2026-05-15 from commit `773153e` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
 
-**Run:** `./mvnw verify` — 536 tests, all passing. JaCoCo analyzes 184 production classes.
+**Run:** `./mvnw verify` — 540 tests, all passing. JaCoCo analyzes 184 production classes.
 
 ## Headline numbers
 
 | Metric       | Coverage | Δ from baseline | Δ from prev | Covered / Total |
 |--------------|---------:|----------------:|------------:|----------------:|
-| Instructions | 93.9 % | +9.9 % 🟢 | +0.0 % ⚪ | 12,471 / 13,283 |
-| Branches     | 78.8 % | +8.8 % 🟢 | +0.0 % ⚪ | 599 / 760 |
-| Lines        | 94.2 % | +8.1 % 🟢 | +0.0 % ⚪ | 2,526 / 2,681 |
+| Instructions | 93.9 % | +9.9 % 🟢 | +0.2 % 🟢 | 12,464 / 13,276 |
+| Branches     | 78.8 % | +8.8 % 🟢 | +0.4 % 🟢 | 599 / 760 |
+| Lines        | 94.2 % | +8.1 % 🟢 | +0.2 % 🟢 | 2,524 / 2,679 |
 | Methods      | 94.8 % | +5.7 % 🟢 | +0.0 % ⚪ | 675 / 712 |
 
 Detailed HTML drill-down: `target/site/jacoco/index.html` (gitignored — regenerate with `./mvnw clean test`). Per-class CSV: `target/site/jacoco/jacoco.csv`.
@@ -38,7 +38,7 @@ Sorted by line coverage, weakest first. Δ Line (base) compares each package aga
 | com.stucray.limen.memberships | 98.1 % | +98.1 % 🟢 | +0.0 % ⚪ | 83.8 % | 91.0 % | 6 |
 | com.stucray.limen.auth.login | 98.5 % | +98.5 % 🟢 | +0.0 % ⚪ | 86.8 % | 96.9 % | 3 |
 | com.stucray.limen.audit.dispatch | 98.8 % | +98.8 % 🟢 | +0.0 % ⚪ | 89.1 % | 100.0 % | 2 |
-| com.stucray.limen.enduser.web | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | n/a | 100.0 % | 0 |
+| com.stucray.limen.enduser.web | 100.0 % | +100.0 % 🟢 | +46.2 % 🟢 | n/a | 100.0 % | 0 |
 | com.stucray.limen.web | 100.0 % | +0.0 % ⚪ | +0.0 % ⚪ | 75.0 % | 100.0 % | 0 |
 | com.stucray.limen.identity | 100.0 % | +0.0 % ⚪ | +0.0 % ⚪ | 70.0 % | 100.0 % | 0 |
 | com.stucray.limen.applications | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 83.3 % | 95.0 % | 0 |

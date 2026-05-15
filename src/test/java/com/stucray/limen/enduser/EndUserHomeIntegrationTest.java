@@ -24,7 +24,6 @@ import java.time.LocalDateTime;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -84,8 +83,8 @@ class EndUserHomeIntegrationTest {
     }
 
     @Test
-    @DisplayName("Authenticated end user can GET /t/{slug}/ and sees the tenant display name plus their email")
-    void authenticatedUserCanAccessHome() throws Exception {
+    @DisplayName("Authenticated tenant owner GET /t/{slug}/ is redirected to the management home (issue #283)")
+    void authenticatedTenantOwnerIsRedirectedToManagementHome() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/t/alpha-corp/login")
                 .param("email", "alice@example.test")
                 .param("password", "password")
@@ -95,9 +94,8 @@ class EndUserHomeIntegrationTest {
         MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
 
         mockMvc.perform(get("/t/alpha-corp/").session(session))
-            .andExpect(status().isOk())
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("Alpha Corp")))
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("alice@example.test")));
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/manage/t/alpha-corp/"));
     }
 
     @Test

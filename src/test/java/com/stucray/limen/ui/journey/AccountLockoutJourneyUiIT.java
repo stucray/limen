@@ -78,12 +78,14 @@ class AccountLockoutJourneyUiIT extends BaseUiIT {
 
         // 4. End-user signs back in with the correct password — the unlock
         //    cleared the gate, so the password check runs and succeeds.
+        //    Post-login terminal redirect /t/{slug}/ bounces to the management
+        //    home for owners (issue #283).
         page.context().clearCookies();
         page.navigate(baseUrl() + "/t/" + slug + "/login");
         page.getByLabel("Email").fill(endUserEmail);
         page.getByLabel("Password").fill(endUserPassword);
         page.getByTestId("login-submit").click();
-        page.waitForURL(baseUrl() + "/t/" + slug + "/");
+        page.waitForURL(baseUrl() + "/manage/t/" + slug + "/");
 
         // Persistence sanity: row state matches what the UI reported.
         User after = userRepository.findById(endUserId).orElseThrow();

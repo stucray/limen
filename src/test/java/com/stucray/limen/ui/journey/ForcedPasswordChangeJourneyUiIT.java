@@ -9,11 +9,11 @@ import com.stucray.limen.ui.support.TestTenantFactory.SeededTenant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("An end user with mustChangePassword set is forced through the change-password page before reaching their tenant home")
+@DisplayName("A tenant owner with mustChangePassword set is forced through the change-password page before reaching the management home (issue #283)")
 class ForcedPasswordChangeJourneyUiIT extends BaseUiIT {
 
     @Test
-    @DisplayName("happy path: signs in with the temporary password, lands on /t/{slug}/change-password, sets a new password, and is redirected to the tenant home with their identity visible")
+    @DisplayName("happy path: signs in with the temporary password, lands on /t/{slug}/change-password, sets a new password, and is redirected to /manage/t/{slug}/ with their identity visible")
     void happyPath(Page page) {
         SeededTenant tenant = tenants.createTenant();
         SeededForcedChangeUser user = tenants.seedEndUserForcedPasswordChange(tenant);
@@ -27,6 +27,6 @@ class ForcedPasswordChangeJourneyUiIT extends BaseUiIT {
             .fillConfirmPassword("new-password-123")
             .submit()
             .assertOnHomeForTenant(tenant.displayName())
-            .assertSignedInAs(user.email());
+            .assertWelcomeForUser(user.email());
     }
 }
