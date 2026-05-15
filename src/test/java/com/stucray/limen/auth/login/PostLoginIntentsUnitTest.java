@@ -112,6 +112,49 @@ class PostLoginIntentsUnitTest {
     }
 
     @Test
+    @DisplayName("resumeOAuth2Authorize: strips Spring Security's `continue` request-cache marker from the resumed URL (#276)")
+    void resumeOAuth2AuthorizeStripsContinueMarker() {
+        given(requestCache.getRequest(req, res)).willReturn(savedRequest);
+        given(savedRequest.getRedirectUrl())
+            .willReturn("http://localhost/oauth2/authorize?response_type=code&client_id=foo&state=bar&continue");
+        PostLoginIntent intent = PostLoginIntents.resumeOAuth2Authorize(requestCache);
+
+        String url = intent.resolve(req, res, freshPrincipal, OAUTH2);
+
+        assertThat(url).isEqualTo(
+            "http://localhost/t/alpha/oauth2/authorize?response_type=code&client_id=foo&state=bar");
+        assertThat(url).doesNotContain("continue");
+    }
+
+    @Test
+    @DisplayName("resumeOAuth2Authorize: strips a `continue=value` form of the marker too (defensive — Spring Security stamps it bare today)")
+    void resumeOAuth2AuthorizeStripsContinueWithValueForm() {
+        given(requestCache.getRequest(req, res)).willReturn(savedRequest);
+        given(savedRequest.getRedirectUrl())
+            .willReturn("http://localhost/oauth2/authorize?client_id=foo&continue=something&state=bar");
+        PostLoginIntent intent = PostLoginIntents.resumeOAuth2Authorize(requestCache);
+
+        String url = intent.resolve(req, res, freshPrincipal, OAUTH2);
+
+        assertThat(url).isEqualTo(
+            "http://localhost/t/alpha/oauth2/authorize?client_id=foo&state=bar");
+    }
+
+    @Test
+    @DisplayName("resumeOAuth2Authorize: a param whose name starts with `continue` (e.g. `continued=…`) is NOT stripped")
+    void resumeOAuth2AuthorizeDoesNotStripParamsThatMerelyStartWithContinue() {
+        given(requestCache.getRequest(req, res)).willReturn(savedRequest);
+        given(savedRequest.getRedirectUrl())
+            .willReturn("http://localhost/oauth2/authorize?continued=foo&bar=baz");
+        PostLoginIntent intent = PostLoginIntents.resumeOAuth2Authorize(requestCache);
+
+        String url = intent.resolve(req, res, freshPrincipal, OAUTH2);
+
+        assertThat(url).isEqualTo(
+            "http://localhost/t/alpha/oauth2/authorize?continued=foo&bar=baz");
+    }
+
+    @Test
     @DisplayName("resumeOAuth2Authorize: returns null and leaves the cache untouched when there is no saved request")
     void resumeOAuth2AuthorizeFallsThroughWhenNoSavedRequest() {
         given(requestCache.getRequest(req, res)).willReturn(null);

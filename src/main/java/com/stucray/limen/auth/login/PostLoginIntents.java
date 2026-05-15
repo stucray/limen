@@ -9,6 +9,8 @@ import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.savedrequest.SavedRequest;
 
 import java.net.URI;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /**
  * Static factories for the default {@link PostLoginIntent}s wired by
@@ -98,7 +100,19 @@ public final class PostLoginIntents {
         URI uri = URI.create(redirectUrl);
         String newPath = "/t/" + slug + uri.getRawPath();
         String query = uri.getRawQuery();
+        String cleaned = query == null ? null : stripRequestCacheMarker(query);
         return uri.getScheme() + "://" + uri.getAuthority() + newPath
-            + (query != null ? "?" + query : "");
+            + (cleaned != null && !cleaned.isEmpty() ? "?" + cleaned : "");
+    }
+
+    private static String stripRequestCacheMarker(String query) {
+        // Spring Security's HttpSessionRequestCache stamps "continue" on resumed
+        // saved-request URLs as a query-optimization marker (spring-security#13438).
+        // SAS's /oauth2/authorize validator rejects any unrecognized query parameter
+        // and surfaces it as access_denied — so we strip the marker here at the
+        // boundary where Limen consumes the saved request. See #276 / #273.
+        return Arrays.stream(query.split("&"))
+            .filter(kv -> !"continue".equals(kv) && !kv.startsWith("continue="))
+            .collect(Collectors.joining("&"));
     }
 }
