@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import({TestcontainersConfiguration.class, MailpitTestConfiguration.class})
 @ActiveProfiles("test")
 @ExtendWith(PlaywrightExtension.class)
-@DisplayName("New tenant owner signs up, retrieves the verification email from Mailpit, clicks the magic link, and lands on home — fully verified")
+@DisplayName("New tenant owner signs up, retrieves the verification email from Mailpit, clicks the magic link, and lands on the management home — fully verified")
 class EmailVerificationJourneyUiIT {
 
     private static final Pattern MAGIC_LINK_PATTERN =
@@ -52,7 +52,7 @@ class EmailVerificationJourneyUiIT {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    @DisplayName("happy path: signup → check-inbox → click Mailpit magic link → tenant home; email_verified flips to true")
+    @DisplayName("happy path: signup → check-inbox → click Mailpit magic link → management home; email_verified flips to true (issue #283)")
     void happyPath(Page page) throws Exception {
         String suffix = unique();
         String slug = "vrfy-" + suffix;
@@ -77,9 +77,11 @@ class EmailVerificationJourneyUiIT {
         // Clicking the link is a GET → renders the auto-submit OTT form.
         page.navigate(magicLink);
         page.getByTestId("ott-submit").click();
-        // Post-OTT dispatch lands on the tenant home (no saved request, no
-        // pending password change, just the terminal tenantHome() intent).
-        page.waitForURL(baseUrl() + "/t/" + slug + "/");
+        // Post-OTT dispatch follows the intent chain to tenantHome() = /t/{slug}/,
+        // which EndUserHomeController then redirects to /manage/t/{slug}/ for
+        // any TENANT_OWNER/SYSTEM_ADMIN principal (issue #283: a newly-verified
+        // owner needs a signpost into the management UI, not the dead-end home).
+        page.waitForURL(baseUrl() + "/manage/t/" + slug + "/");
 
         Boolean verified = jdbcTemplate.queryForObject(
             "SELECT email_verified FROM users WHERE email = ?",
