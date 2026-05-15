@@ -61,6 +61,10 @@ public class ClientManagementService {
 
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     ClientCreationResult createClient(CreateClientCommand cmd) {
+        if (cmd.grantTypes().contains(AuthorizationGrantType.AUTHORIZATION_CODE) && cmd.scopes().isEmpty()) {
+            throw new IllegalArgumentException("Scopes are required for authorization_code grant");
+        }
+
         String rawSecret = null;
         String hashedSecret = null;
         if (cmd.confidential()) {
