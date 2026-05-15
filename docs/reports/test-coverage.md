@@ -1,18 +1,18 @@
 # Test Coverage Snapshot
 
 <!-- coverage:auto:start -->
-**Generated:** 2026-05-15 from commit `31b5ab6` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
+**Generated:** 2026-05-15 from commit `51b17ea` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
 
-**Run:** `./mvnw verify` — 524 tests, all passing. JaCoCo analyzes 182 production classes.
+**Run:** `./mvnw verify` — 528 tests, all passing. JaCoCo analyzes 182 production classes.
 
 ## Headline numbers
 
 | Metric       | Coverage | Δ from baseline | Δ from prev | Covered / Total |
 |--------------|---------:|----------------:|------------:|----------------:|
-| Instructions | 93.8 % | +9.8 % 🟢 | +0.0 % ⚪ | 12,363 / 13,185 |
-| Branches     | 78.3 % | +8.3 % 🟢 | -0.2 % 🔴 | 586 / 748 |
-| Lines        | 94.1 % | +8.0 % 🟢 | +0.0 % ⚪ | 2,506 / 2,662 |
-| Methods      | 94.8 % | +5.7 % 🟢 | +0.1 % 🟢 | 668 / 705 |
+| Instructions | 93.8 % | +9.8 % 🟢 | +0.0 % ⚪ | 12,396 / 13,218 |
+| Branches     | 78.4 % | +8.4 % 🟢 | +0.1 % 🟢 | 593 / 756 |
+| Lines        | 94.1 % | +8.0 % 🟢 | +0.0 % ⚪ | 2,510 / 2,666 |
+| Methods      | 94.8 % | +5.7 % 🟢 | +0.0 % ⚪ | 670 / 707 |
 
 Detailed HTML drill-down: `target/site/jacoco/index.html` (gitignored — regenerate with `./mvnw clean test`). Per-class CSV: `target/site/jacoco/jacoco.csv`.
 
@@ -36,7 +36,7 @@ Sorted by line coverage, weakest first. Δ Line (base) compares each package aga
 | com.stucray.limen.management.web | 95.2 % | +0.0 % ⚪ | +0.0 % ⚪ | 75.0 % | 100.0 % | 1 |
 | com.stucray.limen.oauth2 | 97.7 % | +9.9 % 🟢 | +0.0 % ⚪ | 88.9 % | 100.0 % | 4 |
 | com.stucray.limen.memberships | 98.1 % | +98.1 % 🟢 | +0.0 % ⚪ | 83.8 % | 91.0 % | 6 |
-| com.stucray.limen.auth.login | 98.5 % | +98.5 % 🟢 | +0.0 % ⚪ | 88.2 % | 96.8 % | 3 |
+| com.stucray.limen.auth.login | 98.5 % | +98.5 % 🟢 | +0.0 % ⚪ | 86.8 % | 96.9 % | 3 |
 | com.stucray.limen.audit.dispatch | 98.8 % | +98.8 % 🟢 | +0.0 % ⚪ | 89.1 % | 100.0 % | 2 |
 | com.stucray.limen.enduser.web | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | n/a | 100.0 % | 0 |
 | com.stucray.limen.web | 100.0 % | +0.0 % ⚪ | +0.0 % ⚪ | 75.0 % | 100.0 % | 0 |
@@ -46,7 +46,7 @@ Sorted by line coverage, weakest first. Δ Line (base) compares each package aga
 | com.stucray.limen.provisioning | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 94.4 % | 100.0 % | 0 |
 | com.stucray.limen.roles | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 100.0 % | 100.0 % | 0 |
 | com.stucray.limen.system | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 80.0 % | 80.0 % | 0 |
-| com.stucray.limen.clients | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 70.5 % | 96.2 % | 0 |
+| com.stucray.limen.clients | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 72.7 % | 96.2 % | 0 |
 | com.stucray.limen.tenant | 100.0 % | +0.0 % ⚪ | +0.0 % ⚪ | 100.0 % | 100.0 % | 0 |
 | com.stucray.limen.signup | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | 100.0 % | 100.0 % | 0 |
 | com.stucray.limen.audit.events | 100.0 % | +100.0 % 🟢 | +0.0 % ⚪ | n/a | 100.0 % | 0 |
