@@ -77,7 +77,7 @@ class ClientManagementController {
             parseLines(form.getRedirectUris()),
             parseLines(form.getPostLogoutRedirectUris()),
             parseLines(form.getScopes()),
-            form.isRequirePkce(), form.isConfidential(),
+            form.isRequirePkce(), form.isRequireConsent(), form.isConfidential(),
             form.getAccessTokenTtlMinutes(), form.getRefreshTokenTtlDays(),
             form.isReuseRefreshTokens()
         );
@@ -115,11 +115,12 @@ class ClientManagementController {
         @RequestParam(defaultValue = "5") long accessTokenTtlMinutes,
         @RequestParam(defaultValue = "30") long refreshTokenTtlDays,
         @RequestParam(defaultValue = "false") boolean reuseRefreshTokens,
-        @RequestParam(defaultValue = "false") boolean requirePkce
+        @RequestParam(defaultValue = "false") boolean requirePkce,
+        @RequestParam(defaultValue = "false") boolean requireConsent
     ) {
         clientManagementService.updateClientSettings(
             registeredClientId, principal.tenantId(),
-            accessTokenTtlMinutes, refreshTokenTtlDays, reuseRefreshTokens, requirePkce
+            accessTokenTtlMinutes, refreshTokenTtlDays, reuseRefreshTokens, requirePkce, requireConsent
         );
         return "redirect:/manage/t/" + slug + "/applications/" + appId + "/clients";
     }

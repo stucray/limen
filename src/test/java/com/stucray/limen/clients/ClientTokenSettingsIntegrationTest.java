@@ -104,7 +104,7 @@ class ClientTokenSettingsIntegrationTest {
             app.id(), tenant.id(), "ttl-client",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
-            false, true, ttlMinutes, 30, false
+            false, false, true, ttlMinutes, 30, false
         ));
 
         String oauthClientId = jdbcTemplate.queryForObject(
@@ -136,7 +136,7 @@ class ClientTokenSettingsIntegrationTest {
             app.id(), tenant.id(), "pkce-client",
             Set.of(AuthorizationGrantType.AUTHORIZATION_CODE),
             Set.of("http://localhost/callback"), Set.of(), Set.of(OidcScopes.OPENID),
-            true, true, 5, 30, false
+            true, false, true, 5, 30, false
         ));
         grantMembership(result.client().registeredClientId());
 
@@ -201,7 +201,7 @@ class ClientTokenSettingsIntegrationTest {
             app.id(), tenant.id(), "rotation-client",
             Set.of(AuthorizationGrantType.AUTHORIZATION_CODE, AuthorizationGrantType.REFRESH_TOKEN),
             Set.of("http://localhost/callback"), Set.of(), Set.of(OidcScopes.OPENID),
-            false, true, 5, 30, false  // reuseRefreshTokens=false → rotation
+            false, false, true, 5, 30, false  // reuseRefreshTokens=false → rotation
         ));
         grantMembership(result.client().registeredClientId());
 
@@ -241,7 +241,7 @@ class ClientTokenSettingsIntegrationTest {
             app.id(), tenant.id(), "reuse-client",
             Set.of(AuthorizationGrantType.AUTHORIZATION_CODE, AuthorizationGrantType.REFRESH_TOKEN),
             Set.of("http://localhost/callback"), Set.of(), Set.of(OidcScopes.OPENID),
-            false, true, 5, 30, true  // reuseRefreshTokens=true
+            false, false, true, 5, 30, true  // reuseRefreshTokens=true
         ));
         grantMembership(result.client().registeredClientId());
 
@@ -273,7 +273,7 @@ class ClientTokenSettingsIntegrationTest {
             app.id(), tenant.id(), "update-client",
             Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
-            false, true, 60, 30, false
+            false, false, true, 60, 30, false
         ));
 
         String registeredClientId = result.client().registeredClientId();
@@ -283,7 +283,7 @@ class ClientTokenSettingsIntegrationTest {
         );
 
         // Update TTL from 60 minutes to 10 minutes
-        clientManagementService.updateClientSettings(registeredClientId, tenant.id(), 10, 30, false, false);
+        clientManagementService.updateClientSettings(registeredClientId, tenant.id(), 10, 30, false, false, false);
 
         String tokenJson = mockMvc.perform(post("/t/token-test/oauth2/token")
                 .param("grant_type", "client_credentials")
@@ -303,11 +303,11 @@ class ClientTokenSettingsIntegrationTest {
     private String doAuthCodeFlowAndGetRefreshToken(String oauthClientId, String rawSecret, boolean reuseMode) throws Exception {
         MockHttpSession session = new MockHttpSession();
 
-        // Auth code flow without PKCE (confidential client, requirePkce=false)
-        // SAS requires consent; bypass by sending an existing session with consent pre-approved
-        // We disable consent for test clients by not requiring it — but the service sets requireAuthorizationConsent(true).
-        // Drive the full flow: authorize → login → authorize (redirects with code if consent already given, or consent page)
-        // Since consent is required, we need to handle the consent step.
+        // Auth code flow without PKCE (confidential client, requirePkce=false, requireConsent=false).
+        // Drive the full flow: authorize → login → authorize. The consent step is unreachable here
+        // because the client was created with requireConsent=false (the new default); the code-grant
+        // branch fires directly. The post-consent branch below is retained for any future test that
+        // exercises requireConsent=true once #276 lands.
 
         String authzUri = UriComponentsBuilder.fromPath("/t/token-test/oauth2/authorize")
             .queryParam("response_type", "code")

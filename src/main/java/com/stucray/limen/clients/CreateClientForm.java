@@ -31,6 +31,7 @@ final class CreateClientForm {
     private @Nullable String postLogoutRedirectUris;
     private @Nullable String scopes;
     private boolean requirePkce;
+    private boolean requireConsent;
     private boolean confidential = true;
     private long accessTokenTtlMinutes = 5;
     private long refreshTokenTtlDays = 30;
@@ -55,6 +56,9 @@ final class CreateClientForm {
 
     public boolean isRequirePkce() { return requirePkce; }
     public void setRequirePkce(boolean requirePkce) { this.requirePkce = requirePkce; }
+
+    public boolean isRequireConsent() { return requireConsent; }
+    public void setRequireConsent(boolean requireConsent) { this.requireConsent = requireConsent; }
 
     public boolean isConfidential() { return confidential; }
     public void setConfidential(boolean confidential) { this.confidential = confidential; }

@@ -19,6 +19,7 @@ public record CreateClientCommand(
     Set<String> postLogoutRedirectUris,
     Set<String> scopes,
     boolean requirePkce,
+    boolean requireConsent,
     boolean confidential,
     long accessTokenTtlMinutes,
     long refreshTokenTtlDays,

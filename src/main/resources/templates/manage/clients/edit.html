@@ -34,6 +34,8 @@
             </label>
             <label><input type="checkbox" name="reuseRefreshTokens" th:checked="${clientSettings.reuseRefreshTokens()}"/> Reuse refresh tokens (uncheck to rotate)</label>
             <label><input type="checkbox" name="requirePkce" th:checked="${clientSettings.requirePkce()}"/> Require PKCE</label>
+            <label><input type="checkbox" name="requireConsent" th:checked="${clientSettings.requireConsent()}"/> Require user consent on authorize</label>
+            <small>Known issue (<a href="https://github.com/stucray/limen/issues/276" target="_blank" rel="noopener">#276</a>): enabling consent currently breaks first authorize. Leave off until fixed.</small>
         </fieldset>
 
         <div class="form-actions">
