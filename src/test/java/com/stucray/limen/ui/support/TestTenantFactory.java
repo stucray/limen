@@ -135,6 +135,33 @@ public class TestTenantFactory {
         return new SeededOAuth2Client(oauthClientId, redirectUri);
     }
 
+    /**
+     * Grants the seeded end-user the App Membership + Client Membership needed
+     * to pass the {@code MembershipGateFilter} for a client that was created
+     * outside this factory (typically through the manage UI as part of an
+     * end-to-end test). Looks up the internal {@code RegisteredClient.id} from
+     * the OAuth2 wire {@code client_id} so callers can pass whichever id they
+     * captured from the UI.
+     */
+    @Transactional
+    public void grantEndUserAccessToClient(
+        SeededTenant tenant, SeededApplication app, String wireClientId
+    ) {
+        RegisteredClient rc = registeredClientRepository.findByClientId(wireClientId);
+        if (rc == null) {
+            throw new IllegalStateException("Client not found by wire id: " + wireClientId);
+        }
+        User endUser = userRepository.findByEmailAndTenantId(tenant.endUserEmail(), tenant.tenantId())
+            .orElseThrow(() -> new IllegalStateException("seeded end user missing"));
+        User admin = userRepository.findByEmailAndTenantId(tenant.adminEmail(), tenant.tenantId())
+            .orElseThrow(() -> new IllegalStateException("seeded admin missing"));
+        ClientMembershipTestFixture.grant(
+            applicationMembershipService, clientMembershipService,
+            app.appId(), tenant.tenantId(), endUser.id(), admin.id(),
+            rc.getId(), Set.of()
+        );
+    }
+
     @Transactional
     public SeededForcedChangeUser seedEndUserForcedPasswordChange(SeededTenant tenant) {
         String suffix = uniqueSuffix();

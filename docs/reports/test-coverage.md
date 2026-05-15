@@ -1,17 +1,17 @@
 # Test Coverage Snapshot
 
 <!-- coverage:auto:start -->
-**Generated:** 2026-05-15 from commit `9619240` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
+**Generated:** 2026-05-15 from commit `b658495` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
 
-**Run:** `./mvnw verify` — 534 tests, all passing. JaCoCo analyzes 184 production classes.
+**Run:** `./mvnw verify` — 536 tests, all passing. JaCoCo analyzes 184 production classes.
 
 ## Headline numbers
 
 | Metric       | Coverage | Δ from baseline | Δ from prev | Covered / Total |
 |--------------|---------:|----------------:|------------:|----------------:|
-| Instructions | 93.8 % | +9.8 % 🟢 | +0.0 % ⚪ | 12,461 / 13,283 |
-| Branches     | 78.6 % | +8.6 % 🟢 | +0.2 % 🟢 | 597 / 760 |
-| Lines        | 94.2 % | +8.1 % 🟢 | +0.1 % 🟢 | 2,525 / 2,681 |
+| Instructions | 93.9 % | +9.9 % 🟢 | +0.0 % ⚪ | 12,471 / 13,283 |
+| Branches     | 78.8 % | +8.8 % 🟢 | +0.0 % ⚪ | 599 / 760 |
+| Lines        | 94.2 % | +8.1 % 🟢 | +0.0 % ⚪ | 2,526 / 2,681 |
 | Methods      | 94.8 % | +5.7 % 🟢 | +0.0 % ⚪ | 675 / 712 |
 
 Detailed HTML drill-down: `target/site/jacoco/index.html` (gitignored — regenerate with `./mvnw clean test`). Per-class CSV: `target/site/jacoco/jacoco.csv`.
@@ -23,8 +23,8 @@ Sorted by line coverage, weakest first. Δ Line (base) compares each package aga
 | Package | Line % | Δ Line (base) | Δ Line (prev) | Branch % | Method % | Missed lines |
 |---------|-------:|--------------:|--------------:|---------:|---------:|-------------:|
 | com.stucray.limen | 33.3 % | +0.0 % ⚪ | +0.0 % ⚪ | n/a | 50.0 % | 2 |
-| com.stucray.limen.email | 78.8 % | +78.8 % 🟢 | +0.0 % ⚪ | 50.0 % | 88.9 % | 7 |
-| com.stucray.limen.auth.ott | 81.0 % | +81.0 % 🟢 | +1.0 % 🟢 | 69.0 % | 81.7 % | 58 |
+| com.stucray.limen.auth.ott | 81.0 % | +81.0 % 🟢 | +0.0 % ⚪ | 69.0 % | 81.7 % | 58 |
+| com.stucray.limen.email | 81.8 % | +81.8 % 🟢 | +0.0 % ⚪ | 100.0 % | 88.9 % | 6 |
 | com.stucray.limen.security.ratelimit | 85.7 % | +85.7 % 🟢 | +0.0 % ⚪ | 53.1 % | 100.0 % | 11 |
 | com.stucray.limen.security | 86.7 % | -5.8 % 🔴 | +0.0 % ⚪ | 50.0 % | 100.0 % | 2 |
 | com.stucray.limen.auth | 87.1 % | +0.5 % 🟢 | +0.0 % ⚪ | 75.0 % | 91.8 % | 25 |
