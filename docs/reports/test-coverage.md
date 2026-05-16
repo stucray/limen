@@ -1,7 +1,7 @@
 # Test Coverage Snapshot
 
 <!-- coverage:auto:start -->
-**Generated:** 2026-05-16 from commit `ed27342` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
+**Generated:** 2026-05-16 from commit `00c18b0` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
 
 **Run:** `./mvnw verify` — 549 tests, all passing. JaCoCo analyzes 184 production classes.
 
@@ -11,8 +11,8 @@
 |--------------|---------:|----------------:|------------:|----------------:|
 | Instructions | 93.9 % | +9.9 % 🟢 | +0.0 % ⚪ | 12,468 / 13,276 |
 | Branches     | 78.8 % | +8.8 % 🟢 | +0.0 % ⚪ | 599 / 760 |
-| Lines        | 94.3 % | +8.2 % 🟢 | +0.1 % 🟢 | 2,525 / 2,679 |
-| Methods      | 94.9 % | +5.8 % 🟢 | +0.1 % 🟢 | 676 / 712 |
+| Lines        | 94.3 % | +8.2 % 🟢 | +0.0 % ⚪ | 2,525 / 2,679 |
+| Methods      | 94.9 % | +5.8 % 🟢 | +0.0 % ⚪ | 676 / 712 |
 
 Detailed HTML drill-down: `target/site/jacoco/index.html` (gitignored — regenerate with `./mvnw clean test`). Per-class CSV: `target/site/jacoco/jacoco.csv`.
 
@@ -33,7 +33,7 @@ Sorted by line coverage, weakest first. Δ Line (base) compares each package aga
 | com.stucray.limen.oauth2.sas | 93.6 % | +93.6 % 🟢 | +0.0 % ⚪ | 78.1 % | 97.3 % | 11 |
 | com.stucray.limen.useradmin | 94.2 % | +94.2 % 🟢 | +0.0 % ⚪ | 79.3 % | 97.1 % | 8 |
 | com.stucray.limen.management.web | 95.2 % | +0.0 % ⚪ | +0.0 % ⚪ | 75.0 % | 100.0 % | 1 |
-| com.stucray.limen.user | 96.3 % | -3.7 % 🔴 | +3.7 % 🟢 | 100.0 % | 95.2 % | 1 |
+| com.stucray.limen.user | 96.3 % | -3.7 % 🔴 | +0.0 % ⚪ | 100.0 % | 95.2 % | 1 |
 | com.stucray.limen.oauth2 | 97.7 % | +9.9 % 🟢 | +0.0 % ⚪ | 88.9 % | 100.0 % | 4 |
 | com.stucray.limen.memberships | 98.1 % | +98.1 % 🟢 | +0.0 % ⚪ | 83.8 % | 91.0 % | 6 |
 | com.stucray.limen.auth.login | 98.5 % | +98.5 % 🟢 | +0.0 % ⚪ | 86.8 % | 96.9 % | 3 |
