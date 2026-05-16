@@ -1,9 +1,9 @@
 # Test Coverage Snapshot
 
 <!-- coverage:auto:start -->
-**Generated:** 2026-05-16 from commit `c9e4e17` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
+**Generated:** 2026-05-16 from commit `00c18b0` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
 
-**Run:** `./mvnw verify` — 548 tests, all passing. JaCoCo analyzes 184 production classes.
+**Run:** `./mvnw verify` — 549 tests, all passing. JaCoCo analyzes 184 production classes.
 
 ## Headline numbers
 

@@ -11,6 +11,7 @@ import com.stucray.limen.memberships.ClientMembershipTestFixture;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.provisioning.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantScope;
+import com.stucray.limen.user.TenantUserDetails;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,7 +24,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
@@ -270,6 +273,78 @@ class EmailVerificationFlowIntegrationTest {
                 assertThat(row.get("details").toString().replace(" ", ""))
                     .contains("\"delivered\":false");
             });
+        }
+    }
+
+    @Nested
+    @DisplayName("Already-logged-in user consuming the verify-email OTT refreshes the session principal")
+    class AlreadyLoggedIn {
+
+        @Test
+        @DisplayName("After password login (bounced to /check-inbox) the same session POSTing the verify-email OTT rotates SecurityContext to a TenantUserDetails with emailVerified=true; no /check-inbox loop")
+        void alreadyLoggedInUnverifiedUserConsumesVerifyOttRefreshesPrincipal() throws Exception {
+            String suffix = uniqueSuffix();
+            String slug = "loggedinv-" + suffix;
+            String email = "owner-" + suffix + "@example.test";
+            Tenant tenant = tenantProvisioningService.createTenant(slug, "LoggedIn " + suffix);
+            userRepository.save(new User(
+                null, tenant.id(), email,
+                passwordEncoder.encode("password"),
+                true, false, true, false, LocalDateTime.now()));
+
+            MockHttpSession session = new MockHttpSession();
+
+            // Password login first: puts an unverified principal in the session
+            // (emailVerified=false) and bounces to /check-inbox via the
+            // emailVerificationRequired() post-login intent.
+            MvcResult loginResult = mockMvc.perform(post("/t/" + slug + "/login")
+                    .param("email", email).param("password", "password")
+                    .session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andReturn();
+            assertThat(loginResult.getResponse().getHeader("Location"))
+                .as("password login of an unverified user must bounce to /check-inbox")
+                .endsWith("/t/" + slug + "/check-inbox");
+
+            SecurityContext preOtt = (SecurityContext) session.getAttribute(
+                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+            assertThat(preOtt).isNotNull();
+            assertThat(((TenantUserDetails) preOtt.getAuthentication().getPrincipal()).user().emailVerified())
+                .as("pre-OTT principal is the stale unverified state — that's the staleness "
+                    + "the OTT consume needs to refresh, otherwise the next request loops back "
+                    + "to /check-inbox")
+                .isFalse();
+
+            // Click the magic link in the same session. The provider must flip
+            // the DB AND rebuild the in-memory principal with emailVerified=true
+            // (TenantOttAuthenticationProvider:102-107).
+            TenantOneTimeToken issued = TenantScope.call(tenant.slug(), tenant.id(), () ->
+                tokenService.generateForIntent(email, OttIntent.VERIFY_EMAIL));
+            MvcResult ottResult = mockMvc.perform(post("/t/" + slug + "/login/ott")
+                    .param("token", issued.tokenValue())
+                    .session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andReturn();
+
+            String afterOtt = ottResult.getResponse().getHeader("Location");
+            assertThat(afterOtt)
+                .as("post-OTT must NOT re-bounce to /check-inbox — the intent chain runs "
+                    + "against the freshly-rotated principal whose emailVerified is now true")
+                .doesNotContain("/check-inbox");
+            assertThat(afterOtt).endsWith("/t/" + slug + "/");
+
+            // Load-bearing assertion. Pins TenantOttAuthenticationProvider:102-107.
+            // Removing that rebuild would leave a stale emailVerified=false principal
+            // in the session even though the DB was just updated, and every
+            // subsequent request's emailVerificationRequired() check would bounce
+            // the user back to /check-inbox in a loop until they log out.
+            SecurityContext postOtt = (SecurityContext) session.getAttribute(
+                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+            assertThat(postOtt).isNotNull();
+            assertThat(((TenantUserDetails) postOtt.getAuthentication().getPrincipal()).user().emailVerified())
+                .as("post-OTT principal must reflect the DB flip; otherwise the intent chain "
+                    + "bounces the user back to /check-inbox indefinitely")
+                .isTrue();
         }
     }
 
