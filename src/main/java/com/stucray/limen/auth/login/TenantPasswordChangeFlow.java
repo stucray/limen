@@ -51,8 +51,17 @@ class TenantPasswordChangeFlow {
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
     private final OttCompletionService ottCompletionService;
-    private final HttpSessionRequestCache requestCache = new HttpSessionRequestCache();
+    // Read from the dedicated SAS session attribute (see PostLoginIntents) so
+    // the resume URL survives unrelated unauthenticated requests handled by
+    // other chains (#285).
+    private final HttpSessionRequestCache requestCache = oauth2AuthorizeRequestCache();
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
+
+    private static HttpSessionRequestCache oauth2AuthorizeRequestCache() {
+        HttpSessionRequestCache cache = new HttpSessionRequestCache();
+        cache.setSessionAttrName(PostLoginIntents.OAUTH2_AUTHORIZE_SAVED_REQUEST_ATTR);
+        return cache;
+    }
 
     TenantPasswordChangeFlow(
         UserRepository userRepository,

@@ -37,6 +37,17 @@ import java.util.stream.Collectors;
  */
 public final class PostLoginIntents {
 
+    /**
+     * Session attribute name the SAS chain writes its SavedRequest to. Dedicated
+     * (not the default {@code SPRING_SECURITY_SAVED_REQUEST}) so unrelated
+     * unauthenticated requests handled by other chains — DevTools probes to
+     * {@code /.well-known/appspecific/com.chrome.devtools.json}, the internal
+     * forward to {@code /error}, anything in the catch-all chain — can't
+     * clobber the {@code /oauth2/authorize} entry between save and read (#285).
+     */
+    public static final String OAUTH2_AUTHORIZE_SAVED_REQUEST_ATTR =
+        "SPRING_SECURITY_SAVED_OAUTH2_AUTHORIZE";
+
     private PostLoginIntents() {}
 
     /**
@@ -77,7 +88,9 @@ public final class PostLoginIntents {
     }
 
     static PostLoginIntent resumeOAuth2Authorize() {
-        return resumeOAuth2Authorize(new HttpSessionRequestCache());
+        HttpSessionRequestCache cache = new HttpSessionRequestCache();
+        cache.setSessionAttrName(OAUTH2_AUTHORIZE_SAVED_REQUEST_ATTR);
+        return resumeOAuth2Authorize(cache);
     }
 
     /** Test seam: inject a request cache. */

@@ -3,6 +3,7 @@ package com.stucray.limen.oauth2.sas;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.stucray.limen.auth.SasJsonMapperFactory;
+import com.stucray.limen.auth.login.PostLoginIntents;
 import com.stucray.limen.user.TenantUserDetails;
 import com.stucray.limen.clients.TenantClientRepository;
 import com.stucray.limen.memberships.ClientMembershipQuery;
@@ -33,6 +34,7 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
@@ -55,9 +57,19 @@ class SasConfig {
             http.securityMatcher(authorizationServer.getEndpointsMatcher());
             authorizationServer.oidc(Customizer.withDefaults());
         });
+        // Dedicated session attribute for the SAS chain's SavedRequest so that
+        // unauthenticated requests handled by other filter chains — DevTools
+        // probes to /.well-known/appspecific/com.chrome.devtools.json, the
+        // internal forward to /error, anything in the catch-all chain — can't
+        // overwrite the /oauth2/authorize entry between save and post-login
+        // read (#285). PostLoginIntents.resumeOAuth2Authorize reads from the
+        // same attribute name.
+        HttpSessionRequestCache sasRequestCache = new HttpSessionRequestCache();
+        sasRequestCache.setSessionAttrName(PostLoginIntents.OAUTH2_AUTHORIZE_SAVED_REQUEST_ATTR);
         http
             .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
             .oauth2ResourceServer(rs -> rs.jwt(Customizer.withDefaults()))
+            .requestCache(rc -> rc.requestCache(sasRequestCache))
             .exceptionHandling(ex -> ex.defaultAuthenticationEntryPointFor(
                 TenantLoginUrlAuthenticationEntryPoint.fromTenantScope(),
                 new OrRequestMatcher(
