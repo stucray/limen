@@ -11,6 +11,7 @@ import com.stucray.limen.memberships.ClientMembershipTestFixture;
 import com.stucray.limen.tenant.Tenant;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.tenant.TenantStatus;
+import com.stucray.limen.user.TenantUserDetails;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +23,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
@@ -154,6 +157,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
         assertThat(changeResult.getResponse().getHeader("Location"))
             .contains("/t/alpha-corp/oauth2/authorize");
         assertThat(userRepository.findById(original.id()).orElseThrow().mustChangePassword()).isFalse();
+        assertPrincipalRotatedWithNewPassword(session, "newpass123");
 
         MvcResult codeResult = mockMvc.perform(get(changeResult.getResponse().getHeader("Location")).session(session))
             .andExpect(status().is3xxRedirection())
@@ -257,6 +261,7 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
 
         assertThat(result.getResponse().getHeader("Location")).isEqualTo("/t/alpha-corp/");
         assertThat(userRepository.findById(original.id()).orElseThrow().mustChangePassword()).isFalse();
+        assertPrincipalRotatedWithNewPassword(session, "newpass123");
     }
 
     @Test
@@ -294,6 +299,27 @@ class OAuth2ForcedPasswordChangeIntegrationTest {
         mockMvc.perform(get(authzUri).session(session))
             .andExpect(status().is3xxRedirection());
         return session;
+    }
+
+    private void assertPrincipalRotatedWithNewPassword(MockHttpSession session, String newPassword) {
+        // Pins #284: TenantPasswordChangeFlow must rotate the SecurityContext to a
+        // rebuilt TenantUserDetails after writing the new password + clearing the
+        // flag — otherwise the in-session principal keeps mustChangePassword=true
+        // and the next request bounces back through PasswordChangeRequiredInterceptor.
+        // Asserting the password hash matches proves rotation rebuilt UserDetails
+        // from the saved User row, not just mutated a cached flag.
+        SecurityContext stored = (SecurityContext) session.getAttribute(
+            HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+        assertThat(stored).as("session must hold a rotated SecurityContext post-change").isNotNull();
+        assertThat(stored.getAuthentication().getPrincipal())
+            .isInstanceOfSatisfying(TenantUserDetails.class, refreshed -> {
+                assertThat(refreshed.mustChangePassword())
+                    .as("rotated principal must reflect the cleared mustChangePassword flag")
+                    .isFalse();
+                assertThat(passwordEncoder.matches(newPassword, refreshed.getPassword()))
+                    .as("rotated principal must carry the new password hash")
+                    .isTrue();
+            });
     }
 
     private Pkce newPkce() throws Exception {
