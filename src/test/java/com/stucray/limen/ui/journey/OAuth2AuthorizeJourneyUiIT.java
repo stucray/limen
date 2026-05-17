@@ -10,10 +10,12 @@ import com.stucray.limen.ui.support.TestTenantFactory.SeededApplication;
 import com.stucray.limen.ui.support.TestTenantFactory.SeededOAuth2Client;
 import com.stucray.limen.ui.support.TestTenantFactory.SeededTenant;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Tag("cross-browser")
 @DisplayName("An end user can complete an OAuth2 authorization-code-with-PKCE flow and land back at the relying-party callback with a code")
 class OAuth2AuthorizeJourneyUiIT extends BaseUiIT {
 

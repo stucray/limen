@@ -6,8 +6,10 @@ import com.stucray.limen.ui.support.BaseUiIT;
 import com.stucray.limen.ui.support.LoginPageObject;
 import com.stucray.limen.ui.support.TestTenantFactory.SeededTenant;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+@Tag("cross-browser")
 @DisplayName("A tenant owner signing in at /t/{slug}/login is redirected to the management home (issue #283)")
 class EndUserLoginJourneyUiIT extends BaseUiIT {
 
