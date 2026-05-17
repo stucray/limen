@@ -38,6 +38,7 @@ import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
@@ -53,8 +54,11 @@ class SasConfig {
         RegisteredClientRepository registeredClientRepository,
         ClientMembershipQuery clientMembershipQuery
     ) throws Exception {
+        RequestMatcher[] endpointsMatcherHolder = new RequestMatcher[1];
         http.oauth2AuthorizationServer(authorizationServer -> {
-            http.securityMatcher(authorizationServer.getEndpointsMatcher());
+            RequestMatcher endpointsMatcher = authorizationServer.getEndpointsMatcher();
+            endpointsMatcherHolder[0] = endpointsMatcher;
+            http.securityMatcher(endpointsMatcher);
             authorizationServer.oidc(Customizer.withDefaults());
         });
         // Dedicated session attribute for the SAS chain's SavedRequest so that
@@ -80,6 +84,15 @@ class SasConfig {
             .addFilterBefore(
                 new TenantIssuerContextFilter(authorizationServerSettings()),
                 CsrfFilter.class
+            )
+            // Translate uncaught runtime faults (e.g. JwtEncodingException from
+            // signing-key unwrap) into RFC 6749 §5.2 JSON instead of letting them
+            // forward to /error and surface as the catch-all chain's empty 403
+            // (#293). Sits as far upstream in the chain as possible so any SAS
+            // endpoint filter that throws is covered.
+            .addFilterBefore(
+                new SasServerErrorTranslationFilter(endpointsMatcherHolder[0]),
+                org.springframework.security.web.context.SecurityContextHolderFilter.class
             )
             // Anchor the gate after AuthorizationFilter — the SAS authorization
             // endpoint filter is itself registered with addFilterAfter on the
