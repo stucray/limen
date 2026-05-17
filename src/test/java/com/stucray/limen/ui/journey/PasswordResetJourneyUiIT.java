@@ -10,6 +10,7 @@ import com.stucray.limen.ui.pages.ForgotPasswordPage;
 import com.stucray.limen.ui.support.PlaywrightExtension;
 import com.stucray.limen.ui.support.TestTenantFactory;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,7 @@ import static org.awaitility.Awaitility.await;
 @Import({TestcontainersConfiguration.class, MailpitTestConfiguration.class})
 @ActiveProfiles("test")
 @ExtendWith(PlaywrightExtension.class)
+@Tag("cross-browser")
 @DisplayName("Forgot-password journey: existing user requests reset, retrieves Mailpit link, sets a new password, signs in with it")
 class PasswordResetJourneyUiIT {
 

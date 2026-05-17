@@ -576,6 +576,8 @@ A second integration suite drives the full HTTP surface through a real browser v
 
 UI tests live under `*IT` filenames and run in the `failsafe` (integration) phase; everything else runs in `surefire` under `mvn test`. Both surfaces boot Testcontainers for Postgres. Test method names follow `@DisplayName` conventions established in PR #75.
 
+The 10 OAuth2 + auth/login journey tests carry `@Tag("cross-browser")`. `PlaywrightExtension` reads `-Dplaywright.browser=chromium|chrome|webkit|firefox` (default `chromium`) so local `mvn verify` runtime is unchanged, while CI's `cross-browser-ui.yml` runs the tagged subset under Chrome stable, WebKit, and Firefox in a parallel matrix — see §4.14.
+
 ### 4.14 Static analysis & CI
 
 Static analysis runs in two postures:
@@ -584,6 +586,8 @@ Static analysis runs in two postures:
 - **Report-only, on `verify`.** PMD runs against `pmd-ruleset.xml` (a complexity-only ruleset: cognitive / cyclomatic / NPath complexity, NCSS, parameter list, God class, too-many-fields/methods/public). The build does **not** fail on PMD findings — the report is uploaded as a CI artifact (`pmd.xml`, `pmd.html`, JXR cross-reference) for review. JaCoCo measures coverage during the same `verify` phase and its HTML report is uploaded only on failure.
 
 CI is a single GitHub Actions workflow (`.github/workflows/ci.yml`) with one `verify` job on push and PR to `main`. The job sets up JDK 26 (Temurin, with Maven cache), runs `./mvnw -B -ntp verify`, and uploads the PMD bundle (30-day retention) and — on failure — the JaCoCo HTML report (14-day retention). The `LIMEN_SECURITY_KEK` is supplied as a GitHub Actions secret. Docs-only changes (`**.md`, `docs/**`, `LICENSE`, `.github/ISSUE_TEMPLATE/**`, `.github/PULL_REQUEST_TEMPLATE.md`) are skipped via `paths-ignore`; the same filter is applied to `publish-image.yml` so docs commits don't trigger a no-op image rebuild. A `workflow_dispatch` trigger on `ci.yml` provides a manual run lever when the path filter would otherwise skip a run you want to force.
+
+A second CI workflow (`.github/workflows/cross-browser-ui.yml`) matrix-runs the `@Tag("cross-browser")` Playwright journey tests under Chrome stable, WebKit, and Firefox on push and PR to `main`, with `fail-fast: false` so an engine-specific failure on one browser doesn't mask another. The matrix logic lives in the `ui-cross-browser-matrix` reusable workflow at `stucray/workflows@v1`; `ci.yml` (default Chromium) and this workflow together cover all four engines without duplicate Chromium runs. The motivation is engine-specific drift the bundled Chromium can't catch — most notably real-Chrome-only behaviour like the `/.well-known/appspecific/com.chrome.devtools.json` workspace-folders probe that surfaced bug #285.
 
 ### 4.15 Package structure
 

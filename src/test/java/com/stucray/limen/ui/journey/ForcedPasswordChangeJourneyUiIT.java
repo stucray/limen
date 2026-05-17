@@ -7,8 +7,10 @@ import com.stucray.limen.ui.support.LoginPageObject;
 import com.stucray.limen.ui.support.TestTenantFactory.SeededForcedChangeUser;
 import com.stucray.limen.ui.support.TestTenantFactory.SeededTenant;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+@Tag("cross-browser")
 @DisplayName("A tenant owner with mustChangePassword set is forced through the change-password page before reaching the management home (issue #283)")
 class ForcedPasswordChangeJourneyUiIT extends BaseUiIT {
 

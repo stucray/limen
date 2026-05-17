@@ -4,10 +4,12 @@ import com.microsoft.playwright.Page;
 import com.stucray.limen.ui.pages.LandingPage;
 import com.stucray.limen.ui.support.BaseUiIT;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
+@Tag("cross-browser")
 @DisplayName("A new tenant administrator can sign up via the landing page")
 class SignupJourneyUiIT extends BaseUiIT {
 

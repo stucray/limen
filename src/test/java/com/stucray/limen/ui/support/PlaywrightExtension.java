@@ -29,6 +29,16 @@ import java.nio.file.Path;
  * as a test method parameter.
  *
  * <p>Headless by default. Override locally with {@code -Dplaywright.headless=false}.
+ *
+ * <p>Engine defaults to Playwright's bundled Chromium. Override with
+ * {@code -Dplaywright.browser=chromium|chrome|webkit|firefox}. {@code chrome} launches
+ * Playwright's "chrome" channel — the system-installed stable Google Chrome — which
+ * exhibits real-Chrome-only behaviour (e.g. the
+ * {@code /.well-known/appspecific/com.chrome.devtools.json} workspace-folders probe)
+ * that the bundled stripped Chromium does not. WebKit and Firefox catch
+ * engine-rendering and cookie/CSRF differences. The bundled Chromium remains the
+ * default so local {@code mvn verify} runtime is unchanged; CI runs the other engines
+ * in a parallel matrix job over tests tagged {@code cross-browser}.
  */
 public class PlaywrightExtension implements BeforeAllCallback, BeforeEachCallback, AfterEachCallback, ParameterResolver {
 
@@ -120,9 +130,28 @@ public class PlaywrightExtension implements BeforeAllCallback, BeforeEachCallbac
             playwright = Playwright.create();
             playwright.selectors().setTestIdAttribute("data-test-action");
             boolean headless = !"false".equalsIgnoreCase(System.getProperty("playwright.headless", "true"));
-            browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(headless));
+            browser = launchBrowser(playwright, headless);
             Runtime.getRuntime().addShutdownHook(new Thread(PlaywrightExtension::closeBrowser, "playwright-shutdown"));
         }
+    }
+
+    private static Browser launchBrowser(Playwright playwright, boolean headless) {
+        String engine = System.getProperty("playwright.browser", "chromium").toLowerCase();
+        BrowserType.LaunchOptions options = new BrowserType.LaunchOptions().setHeadless(headless);
+        return switch (engine) {
+            case "chromium" -> playwright.chromium().launch(options);
+            // The "chrome" channel hands off to the system-installed stable Google
+            // Chrome rather than Playwright's bundled stripped Chromium. Required to
+            // exercise behaviour the bundled build disables — workspace-folders
+            // probe, ad-blocking, sync features. Fails fast if Chrome is not on
+            // PATH; CI installs it explicitly.
+            case "chrome" -> playwright.chromium().launch(options.setChannel("chrome"));
+            case "webkit" -> playwright.webkit().launch(options);
+            case "firefox" -> playwright.firefox().launch(options);
+            default -> throw new IllegalArgumentException(
+                "Unknown -Dplaywright.browser value: " + engine
+                    + " (expected chromium, chrome, webkit, or firefox)");
+        };
     }
 
     private static void closeBrowser() {

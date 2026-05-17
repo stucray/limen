@@ -6,8 +6,10 @@ import com.stucray.limen.ui.support.BaseUiIT;
 import com.stucray.limen.ui.support.LoginPageObject;
 import com.stucray.limen.ui.support.TestTenantFactory.SeededTenant;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+@Tag("cross-browser")
 @DisplayName("A tenant administrator can sign in to the management console")
 class TenantAdminLoginJourneyUiIT extends BaseUiIT {
 

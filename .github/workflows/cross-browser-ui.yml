@@ -1,0 +1,34 @@
+# Matrix-runs the Playwright UI journey tests tagged @Tag("cross-browser")
+# under Chrome stable + WebKit + Firefox. Thin caller — the matrix
+# behaviour lives in stucray/workflows/.github/workflows/ui-cross-browser-matrix.yml.
+#
+# Default (Chromium) coverage of the same tests is in ci.yml; this workflow
+# only adds the three extra engines so engine-specific drift surfaces in CI
+# instead of only when someone notices it in a real browser.
+
+name: Cross-browser UI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+  workflow_dispatch:
+
+jobs:
+  cross-browser:
+    uses: stucray/workflows/.github/workflows/ui-cross-browser-matrix.yml@v1
+    secrets:
+      test_env_json: '{"LIMEN_SECURITY_KEK":"${{ secrets.LIMEN_SECURITY_KEK_TEST }}"}'

@@ -11,6 +11,7 @@ import com.stucray.limen.ui.support.TestOAuth2RelyingParty;
 import com.stucray.limen.ui.support.TestTenantFactory.SeededApplication;
 import com.stucray.limen.ui.support.TestTenantFactory.SeededTenant;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
@@ -60,6 +61,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       resume working without {@code access_denied}.</li>
  * </ul>
  */
+@Tag("cross-browser")
 @DisplayName("An end-to-end OAuth2 relying party drives /authorize → /token → /userinfo through a confidential authorization_code client created via the manage UI")
 @Import(TestOAuth2RelyingParty.class)
 class OAuth2EndToEndJourneyUiIT extends BaseUiIT {

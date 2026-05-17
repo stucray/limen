@@ -8,6 +8,7 @@ import com.stucray.limen.ui.support.TestTenantFactory;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -24,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * use the admin to unlock them. Two principals + the same tenant covers the
  * "admin acts on another user's row" path the spec calls for.
  */
+@Tag("cross-browser")
 @DisplayName("Account lockout journey: 5 wrong passwords lock the user, the locked-error renders, admin unlocks via UI, user signs in")
 class AccountLockoutJourneyUiIT extends BaseUiIT {
 

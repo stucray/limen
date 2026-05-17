@@ -10,6 +10,7 @@ import com.stucray.limen.ui.pages.CheckInboxPage;
 import com.stucray.limen.ui.pages.LandingPage;
 import com.stucray.limen.ui.support.PlaywrightExtension;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import({TestcontainersConfiguration.class, MailpitTestConfiguration.class})
 @ActiveProfiles("test")
 @ExtendWith(PlaywrightExtension.class)
+@Tag("cross-browser")
 @DisplayName("New tenant owner signs up, retrieves the verification email from Mailpit, clicks the magic link, and lands on the management home — fully verified")
 class EmailVerificationJourneyUiIT {
 
