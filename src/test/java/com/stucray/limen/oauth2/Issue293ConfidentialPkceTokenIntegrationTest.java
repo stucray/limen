@@ -33,7 +33,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
-import org.springframework.security.oauth2.jwt.JwtEncodingException;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
@@ -189,10 +188,20 @@ class Issue293ConfidentialPkceTokenIntegrationTest {
     }
 
     /**
-     * Replaces the production {@link JWKSource} with one whose
-     * {@link JWKSource#get} throws — modelling the deployed-image symptom
-     * (tenant signing key fails to unwrap, e.g. KEK mismatch). Marked
-     * {@link Primary} so it wins over the production bean.
+     * Replaces the production {@link JWKSource} with one that throws the
+     * exact unchecked exception {@code JdbcSigningKeys.getActiveSigningKey}
+     * throws when AES-GCM authentication fails on a KEK mismatch — Spring's
+     * {@link org.springframework.security.crypto.encrypt.AesBytesEncryptor}
+     * wraps {@link javax.crypto.BadPaddingException} as
+     * {@link IllegalStateException} with this exact message. Nimbus's
+     * {@code NimbusJwtEncoder.selectJwk} then catches it (broad
+     * {@code catch (Exception)}) and wraps as
+     * {@code JwtEncodingException("Failed to select a JWK signing key -> ...")}
+     * — the same exception that surfaces in the deployed-image symptom and
+     * the same code path {@link com.stucray.limen.oauth2.sas.SasServerErrorTranslationFilter}
+     * has to catch. Throwing it here instead of the wrapped
+     * {@code JwtEncodingException} keeps the test honest about the
+     * production exception chain rather than short-circuiting it.
      */
     @TestConfiguration
     static class BrokenJwkSourceConfig {
@@ -202,8 +211,7 @@ class Issue293ConfidentialPkceTokenIntegrationTest {
             return new JWKSource<>() {
                 @Override
                 public List<JWK> get(JWKSelector selector, SecurityContext securityContext) {
-                    throw new JwtEncodingException(
-                        "Failed to select a JWK signing key -> Unable to invoke Cipher due to bad padding");
+                    throw new IllegalStateException("Unable to invoke Cipher due to bad padding");
                 }
             };
         }
