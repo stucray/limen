@@ -111,7 +111,7 @@ public class TenantProvisioner {
             null, tenant.id(), email,
             Objects.requireNonNull(passwordEncoder.encode(rawPassword)),
             true, mustChangePassword, true, false, LocalDateTime.now()
-        ));
+        ).withFullName(trimOrNull(request.ownerFullName())));
         ottDispatcher.issue(OttIntent.VERIFY_EMAIL, tenant, owner);
 
         return new Result.Provisioned(tenant, email);
@@ -154,6 +154,12 @@ public class TenantProvisioner {
         return value == null ? "" : value.trim();
     }
 
+    private static @Nullable String trimOrNull(@Nullable String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     private static String randomPlaceholderPassword() {
         // Two concatenated UUIDs = ~256 bits of entropy. The owner never sees
         // this — the verification flow + mustChangePassword interceptor force
@@ -173,6 +179,7 @@ public class TenantProvisioner {
         @Nullable String slug,
         @Nullable String displayName,
         @Nullable String ownerEmail,
+        @Nullable String ownerFullName,
         OwnerCredentials ownerCredentials,
         FieldNames fieldNames
     ) {
@@ -180,10 +187,11 @@ public class TenantProvisioner {
             @Nullable String slug,
             @Nullable String organizationName,
             @Nullable String email,
+            @Nullable String fullName,
             @Nullable String password
         ) {
             return new NewTenantRequest(
-                slug, organizationName, email,
+                slug, organizationName, email, fullName,
                 new OwnerCredentials.Provided(password == null ? "" : password),
                 FieldNames.SIGNUP);
         }
@@ -191,10 +199,11 @@ public class TenantProvisioner {
         public static NewTenantRequest fromSystemAdminForm(
             @Nullable String slug,
             @Nullable String displayName,
-            @Nullable String ownerEmail
+            @Nullable String ownerEmail,
+            @Nullable String ownerFullName
         ) {
             return new NewTenantRequest(
-                slug, displayName, ownerEmail,
+                slug, displayName, ownerEmail, ownerFullName,
                 new OwnerCredentials.GenerateRandom(),
                 FieldNames.SYSTEM_ADMIN);
         }

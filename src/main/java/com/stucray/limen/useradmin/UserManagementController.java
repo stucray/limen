@@ -3,6 +3,7 @@ package com.stucray.limen.useradmin;
 import com.stucray.limen.user.TenantUserDetails;
 import com.stucray.limen.memberships.UserMembershipPortfolioQuery;
 import jakarta.servlet.http.HttpServletRequest;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -58,16 +59,18 @@ class UserManagementController {
         @PathVariable String slug,
         @AuthenticationPrincipal TenantUserDetails principal,
         @RequestParam String email,
+        @RequestParam(required = false) @Nullable String fullName,
         @RequestParam String temporaryPassword,
         Model model
     ) {
         try {
-            userAdministration.createUser(principal.tenantId(), principal.userId(), email, temporaryPassword);
+            userAdministration.createUser(principal.tenantId(), principal.userId(), email, fullName, temporaryPassword);
             return "redirect:/manage/t/" + slug + "/users";
         } catch (IllegalArgumentException e) {
             model.addAttribute("slug", slug);
             model.addAttribute("errorMessage", e.getMessage());
             model.addAttribute("email", email);
+            model.addAttribute("fullName", fullName);
             return "manage/users/new";
         }
     }

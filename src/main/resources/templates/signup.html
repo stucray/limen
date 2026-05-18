@@ -32,6 +32,12 @@
             </label>
 
             <label>
+                Full name <span class="muted">(optional)</span>
+                <input type="text" name="fullName" th:value="${form.fullName()}"/>
+                <small class="muted">Shown to applications you sign in to when they request the OIDC <code>profile</code> scope.</small>
+            </label>
+
+            <label>
                 Password
                 <input type="password" name="password" required/>
                 <span class="form-error" th:if="${errorField == 'password'}" th:text="${errorMessage}"></span>

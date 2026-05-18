@@ -23,6 +23,11 @@
             <input type="email" name="email" th:value="${email}" autofocus required/>
         </label>
         <label>
+            Full name <span class="muted">(optional)</span>
+            <input type="text" name="fullName" th:value="${fullName}"/>
+            <small class="muted">Shown to applications when relying parties request the OIDC <code>profile</code> scope.</small>
+        </label>
+        <label>
             Temporary password
             <input type="password" name="temporaryPassword" required/>
         </label>

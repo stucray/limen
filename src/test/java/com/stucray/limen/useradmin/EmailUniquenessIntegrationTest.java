@@ -61,8 +61,8 @@ class EmailUniquenessIntegrationTest {
     @Test
     @DisplayName("Same email in two different tenants is permitted — both users persist independently")
     void sameEmailAcrossDifferentTenantsIsPermitted() {
-        userAdministration.createUser(tenantA.id(), actorId, "shared@example.test", "temp-pwd-1");
-        userAdministration.createUser(tenantB.id(), actorId, "shared@example.test", "temp-pwd-2");
+        userAdministration.createUser(tenantA.id(), actorId, "shared@example.test", null, "temp-pwd-1");
+        userAdministration.createUser(tenantB.id(), actorId, "shared@example.test", null, "temp-pwd-2");
 
         assertThat(userRepository.findByEmailAndTenantId("shared@example.test", tenantA.id())).isPresent();
         assertThat(userRepository.findByEmailAndTenantId("shared@example.test", tenantB.id())).isPresent();
@@ -74,10 +74,10 @@ class EmailUniquenessIntegrationTest {
     @Test
     @DisplayName("Duplicate email within a single tenant is rejected with 'Email already exists in this tenant'")
     void duplicateEmailWithinSingleTenantIsRejected() {
-        userAdministration.createUser(tenantA.id(), actorId, "shared@example.test", "temp-pwd-1");
+        userAdministration.createUser(tenantA.id(), actorId, "shared@example.test", null, "temp-pwd-1");
 
         assertThatThrownBy(() ->
-            userAdministration.createUser(tenantA.id(), actorId, "shared@example.test", "temp-pwd-2"))
+            userAdministration.createUser(tenantA.id(), actorId, "shared@example.test", null, "temp-pwd-2"))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("Email already exists in this tenant");
 

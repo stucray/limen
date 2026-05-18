@@ -30,7 +30,8 @@ final class OidcScopeClaims {
 
     static final List<String> SUPPORTED_SCOPES = List.of(
         OidcScopes.OPENID,
-        OidcScopes.EMAIL
+        OidcScopes.EMAIL,
+        OidcScopes.PROFILE
     );
 
     private static final List<String> OPENID_BASE_CLAIMS = List.of(
@@ -43,7 +44,16 @@ final class OidcScopeClaims {
         StandardClaimNames.EMAIL_VERIFIED
     );
 
-    static final List<String> SUPPORTED_CLAIMS = concat(OPENID_BASE_CLAIMS, EMAIL_CLAIMS);
+    // Only the `profile` claims Limen can resolve. The OIDC standard `profile`
+    // scope advertises a long list (given_name/family_name/middle_name/nickname/
+    // preferred_username/picture/website/gender/birthdate/zoneinfo/locale/
+    // updated_at), but Limen has no data for any of those — only `name`.
+    private static final List<String> PROFILE_CLAIMS = List.of(
+        StandardClaimNames.NAME
+    );
+
+    static final List<String> SUPPORTED_CLAIMS =
+        concat(OPENID_BASE_CLAIMS, EMAIL_CLAIMS, PROFILE_CLAIMS);
 
     private OidcScopeClaims() {}
 
@@ -51,7 +61,10 @@ final class OidcScopeClaims {
      * Populate ID-token claims based on which standard scopes were granted at
      * /oauth2/authorize. Called from the ID-token branch of the JWT customizer.
      * No-op when the principal isn't a {@link TenantUserDetails} (e.g.
-     * client_credentials flows have no end user, so no email to disclose).
+     * client_credentials flows have no end user, so no profile data to
+     * disclose). For {@code profile}, a {@code null} {@code full_name} causes
+     * the {@code name} claim to be omitted entirely rather than serialised as
+     * {@code null} or empty string.
      */
     static void addClaimsForGrantedScopes(
         JwtClaimsSet.Builder claims,
@@ -63,9 +76,18 @@ final class OidcScopeClaims {
             claims.claim(StandardClaimNames.EMAIL, details.user().email());
             claims.claim(StandardClaimNames.EMAIL_VERIFIED, details.user().emailVerified());
         }
+        if (grantedScopes.contains(OidcScopes.PROFILE)) {
+            String fullName = details.user().fullName();
+            if (fullName != null) {
+                claims.claim(StandardClaimNames.NAME, fullName);
+            }
+        }
     }
 
-    private static List<String> concat(List<String> a, List<String> b) {
-        return List.copyOf(java.util.stream.Stream.concat(a.stream(), b.stream()).toList());
+    @SafeVarargs
+    private static List<String> concat(List<String>... lists) {
+        return List.copyOf(java.util.Arrays.stream(lists)
+            .flatMap(List::stream)
+            .toList());
     }
 }
