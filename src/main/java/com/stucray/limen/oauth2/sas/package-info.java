@@ -21,6 +21,16 @@
  * so SAS's per-endpoint failure handlers still write the canonical
  * {@code invalid_grant} / {@code invalid_client} / etc. responses.
  *
+ * <p>{@code OidcScopeClaims} is the single source of truth for which OIDC
+ * standard scopes Limen advertises in the discovery document and which claims
+ * each one populates on the ID token. {@code SasConfig} reads it from two
+ * places: the discovery customizer (emits {@code scopes_supported} and
+ * {@code claims_supported}) and the ID-token branch of the JWT customizer
+ * (populates claims when the corresponding scope is in the granted scope set).
+ * The default Spring Authorization Server userinfo mapper filters the ID-token
+ * claims by granted scope using the same standard OIDC mapping, so no separate
+ * userinfo wiring is required to keep userinfo in lockstep.
+ *
  * <p>Internal to {@code com.stucray.limen.oauth2}. The adapter types and the
  * filter are package-private; the rest of the application autowires the
  * Spring SPI interfaces published by {@code SasConfig}'s {@code @Bean}

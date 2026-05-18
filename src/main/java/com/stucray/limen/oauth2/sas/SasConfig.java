@@ -22,6 +22,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
@@ -59,7 +60,17 @@ class SasConfig {
             RequestMatcher endpointsMatcher = authorizationServer.getEndpointsMatcher();
             endpointsMatcherHolder[0] = endpointsMatcher;
             http.securityMatcher(endpointsMatcher);
-            authorizationServer.oidc(Customizer.withDefaults());
+            authorizationServer.oidc(oidc -> oidc
+                .providerConfigurationEndpoint(pc -> pc
+                    .providerConfigurationCustomizer(builder -> builder
+                        .scopes(scopes -> {
+                            scopes.clear();
+                            scopes.addAll(OidcScopeClaims.SUPPORTED_SCOPES);
+                        })
+                        .claim(OidcScopeClaims.CLAIMS_SUPPORTED, OidcScopeClaims.SUPPORTED_CLAIMS)
+                    )
+                )
+            );
         });
         // Dedicated session attribute for the SAS chain's SavedRequest so that
         // unauthenticated requests handled by other filter chains — DevTools
@@ -165,12 +176,20 @@ class SasConfig {
         ClientMembershipQuery clientMembershipQuery
     ) {
         return context -> {
-            if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) return;
-            String slug = TenantScope.slug();
-            if (slug != null) {
-                context.getClaims().claim("tenant", slug);
+            String tokenType = context.getTokenType().getValue();
+            if (OAuth2TokenType.ACCESS_TOKEN.getValue().equals(tokenType)) {
+                String slug = TenantScope.slug();
+                if (slug != null) {
+                    context.getClaims().claim("tenant", slug);
+                }
+                context.getClaims().claim("roles", resolveRoles(context, clientMembershipQuery));
+            } else if (OidcParameterNames.ID_TOKEN.equals(tokenType)) {
+                OidcScopeClaims.addClaimsForGrantedScopes(
+                    context.getClaims(),
+                    context.getAuthorizedScopes(),
+                    context.getPrincipal() == null ? null : context.getPrincipal().getPrincipal()
+                );
             }
-            context.getClaims().claim("roles", resolveRoles(context, clientMembershipQuery));
         };
     }
 
