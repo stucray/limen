@@ -79,6 +79,17 @@ class IssuerContractTest {
             .andExpect(jsonPath("$.token_endpoint").value("http://localhost:8090/oauth2/token"));
     }
 
+    @Test
+    @DisplayName("/.well-known/openid-configuration advertises scopes_supported and claims_supported for every standard scope Limen honours")
+    void openidConfigurationAdvertisesScopesAndClaimsLimenHonours() throws Exception {
+        mockMvc.perform(get("/.well-known/openid-configuration"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.scopes_supported", org.hamcrest.Matchers.containsInAnyOrder("openid", "email")))
+            .andExpect(jsonPath("$.claims_supported", org.hamcrest.Matchers.hasItems(
+                "sub", "iss", "aud", "exp", "iat", "auth_time", "nonce",
+                "email", "email_verified")));
+    }
+
     // Legacy global JWKS endpoint test removed in slice 5a (#18): the JWKSource bean is now
     // TenantJwkSource, which requires a tenant context (issuer or TenantScope). The global
     // /oauth2/jwks endpoint has no tenant context and intentionally fails — clients must use
