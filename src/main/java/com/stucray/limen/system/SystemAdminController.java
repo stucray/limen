@@ -6,6 +6,7 @@ import com.stucray.limen.provisioning.TenantProvisioningService;
 import com.stucray.limen.tenant.TenantRepository;
 import com.stucray.limen.provisioning.TenantProvisioner;
 import com.stucray.limen.provisioning.TenantProvisioner.NewTenantRequest;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -45,7 +46,7 @@ class SystemAdminController {
     @GetMapping("/tenants/new")
     String newTenantForm(Model model) {
         if (!model.containsAttribute("form")) {
-            model.addAttribute("form", new TenantCreateForm("", "", ""));
+            model.addAttribute("form", new TenantCreateForm("", "", "", ""));
         }
         return "manage/system/tenant-new";
     }
@@ -55,11 +56,12 @@ class SystemAdminController {
         @RequestParam String slug,
         @RequestParam String displayName,
         @RequestParam String ownerEmail,
+        @RequestParam(required = false) @Nullable String ownerFullName,
         Model model,
         RedirectAttributes redirectAttributes
     ) {
         return switch (tenantProvisioner.provision(
-            NewTenantRequest.fromSystemAdminForm(slug, displayName, ownerEmail))) {
+            NewTenantRequest.fromSystemAdminForm(slug, displayName, ownerEmail, ownerFullName))) {
             case TenantProvisioner.Result.Provisioned p -> {
                 redirectAttributes.addFlashAttribute("successMessage",
                     "Created tenant " + p.tenant().slug() + ". A verification email has been sent to "
@@ -68,7 +70,7 @@ class SystemAdminController {
             }
             case TenantProvisioner.Result.Rejected r -> {
                 model.addAttribute("form", new TenantCreateForm(
-                    trim(slug), trim(displayName), trim(ownerEmail)));
+                    trim(slug), trim(displayName), trim(ownerEmail), trim(ownerFullName)));
                 model.addAttribute("errorField", r.field());
                 model.addAttribute("errorMessage", r.message());
                 yield "manage/system/tenant-new";
@@ -120,9 +122,9 @@ class SystemAdminController {
         return "redirect:/manage/system/tenants";
     }
 
-    private static String trim(String value) {
+    private static String trim(@Nullable String value) {
         return value == null ? "" : value.trim();
     }
 
-    record TenantCreateForm(String slug, String displayName, String ownerEmail) {}
+    record TenantCreateForm(String slug, String displayName, String ownerEmail, String ownerFullName) {}
 }

@@ -84,10 +84,11 @@ class IssuerContractTest {
     void openidConfigurationAdvertisesScopesAndClaimsLimenHonours() throws Exception {
         mockMvc.perform(get("/.well-known/openid-configuration"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.scopes_supported", org.hamcrest.Matchers.containsInAnyOrder("openid", "email")))
+            .andExpect(jsonPath("$.scopes_supported",
+                org.hamcrest.Matchers.containsInAnyOrder("openid", "email", "profile")))
             .andExpect(jsonPath("$.claims_supported", org.hamcrest.Matchers.hasItems(
                 "sub", "iss", "aud", "exp", "iat", "auth_time", "nonce",
-                "email", "email_verified")));
+                "email", "email_verified", "name")));
     }
 
     // Legacy global JWKS endpoint test removed in slice 5a (#18): the JWKSource bean is now

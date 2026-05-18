@@ -1,6 +1,6 @@
 # Code Quality Snapshot
 
-**Generated:** 2026-05-18 from commit `68c1071`
+**Generated:** 2026-05-18 from commit `7994591`
 
 **Tool:** PMD 7.24.0 · **Ruleset:** [`pmd-ruleset.xml`](../../pmd-ruleset.xml) · **Total findings:** 1
 

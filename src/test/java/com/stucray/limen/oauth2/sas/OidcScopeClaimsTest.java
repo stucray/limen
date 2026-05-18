@@ -88,6 +88,61 @@ class OidcScopeClaimsTest {
         assertThat(claims.build().getClaims()).doesNotContainKey("email");
     }
 
+    @Test
+    @DisplayName("Granted profile scope on a user with a non-null fullName adds the name claim")
+    void profileScopeAddsNameClaim() {
+        User user = userWith("alice@acme.test", true).withFullName("Alice Example");
+        JwtClaimsSet.Builder claims = baseClaims();
+
+        OidcScopeClaims.addClaimsForGrantedScopes(
+            claims, Set.of("openid", "profile"), new TenantUserDetails(user, TENANT)
+        );
+
+        assertThat(claims.build().getClaims()).containsEntry("name", "Alice Example");
+    }
+
+    @Test
+    @DisplayName("Granted profile scope on a user with a null fullName OMITS the name claim — does not emit name: null or name: empty")
+    void profileScopeWithNullFullNameOmitsNameClaim() {
+        User user = userWith("alice@acme.test", true);  // fullName defaults to null
+        JwtClaimsSet.Builder claims = baseClaims();
+
+        OidcScopeClaims.addClaimsForGrantedScopes(
+            claims, Set.of("openid", "profile"), new TenantUserDetails(user, TENANT)
+        );
+
+        assertThat(claims.build().getClaims()).doesNotContainKey("name");
+    }
+
+    @Test
+    @DisplayName("openid scope without profile scope does NOT add name even if fullName is set")
+    void profileScopeNotGrantedOmitsNameClaim() {
+        User user = userWith("alice@acme.test", true).withFullName("Alice Example");
+        JwtClaimsSet.Builder claims = baseClaims();
+
+        OidcScopeClaims.addClaimsForGrantedScopes(
+            claims, Set.of("openid"), new TenantUserDetails(user, TENANT)
+        );
+
+        assertThat(claims.build().getClaims()).doesNotContainKey("name");
+    }
+
+    @Test
+    @DisplayName("Granted scope=openid email profile populates all three sets of claims in one pass")
+    void allScopesGrantedPopulatesAllClaims() {
+        User user = userWith("alice@acme.test", true).withFullName("Alice Example");
+        JwtClaimsSet.Builder claims = baseClaims();
+
+        OidcScopeClaims.addClaimsForGrantedScopes(
+            claims, Set.of("openid", "email", "profile"), new TenantUserDetails(user, TENANT)
+        );
+
+        Map<String, Object> built = claims.build().getClaims();
+        assertThat(built).containsEntry("email", "alice@acme.test");
+        assertThat(built).containsEntry("email_verified", true);
+        assertThat(built).containsEntry("name", "Alice Example");
+    }
+
     private static JwtClaimsSet.Builder baseClaims() {
         return JwtClaimsSet.builder().subject("placeholder-sub");
     }

@@ -10,6 +10,7 @@ import com.stucray.limen.audit.events.UserDisabledEvent;
 import com.stucray.limen.audit.events.UserEnabledEvent;
 import com.stucray.limen.user.User;
 import com.stucray.limen.user.UserRepository;
+import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -68,15 +69,17 @@ public class UserAdministrationService {
 
     @Transactional
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
-    void createUser(Long tenantId, Long actorUserId, String email, String temporaryPassword) {
+    void createUser(Long tenantId, Long actorUserId, String email, @Nullable String fullName, String temporaryPassword) {
         if (userRepository.existsByEmailAndTenantId(email, tenantId)) {
             throw new IllegalArgumentException("Email already exists in this tenant");
         }
+        @Nullable String trimmedName =
+            (fullName == null || fullName.isBlank()) ? null : fullName.trim();
         User saved = userRepository.save(new User(
             null, tenantId, email,
             Objects.requireNonNull(passwordEncoder.encode(temporaryPassword)),
             true, true, false, true, LocalDateTime.now()
-        ));
+        ).withFullName(trimmedName));
         eventPublisher.publishEvent(new UserCreatedEvent(tenantId, actorUserId, saved.id(), email));
     }
 

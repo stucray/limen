@@ -42,6 +42,13 @@
                 <span class="form-error" th:if="${errorField == 'ownerEmail'}" th:text="${errorMessage}"></span>
             </label>
 
+            <label>
+                Owner name <span class="muted">(optional)</span>
+                <input type="text" name="ownerFullName" th:value="${form.ownerFullName()}"
+                       data-test-field="ownerFullName"/>
+                <small class="muted">Shown to applications when relying parties request the OIDC <code>profile</code> scope.</small>
+            </label>
+
             <button type="submit" class="btn--block" data-test-action="tenant-create-submit">Create tenant</button>
         </form>
     </article>

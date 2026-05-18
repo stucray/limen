@@ -1,5 +1,6 @@
 package com.stucray.limen.signup;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,7 +21,7 @@ class SignupController {
 
     @GetMapping("/signup")
     String signupForm(Model model) {
-        model.addAttribute("form", new SignupForm("", "", "", ""));
+        model.addAttribute("form", new SignupForm("", "", "", "", ""));
         return "signup";
     }
 
@@ -29,10 +30,11 @@ class SignupController {
         @RequestParam String organizationName,
         @RequestParam String slug,
         @RequestParam String email,
+        @RequestParam(required = false) @Nullable String fullName,
         @RequestParam String password,
         Model model
     ) {
-        SignupForm form = new SignupForm(organizationName, slug, email, password);
+        SignupForm form = new SignupForm(organizationName, slug, email, fullName, password);
         SignupService.SignupResult result = signupService.signup(form);
 
         if (result instanceof SignupService.SignupResult.Success success) {

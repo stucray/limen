@@ -54,7 +54,7 @@ class TenantProvisionerIntegrationTest {
         String email = "owner-" + slug + "@example.test";
 
         Result result = provisioner.provision(NewTenantRequest.fromSignupForm(
-            slug, "Acme " + slug, email, "secret123"));
+            slug, "Acme " + slug, email, null, "secret123"));
 
         assertThat(result).isInstanceOf(Result.Provisioned.class);
         Result.Provisioned provisioned = (Result.Provisioned) result;
@@ -80,7 +80,7 @@ class TenantProvisionerIntegrationTest {
         String email = "owner-" + slug + "@example.test";
 
         Result result = provisioner.provision(NewTenantRequest.fromSystemAdminForm(
-            slug, "Acme " + slug, email));
+            slug, "Acme " + slug, email, null));
 
         assertThat(result).isInstanceOf(Result.Provisioned.class);
         User owner = userRepository.findByEmailAndTenantId(
@@ -102,7 +102,7 @@ class TenantProvisionerIntegrationTest {
             .generateForIntent(eq(email), any(OttIntent.class));
 
         assertThatThrownBy(() -> provisioner.provision(NewTenantRequest.fromSystemAdminForm(
-            slug, "Acme " + slug, email)))
+            slug, "Acme " + slug, email, null)))
             .isInstanceOf(IllegalStateException.class)
             .hasMessage("simulated OTT outage");
 
@@ -116,7 +116,7 @@ class TenantProvisionerIntegrationTest {
     @DisplayName("Reserved slug is rejected; field name follows the signup form's input names")
     void rejectsReservedSlugUnderSignupFieldNames() {
         Result result = provisioner.provision(NewTenantRequest.fromSignupForm(
-            "system", "Acme", "alice@example.test", "secret123"));
+            "system", "Acme", "alice@example.test", null, "secret123"));
         assertThat(result).isEqualTo(new Result.Rejected("slug", "That slug is reserved and cannot be used"));
     }
 
@@ -124,7 +124,7 @@ class TenantProvisionerIntegrationTest {
     @DisplayName("Email rejection under signup uses field name 'email'")
     void emailErrorFieldUnderSignupIsEmail() {
         Result result = provisioner.provision(NewTenantRequest.fromSignupForm(
-            uniqueSlug(), "Acme", "not-an-email", "secret123"));
+            uniqueSlug(), "Acme", "not-an-email", null, "secret123"));
         assertThat(result).isInstanceOf(Result.Rejected.class);
         assertThat(((Result.Rejected) result).field()).isEqualTo("email");
     }
@@ -133,7 +133,7 @@ class TenantProvisionerIntegrationTest {
     @DisplayName("Email rejection under system-admin uses field name 'ownerEmail' — no caller rebind needed")
     void emailErrorFieldUnderSystemAdminIsOwnerEmail() {
         Result result = provisioner.provision(NewTenantRequest.fromSystemAdminForm(
-            uniqueSlug(), "Acme", "not-an-email"));
+            uniqueSlug(), "Acme", "not-an-email", null));
         assertThat(result).isInstanceOf(Result.Rejected.class);
         assertThat(((Result.Rejected) result).field()).isEqualTo("ownerEmail");
     }
@@ -142,11 +142,11 @@ class TenantProvisionerIntegrationTest {
     @DisplayName("Display-name rejection under signup uses 'organizationName'; under system-admin uses 'displayName'")
     void displayNameFieldNameTracksTheCaller() {
         Result signupResult = provisioner.provision(NewTenantRequest.fromSignupForm(
-            uniqueSlug(), "  ", "alice@example.test", "secret123"));
+            uniqueSlug(), "  ", "alice@example.test", null, "secret123"));
         assertThat(((Result.Rejected) signupResult).field()).isEqualTo("organizationName");
 
         Result sysAdminResult = provisioner.provision(NewTenantRequest.fromSystemAdminForm(
-            uniqueSlug(), "  ", "alice@example.test"));
+            uniqueSlug(), "  ", "alice@example.test", null));
         assertThat(((Result.Rejected) sysAdminResult).field()).isEqualTo("displayName");
     }
 
@@ -154,7 +154,7 @@ class TenantProvisionerIntegrationTest {
     @DisplayName("Blank password under signup is rejected with field='password'")
     void blankPasswordUnderSignupIsRejected() {
         Result result = provisioner.provision(NewTenantRequest.fromSignupForm(
-            uniqueSlug(), "Acme", "alice@example.test", ""));
+            uniqueSlug(), "Acme", "alice@example.test", null, ""));
         assertThat(result).isEqualTo(new Result.Rejected("password", "Password is required"));
     }
 
@@ -163,11 +163,11 @@ class TenantProvisionerIntegrationTest {
     void duplicateSlugIsRejected() {
         String slug = uniqueSlug();
         Result first = provisioner.provision(NewTenantRequest.fromSignupForm(
-            slug, "First", "first-" + slug + "@example.test", "secret123"));
+            slug, "First", "first-" + slug + "@example.test", null, "secret123"));
         assertThat(first).isInstanceOf(Result.Provisioned.class);
 
         Result second = provisioner.provision(NewTenantRequest.fromSignupForm(
-            slug, "Second", "second-" + slug + "@example.test", "secret123"));
+            slug, "Second", "second-" + slug + "@example.test", null, "secret123"));
         assertThat(second).isEqualTo(new Result.Rejected("slug", "That slug is already taken"));
     }
 

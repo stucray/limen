@@ -28,7 +28,7 @@ public class SignupService {
 
     SignupResult signup(SignupForm form) {
         return switch (tenantProvisioner.provision(NewTenantRequest.fromSignupForm(
-            form.slug(), form.organizationName(), form.email(), form.password()
+            form.slug(), form.organizationName(), form.email(), form.fullName(), form.password()
         ))) {
             case TenantProvisioner.Result.Provisioned p ->
                 new SignupResult.Success(p.tenant().slug(), p.ownerEmail());
