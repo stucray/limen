@@ -1,7 +1,7 @@
 # Test Coverage Snapshot
 
 <!-- coverage:auto:start -->
-**Generated:** 2026-05-17 from commit `1bbb184` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
+**Generated:** 2026-05-18 from commit `f7f9720` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
 
 **Run:** `./mvnw verify` — 554 tests, all passing. JaCoCo analyzes 185 production classes.
 
@@ -9,8 +9,8 @@
 
 | Metric       | Coverage | Δ from baseline | Δ from prev | Covered / Total |
 |--------------|---------:|----------------:|------------:|----------------:|
-| Instructions | 94.0 % | +10.0 % 🟢 | +0.1 % 🟢 | 12,567 / 13,375 |
-| Branches     | 78.9 % | +8.9 % 🟢 | +0.1 % 🟢 | 603 / 764 |
+| Instructions | 94.0 % | +10.0 % 🟢 | +0.0 % ⚪ | 12,567 / 13,375 |
+| Branches     | 78.9 % | +8.9 % 🟢 | +0.0 % ⚪ | 603 / 764 |
 | Lines        | 94.3 % | +8.2 % 🟢 | +0.0 % ⚪ | 2,553 / 2,707 |
 | Methods      | 95.0 % | +5.9 % 🟢 | +0.0 % ⚪ | 680 / 716 |
 
@@ -31,7 +31,7 @@ Sorted by line coverage, weakest first. Δ Line (base) compares each package aga
 | com.stucray.limen.auth.lockout | 91.1 % | +91.1 % 🟢 | +0.0 % ⚪ | 68.8 % | 100.0 % | 5 |
 | com.stucray.limen.security.signing | 92.0 % | +92.0 % 🟢 | +0.0 % ⚪ | 63.6 % | 100.0 % | 9 |
 | com.stucray.limen.useradmin | 94.2 % | +94.2 % 🟢 | +0.0 % ⚪ | 79.3 % | 97.1 % | 8 |
-| com.stucray.limen.oauth2.sas | 94.4 % | +94.4 % 🟢 | +0.7 % 🟢 | 79.4 % | 97.5 % | 11 |
+| com.stucray.limen.oauth2.sas | 94.4 % | +94.4 % 🟢 | +0.0 % ⚪ | 79.4 % | 97.5 % | 11 |
 | com.stucray.limen.management.web | 95.2 % | +0.0 % ⚪ | +0.0 % ⚪ | 75.0 % | 100.0 % | 1 |
 | com.stucray.limen.user | 96.3 % | -3.7 % 🔴 | +0.0 % ⚪ | 100.0 % | 95.2 % | 1 |
 | com.stucray.limen.oauth2 | 97.7 % | +9.9 % 🟢 | +0.0 % ⚪ | 88.9 % | 100.0 % | 4 |

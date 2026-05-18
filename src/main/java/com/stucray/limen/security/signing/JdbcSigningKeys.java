@@ -68,7 +68,7 @@ class JdbcSigningKeys
 
         try (PreparedStatement ps = conn.prepareStatement(
             "INSERT INTO tenant_signing_key " +
-                "(tenant_id, kid, algorithm, private_key_ciphertext, iv, public_key_jwk, status) " +
+                "(tenant_id, kid, algorithm, private_key_ciphertext, pbkdf2_salt, public_key_jwk, status) " +
                 "VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE')"
         )) {
             ps.setLong(1, tenantId);
@@ -85,14 +85,14 @@ class JdbcSigningKeys
     @Override
     public @Nullable RSAKey getActiveSigningKey(long tenantId) {
         return jdbcTemplate.query(
-            "SELECT private_key_ciphertext, iv FROM tenant_signing_key " +
+            "SELECT private_key_ciphertext, pbkdf2_salt FROM tenant_signing_key " +
                 "WHERE tenant_id = ? AND status = 'ACTIVE'",
             rs -> {
                 if (!rs.next()) {
                     return null;
                 }
                 byte[] ciphertext = rs.getBytes("private_key_ciphertext");
-                byte[] salt = rs.getBytes("iv");
+                byte[] salt = rs.getBytes("pbkdf2_salt");
                 byte[] plaintext = encryptor(salt).decrypt(ciphertext);
                 try {
                     return RSAKey.parse(new String(plaintext, StandardCharsets.UTF_8));

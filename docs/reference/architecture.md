@@ -128,7 +128,7 @@ erDiagram
         string kid
         string algorithm
         bytea private_key_ciphertext
-        bytea iv
+        bytea pbkdf2_salt
         text public_key_jwk
         enum status "ACTIVE | RETIRED"
     }
@@ -275,6 +275,8 @@ Two of those four (Authorization and Consent services) share a one-line helper `
 
 The adapters all *read* by adding a `tenant_id = ?` predicate. A query that returns no row for the current Tenant looks identical to a row that does not exist, so cross-tenant lookups are invisible to the caller. `TenantScopedSasIntegrationTest` pins the invariant across all four SPIs in one boundary test.
 
+One more class lives in `oauth2.sas` alongside the adapters but is a different shape: `SasServerErrorTranslationFilter`. It's a servlet `Filter` registered at the head of the SAS `SecurityFilterChain` by `SasConfig`. It catches any uncaught `RuntimeException` thrown by downstream SAS endpoint filters and rewrites the response as `500 application/json {"error":"server_error", ...}` — the RFC 6749 §5.2 shape that RFC-compliant OAuth2 clients (including Spring Security's `OAuth2ErrorResponseErrorHandler`) can parse. `OAuth2AuthenticationException` is intentionally allowed to propagate so SAS's per-endpoint failure handlers still write the canonical `invalid_grant` / `invalid_client` / etc. responses. Without this filter, a fault like `JwtEncodingException` (raised when a tenant signing key fails to unwrap) escapes `FilterChainProxy`, is forwarded to `/error`, hits the catch-all chain's `denyAll`, and emerges as `403 [no body]` — the symptom that surfaced as #293. `SasServerErrorTranslationFilterTest` pins the unit contract; `Issue293ConfidentialPkceTokenIntegrationTest` pins the full Tomcat-backed wiring with a deliberately-broken `JWKSource`.
+
 ### 4.4 Signing keys
 
 ```mermaid
@@ -285,13 +287,13 @@ flowchart LR
       SERIALISE --> ENC["Encryptors.stronger<br/>(KEK + per-key salt)"]
       ENC --> ROW
     end
-    ROW[("tenant_signing_key row<br/>private_key_ciphertext, iv,<br/>public_key_jwk, status='ACTIVE'")] --> DB[(PostgreSQL)]
+    ROW[("tenant_signing_key row<br/>private_key_ciphertext, pbkdf2_salt,<br/>public_key_jwk, status='ACTIVE'")] --> DB[(PostgreSQL)]
 ```
 
 Properties:
 
 - **One Key Encryption Key for the deployment**, supplied via `LIMEN_KEY_ENCRYPTION_KEY` (base64-encoded). Compromise of the database alone does not yield usable signing keys; compromise of the JVM process plus the database does.
-- **Per-key random salt** stored in the `iv` column. The column is named `iv` for historical reasons; it is the salt passed to `Encryptors.stronger`, not an AES IV.
+- **Per-key random salt** stored in the `pbkdf2_salt` column. The salt is passed to `Encryptors.stronger(kek, salt)` to derive the AES-256 key via PBKDF2; the AES IV itself is generated fresh per encryption and prepended to the ciphertext blob in `private_key_ciphertext`. (The column was originally named `iv` and renamed in V13 — see #296.)
 - **Public key stored as a JWK in plaintext** (`public_key_jwk`) so that the JWKS endpoint can be served without decrypting anything.
 - **Per-tenant signing-key access is split into three role interfaces by consumer.** `SigningKeyReader` (public; SAS sign + JWKS) and `SigningKeyProvisioning` (public; tenant on/off-boarding key material) are cross-module ports consumed by `oauth2.sas.TenantJwkSource` and `provisioning.TenantProvisioningService` respectively; `SigningKeyLifecycle` (package-private in `security.signing`; rotate / prune / eligibility-scan) is internal to the signing sub-package and consumed only by `SigningKeyRotator`. One `@Component` class — `JdbcSigningKeys` — implements all three. The split was driven by the rule "every consumer sees the methods it actually calls, and no more": before the split, a JWKS read path compile-time saw `rotateForTenant`. Two cross-module surfaces also turn the public ports into trivially fakeable 2-method interfaces.
 - **Keys are created during Tenant provisioning** by `TenantProvisioningService` calling `SigningKeyProvisioning.createForTenant(tenantId)`. The System Tenant does not get a signing key — it never issues tokens.
