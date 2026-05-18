@@ -59,6 +59,11 @@ Edit `.env` and fill in the required values:
 - **`LIMEN_SECURITY_KEK`** — 32-byte AES key, base64-encoded. Generate a
   fresh one with `openssl rand -base64 32`. Required; the app fails fast
   without it.
+- **`LIMEN_SECURITY_KEK_PREVIOUS`** — optional. Set this to the prior
+  `LIMEN_SECURITY_KEK` while rotating the deployment KEK; reads that fail
+  to decrypt with the active key try this one as a fallback and lazily
+  re-wrap the row with the active KEK + a fresh salt on success. Remove
+  it once you're confident no rows are still wrapped under the old value.
 - **`LIMEN_BOOTSTRAP_ADMIN_EMAIL`** / **`LIMEN_BOOTSTRAP_ADMIN_PASSWORD`** —
   optional. If both are set, a system-admin account is created on first
   boot. If both are left blank, create the first admin via signup instead.
@@ -130,6 +135,7 @@ are all correct.
 - **`direnv: error .envrc is blocked`** — you skipped `direnv allow`.
   Run it from the repo root.
 - **App fails on startup with `limen.security.kek must be base64 decoding to exactly 32 bytes`** — `LIMEN_SECURITY_KEK` is missing, malformed, or the wrong length. Re-generate with `openssl rand -base64 32`.
+- **`/oauth2/token` returns `500 server_error` with `"Unable to invoke Cipher due to bad padding"` in the server log** — the active `LIMEN_SECURITY_KEK` doesn't match the KEK that wrapped the tenant's signing key at insert time. If you've just rotated KEKs, set the prior value as `LIMEN_SECURITY_KEK_PREVIOUS` so reads fall back to it and lazily re-wrap on success. If neither key works the row is unrecoverable — easiest reset in dev is `docker compose down -v` to start with an empty database.
 - **App fails with `limen.bootstrap.admin.email and password must both be set or both be unset`** — set both or clear both; half-set is rejected.
 - **Stale `LIMEN_BOOTSTRAP_ADMIN_*` after editing `.env`** — direnv reloads
   on `cd`, but a shell that was already in the repo before you saved the
