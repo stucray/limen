@@ -10,7 +10,6 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.crypto.encrypt.BytesEncryptor;
 import org.springframework.security.crypto.encrypt.Encryptors;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,10 +36,12 @@ class JdbcSigningKeys
 
     private final JdbcTemplate jdbcTemplate;
     private final String kekPassword;
+    private final KekFallbackDecryptor decryptor;
 
     JdbcSigningKeys(JdbcTemplate jdbcTemplate, SecurityProperties properties) {
         this.jdbcTemplate = jdbcTemplate;
         this.kekPassword = properties.kek();
+        this.decryptor = new KekFallbackDecryptor(jdbcTemplate, kekPassword, properties.kekPreviousValue());
     }
 
     @Override
@@ -84,27 +85,35 @@ class JdbcSigningKeys
 
     @Override
     public @Nullable RSAKey getActiveSigningKey(long tenantId) {
-        return jdbcTemplate.query(
-            "SELECT private_key_ciphertext, pbkdf2_salt FROM tenant_signing_key " +
+        StoredKey stored = jdbcTemplate.query(
+            "SELECT id, private_key_ciphertext, pbkdf2_salt FROM tenant_signing_key " +
                 "WHERE tenant_id = ? AND status = 'ACTIVE'",
             rs -> {
                 if (!rs.next()) {
                     return null;
                 }
-                byte[] ciphertext = rs.getBytes("private_key_ciphertext");
-                byte[] salt = rs.getBytes("pbkdf2_salt");
-                byte[] plaintext = encryptor(salt).decrypt(ciphertext);
-                try {
-                    return RSAKey.parse(new String(plaintext, StandardCharsets.UTF_8));
-                } catch (ParseException e) {
-                    throw new IllegalStateException(
-                        "Stored signing key for tenant " + tenantId + " is corrupt", e
-                    );
-                }
+                return new StoredKey(
+                    rs.getLong("id"),
+                    rs.getBytes("private_key_ciphertext"),
+                    rs.getBytes("pbkdf2_salt")
+                );
             },
             tenantId
         );
+        if (stored == null) {
+            return null;
+        }
+        byte[] plaintext = decryptor.decrypt(stored.id(), stored.ciphertext(), stored.salt());
+        try {
+            return RSAKey.parse(new String(plaintext, StandardCharsets.UTF_8));
+        } catch (ParseException e) {
+            throw new IllegalStateException(
+                "Stored signing key for tenant " + tenantId + " is corrupt", e
+            );
+        }
     }
+
+    private record StoredKey(long id, byte[] ciphertext, byte[] salt) {}
 
     @Override
     public JWKSet getJwkSet(long tenantId) {
@@ -183,7 +192,4 @@ class JdbcSigningKeys
         );
     }
 
-    private BytesEncryptor encryptor(byte[] salt) {
-        return Encryptors.stronger(kekPassword, HexFormat.of().formatHex(salt));
-    }
 }

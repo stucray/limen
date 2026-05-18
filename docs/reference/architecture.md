@@ -281,7 +281,7 @@ One more class lives in `oauth2.sas` alongside the adapters but is a different s
 
 ```mermaid
 flowchart LR
-    KEK[("LIMEN_KEY_ENCRYPTION_KEY<br/>(env)")] --> ENC
+    KEK[("LIMEN_SECURITY_KEK<br/>(env)")] --> ENC
     subgraph JdbcSigningKeys
       GEN[Generate RSA-2048] --> SERIALISE[Serialise private key]
       SERIALISE --> ENC["Encryptors.stronger<br/>(KEK + per-key salt)"]
@@ -292,7 +292,8 @@ flowchart LR
 
 Properties:
 
-- **One Key Encryption Key for the deployment**, supplied via `LIMEN_KEY_ENCRYPTION_KEY` (base64-encoded). Compromise of the database alone does not yield usable signing keys; compromise of the JVM process plus the database does.
+- **One Key Encryption Key for the deployment**, supplied via `LIMEN_SECURITY_KEK` (base64-encoded). Compromise of the database alone does not yield usable signing keys; compromise of the JVM process plus the database does.
+- **KEK rotation is supported by a decrypt-only fallback.** `LIMEN_SECURITY_KEK_PREVIOUS` is optional; when set, `JdbcSigningKeys.getActiveSigningKey` first tries the active KEK, and on `BadPaddingException` (the AES-GCM authentication failure that means "wrong key for this ciphertext") it retries with the previous KEK. A successful fallback re-wraps the row with the active KEK + a fresh salt before returning, so the column drains lazily on its own without a flag-day migration. When both KEKs fail, the active-KEK exception propagates unchanged — `SasServerErrorTranslationFilter` (§4.3) translates it into the RFC 6749 §5.2 `server_error` JSON for `/oauth2/token` callers. See #295.
 - **Per-key random salt** stored in the `pbkdf2_salt` column. The salt is passed to `Encryptors.stronger(kek, salt)` to derive the AES-256 key via PBKDF2; the AES IV itself is generated fresh per encryption and prepended to the ciphertext blob in `private_key_ciphertext`. (The column was originally named `iv` and renamed in V13 — see #296.)
 - **Public key stored as a JWK in plaintext** (`public_key_jwk`) so that the JWKS endpoint can be served without decrypting anything.
 - **Per-tenant signing-key access is split into three role interfaces by consumer.** `SigningKeyReader` (public; SAS sign + JWKS) and `SigningKeyProvisioning` (public; tenant on/off-boarding key material) are cross-module ports consumed by `oauth2.sas.TenantJwkSource` and `provisioning.TenantProvisioningService` respectively; `SigningKeyLifecycle` (package-private in `security.signing`; rotate / prune / eligibility-scan) is internal to the signing sub-package and consumed only by `SigningKeyRotator`. One `@Component` class — `JdbcSigningKeys` — implements all three. The split was driven by the rule "every consumer sees the methods it actually calls, and no more": before the split, a JWKS read path compile-time saw `rotateForTenant`. Two cross-module surfaces also turn the public ports into trivially fakeable 2-method interfaces.
