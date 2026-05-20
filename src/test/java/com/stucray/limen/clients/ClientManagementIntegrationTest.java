@@ -274,6 +274,103 @@ class ClientManagementIntegrationTest {
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Editable Client")));
     }
 
+    private TenantClient createAuthorizationCodeClient(String name, Set<String> redirectUris, Set<String> scopes) {
+        return clientManagementService.createClient(new CreateClientCommand(
+            appA.id(), tenantA.id(), name,
+            Set.of(AuthorizationGrantType.AUTHORIZATION_CODE),
+            redirectUris, Set.of(), scopes,
+            false, false, true, 5, 30, false
+        )).client();
+    }
+
+    @Test
+    @DisplayName("GET edit form pre-populates existing redirect URIs, post-logout URIs, and scopes (so a TTL bump doesn't silently wipe auth config)")
+    void editFormPrePopulatesAuthorizationSettings() throws Exception {
+        TenantClient created = createAuthorizationCodeClient(
+            "Prepopulated Client",
+            Set.of("http://localhost/cb1"),
+            Set.of("openid", "profile")
+        );
+
+        mockMvc.perform(get(clientsUrl() + "/" + created.registeredClientId() + "/edit").session(sessionA))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("http://localhost/cb1")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("openid")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("profile")));
+    }
+
+    @Test
+    @DisplayName("POST edit persists added redirect URIs (issue #306 — round-trip on the trigger use case)")
+    void ownerCanAddRedirectUriOnExistingClient() throws Exception {
+        TenantClient created = createAuthorizationCodeClient(
+            "Editable AC Client",
+            Set.of("http://localhost:8091/cb"),
+            Set.of("openid")
+        );
+
+        mockMvc.perform(post(clientsUrl() + "/" + created.registeredClientId() + "/edit")
+                .session(sessionA).with(csrf())
+                .param("accessTokenTtlMinutes", "5")
+                .param("refreshTokenTtlDays", "30")
+                .param("redirectUris", "http://localhost:8091/cb\nhttp://localhost:4200/cb")
+                .param("scopes", "openid"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl(clientsUrl()));
+
+        RegisteredClient updated = registeredClientRepository.findById(created.registeredClientId());
+        assertThat(updated.getRedirectUris()).containsExactlyInAnyOrder(
+            "http://localhost:8091/cb", "http://localhost:4200/cb");
+    }
+
+    @Test
+    @DisplayName("POST edit persists changed scopes (round-trip on scopes)")
+    void ownerCanUpdateScopesOnExistingClient() throws Exception {
+        TenantClient created = createAuthorizationCodeClient(
+            "Scope-edit Client",
+            Set.of("http://localhost/cb"),
+            Set.of("openid")
+        );
+
+        mockMvc.perform(post(clientsUrl() + "/" + created.registeredClientId() + "/edit")
+                .session(sessionA).with(csrf())
+                .param("accessTokenTtlMinutes", "5")
+                .param("refreshTokenTtlDays", "30")
+                .param("redirectUris", "http://localhost/cb")
+                .param("scopes", "openid profile email"))
+            .andExpect(status().is3xxRedirection());
+
+        RegisteredClient updated = registeredClientRepository.findById(created.registeredClientId());
+        assertThat(updated.getScopes()).containsExactlyInAnyOrder("openid", "profile", "email");
+    }
+
+    @Test
+    @DisplayName("Removing the last redirect URI on an authorization_code client is rejected loudly, not silently stored")
+    void updateRejectsEmptyRedirectsOnAuthorizationCodeClient() {
+        TenantClient created = createAuthorizationCodeClient(
+            "AC Client", Set.of("http://localhost/cb"), Set.of("openid"));
+
+        assertThatThrownBy(() -> clientManagementService.updateClientSettings(new UpdateClientCommand(
+            created.registeredClientId(), tenantA.id(),
+            Set.of(), Set.of(), Set.of("openid"),
+            false, false, 5, 30, false
+        )))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("At least one redirect URI is required for authorization_code grant");
+    }
+
+    @Test
+    @DisplayName("Creating an authorization_code client with zero redirect URIs is rejected (parity with the update-path rule)")
+    void createRejectsEmptyRedirectsOnAuthorizationCodeClient() {
+        assertThatThrownBy(() -> clientManagementService.createClient(new CreateClientCommand(
+            appA.id(), tenantA.id(), "No-Redirect Client",
+            Set.of(AuthorizationGrantType.AUTHORIZATION_CODE),
+            Set.of(), Set.of(), Set.of("openid"),
+            false, false, true, 5, 30, false
+        )))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("At least one redirect URI is required for authorization_code grant");
+    }
+
     @Test
     @DisplayName("POST /{clientId}/edit updates token TTLs, refresh-reuse, and PKCE flag on the registered client")
     void ownerCanUpdateClientSettings() throws Exception {

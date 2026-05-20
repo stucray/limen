@@ -283,7 +283,11 @@ class ClientTokenSettingsIntegrationTest {
         );
 
         // Update TTL from 60 minutes to 10 minutes
-        clientManagementService.updateClientSettings(registeredClientId, tenant.id(), 10, 30, false, false, false);
+        clientManagementService.updateClientSettings(new UpdateClientCommand(
+            registeredClientId, tenant.id(),
+            Set.of(), Set.of(), Set.of("read"),
+            false, false, 10, 30, false
+        ));
 
         String tokenJson = mockMvc.perform(post("/t/token-test/oauth2/token")
                 .param("grant_type", "client_credentials")

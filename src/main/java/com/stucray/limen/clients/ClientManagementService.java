@@ -56,14 +56,22 @@ public class ClientManagementService {
         long refreshTokenTtlDays,
         boolean reuseRefreshTokens,
         boolean requirePkce,
-        boolean requireConsent
-    ) {}
+        boolean requireConsent,
+        Set<String> redirectUris,
+        Set<String> postLogoutRedirectUris,
+        Set<String> scopes
+    ) {
+        public String redirectUrisText() { return String.join("\n", redirectUris); }
+        public String postLogoutRedirectUrisText() { return String.join("\n", postLogoutRedirectUris); }
+        public String scopesText() { return String.join(" ", scopes); }
+    }
 
     @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
     ClientCreationResult createClient(CreateClientCommand cmd) {
         if (cmd.grantTypes().contains(AuthorizationGrantType.AUTHORIZATION_CODE) && cmd.scopes().isEmpty()) {
             throw new IllegalArgumentException("Scopes are required for authorization_code grant");
         }
+        validateAuthorizationCodeRedirectUris(cmd.grantTypes(), cmd.redirectUris());
 
         String rawSecret = null;
         String hashedSecret = null;
@@ -124,34 +132,46 @@ public class ClientManagementService {
             ts.getRefreshTokenTimeToLive().toDays(),
             ts.isReuseRefreshTokens(),
             rc.getClientSettings().isRequireProofKey(),
-            rc.getClientSettings().isRequireAuthorizationConsent()
+            rc.getClientSettings().isRequireAuthorizationConsent(),
+            rc.getRedirectUris(),
+            rc.getPostLogoutRedirectUris(),
+            rc.getScopes()
         );
     }
 
-    void updateClientSettings(
-        String registeredClientId, Long tenantId,
-        long accessTokenTtlMinutes,
-        long refreshTokenTtlDays,
-        boolean reuseRefreshTokens,
-        boolean requirePkce,
-        boolean requireConsent
-    ) {
-        TenantClient tc = getClient(registeredClientId, tenantId);
-        RegisteredClient existing = registeredClientRepository.findById(registeredClientId);
+    void updateClientSettings(UpdateClientCommand cmd) {
+        TenantClient tc = getClient(cmd.registeredClientId(), cmd.tenantId());
+        RegisteredClient existing = registeredClientRepository.findById(cmd.registeredClientId());
         if (existing == null) throw new IllegalArgumentException("Client not found");
+
+        if (existing.getAuthorizationGrantTypes().contains(AuthorizationGrantType.AUTHORIZATION_CODE)
+            && cmd.scopes().isEmpty()) {
+            throw new IllegalArgumentException("Scopes are required for authorization_code grant");
+        }
+        validateAuthorizationCodeRedirectUris(existing.getAuthorizationGrantTypes(), cmd.redirectUris());
 
         RegisteredClient updated = RegisteredClient.from(existing)
             .tokenSettings(TokenSettings.builder()
-                .accessTokenTimeToLive(Duration.ofMinutes(accessTokenTtlMinutes))
-                .refreshTokenTimeToLive(Duration.ofDays(refreshTokenTtlDays))
-                .reuseRefreshTokens(reuseRefreshTokens)
+                .accessTokenTimeToLive(Duration.ofMinutes(cmd.accessTokenTtlMinutes()))
+                .refreshTokenTimeToLive(Duration.ofDays(cmd.refreshTokenTtlDays()))
+                .reuseRefreshTokens(cmd.reuseRefreshTokens())
                 .build())
             .clientSettings(ClientSettings.builder()
-                .requireProofKey(requirePkce || !tc.confidential())
-                .requireAuthorizationConsent(requireConsent)
+                .requireProofKey(cmd.requirePkce() || !tc.confidential())
+                .requireAuthorizationConsent(cmd.requireConsent())
                 .build())
+            .redirectUris(uris -> { uris.clear(); cmd.redirectUris().stream().filter(u -> !u.isBlank()).forEach(uris::add); })
+            .postLogoutRedirectUris(uris -> { uris.clear(); cmd.postLogoutRedirectUris().stream().filter(u -> !u.isBlank()).forEach(uris::add); })
+            .scopes(s -> { s.clear(); cmd.scopes().stream().filter(x -> !x.isBlank()).forEach(s::add); })
             .build();
         registeredClientRepository.save(updated);
+    }
+
+    private static void validateAuthorizationCodeRedirectUris(Set<AuthorizationGrantType> grantTypes, Set<String> redirectUris) {
+        if (grantTypes.contains(AuthorizationGrantType.AUTHORIZATION_CODE)
+            && redirectUris.stream().noneMatch(u -> !u.isBlank())) {
+            throw new IllegalArgumentException("At least one redirect URI is required for authorization_code grant");
+        }
     }
 
     void deleteClient(String registeredClientId, Long tenantId) {
