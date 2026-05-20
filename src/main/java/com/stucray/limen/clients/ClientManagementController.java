@@ -112,16 +112,18 @@ class ClientManagementController {
         @PathVariable Long appId,
         @PathVariable String registeredClientId,
         @AuthenticationPrincipal TenantUserDetails principal,
-        @RequestParam(defaultValue = "5") long accessTokenTtlMinutes,
-        @RequestParam(defaultValue = "30") long refreshTokenTtlDays,
-        @RequestParam(defaultValue = "false") boolean reuseRefreshTokens,
-        @RequestParam(defaultValue = "false") boolean requirePkce,
-        @RequestParam(defaultValue = "false") boolean requireConsent
+        @ModelAttribute UpdateClientForm form
     ) {
-        clientManagementService.updateClientSettings(
+        UpdateClientCommand command = new UpdateClientCommand(
             registeredClientId, principal.tenantId(),
-            accessTokenTtlMinutes, refreshTokenTtlDays, reuseRefreshTokens, requirePkce, requireConsent
+            parseLines(form.getRedirectUris()),
+            parseLines(form.getPostLogoutRedirectUris()),
+            parseScopes(form.getScopes()),
+            form.isRequirePkce(), form.isRequireConsent(),
+            form.getAccessTokenTtlMinutes(), form.getRefreshTokenTtlDays(),
+            form.isReuseRefreshTokens()
         );
+        clientManagementService.updateClientSettings(command);
         return "redirect:/manage/t/" + slug + "/applications/" + appId + "/clients";
     }
 

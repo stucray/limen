@@ -22,6 +22,22 @@
     <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/edit'}" class="stack">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
+        <section class="section">
+            <label>
+                Redirect URIs (one per line)
+                <textarea name="redirectUris" rows="3" th:text="${clientSettings.redirectUrisText()}"></textarea>
+            </label>
+            <label>
+                Post-logout redirect URIs (one per line)
+                <textarea name="postLogoutRedirectUris" rows="2" th:text="${clientSettings.postLogoutRedirectUrisText()}"></textarea>
+            </label>
+            <label>
+                Scopes
+                <input type="text" name="scopes" th:value="${clientSettings.scopesText()}"/>
+                <small>Whitespace- or comma-separated (e.g. <code>openid profile</code>). Required for the <code>authorization_code</code> grant.</small>
+            </label>
+        </section>
+
         <fieldset>
             <legend>Token settings</legend>
             <label>
