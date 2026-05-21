@@ -381,6 +381,12 @@ fieldset > * + * {
     color: var(--text-strong);
 }
 
+.alert--warning {
+    background: color-mix(in srgb, var(--warning) 12%, transparent);
+    border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+    color: var(--text-strong);
+}
+
 .alert code {
     background: var(--surface-page);
     padding: var(--space-2xs) var(--space-xs);

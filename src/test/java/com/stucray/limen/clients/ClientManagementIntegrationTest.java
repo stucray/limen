@@ -276,6 +276,43 @@ class ClientManagementIntegrationTest {
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Editable Client")));
     }
 
+    @Test
+    @DisplayName("GET edit form warns when a client has zero Client Members — /oauth2/authorize would deny all sign-ins (#309 diagnostic)")
+    void editFormWarnsWhenClientHasNoMembers() throws Exception {
+        TenantClient created = createConfidentialClient("Membership-less Client");
+
+        mockMvc.perform(get(clientsUrl() + "/" + created.registeredClientId() + "/edit").session(sessionA))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("No client members granted")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("client-no-members-warning")));
+    }
+
+    @Test
+    @DisplayName("GET edit form lists granted client-member emails so an operator can confirm membership state at a glance (#309 diagnostic)")
+    void editFormListsGrantedClientMemberEmails() throws Exception {
+        TenantClient created = createConfidentialClient("With-Members Client");
+        Long ownerId = userRepository.findByEmailAndTenantId("owner@example.test", tenantA.id()).orElseThrow().id();
+        TenantClient tcRow = tenantClientRepository.findByRegisteredClientIdAndTenantId(
+            created.registeredClientId(), tenantA.id()).orElseThrow();
+
+        Long appMembershipId = jdbcTemplate.queryForObject(
+            "INSERT INTO application_membership (user_id, application_id, granted_at, granted_by) " +
+                "VALUES (?, ?, ?, ?) RETURNING id",
+            Long.class, ownerId, appA.id(), LocalDateTime.now(), ownerId
+        );
+        jdbcTemplate.update(
+            "INSERT INTO client_membership (user_id, client_metadata_id, application_membership_id, granted_at, granted_by) " +
+                "VALUES (?, ?, ?, ?, ?)",
+            ownerId, tcRow.id(), appMembershipId, LocalDateTime.now(), ownerId
+        );
+
+        mockMvc.perform(get(clientsUrl() + "/" + created.registeredClientId() + "/edit").session(sessionA))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("owner@example.test")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("client-members-summary")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("client-no-members-warning"))));
+    }
+
     private TenantClient createAuthorizationCodeClient(String name, Set<String> redirectUris, Set<String> scopes) {
         return clientManagementService.createClient(new CreateClientCommand(
             appA.id(), tenantA.id(), name,

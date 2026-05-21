@@ -3,6 +3,7 @@ package com.stucray.limen.clients;
 import com.stucray.limen.audit.events.ClientSecretRotatedEvent;
 import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
@@ -28,17 +29,20 @@ public class ClientManagementService {
     private final TenantClientRepository tenantClientRepository;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
+    private final JdbcTemplate jdbcTemplate;
 
     ClientManagementService(
         RegisteredClientRepository registeredClientRepository,
         TenantClientRepository tenantClientRepository,
         PasswordEncoder passwordEncoder,
-        ApplicationEventPublisher eventPublisher
+        ApplicationEventPublisher eventPublisher,
+        JdbcTemplate jdbcTemplate
     ) {
         this.registeredClientRepository = registeredClientRepository;
         this.tenantClientRepository = tenantClientRepository;
         this.passwordEncoder = passwordEncoder;
         this.eventPublisher = eventPublisher;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     List<TenantClient> listClients(Long applicationId, Long tenantId) {
@@ -61,7 +65,8 @@ public class ClientManagementService {
         Set<String> grantTypes,
         Set<String> redirectUris,
         Set<String> postLogoutRedirectUris,
-        Set<String> scopes
+        Set<String> scopes,
+        List<String> memberEmails
     ) {
         public String redirectUrisText() { return String.join("\n", redirectUris); }
         public String postLogoutRedirectUrisText() { return String.join("\n", postLogoutRedirectUris); }
@@ -128,6 +133,24 @@ public class ClientManagementService {
         RegisteredClient rc = registeredClientRepository.findById(registeredClientId);
         if (rc == null) throw new IllegalArgumentException("Client not found");
         TokenSettings ts = rc.getTokenSettings();
+        // Read-side projection across module-owned tables for the client edit
+        // page's preconditions panel (#309). A direct read keeps the call
+        // off the memberships module's Java API — clients → memberships
+        // would close a cycle (memberships → clients already exists via
+        // TenantClient). Cross-table reads of this shape are an accepted
+        // diagnostic pattern; writes stay scoped to module-owned tables.
+        List<String> memberEmails = jdbcTemplate.queryForList(
+            """
+            SELECT u.email
+              FROM client_membership cm
+              JOIN client_metadata m ON m.id = cm.client_metadata_id
+              JOIN users u           ON u.id = cm.user_id
+             WHERE m.registered_client_id = ?
+               AND m.tenant_id = ?
+             ORDER BY u.email
+            """,
+            String.class, registeredClientId, tenantId
+        );
         return new ClientWithSettings(
             tc,
             ts.getAccessTokenTimeToLive().toMinutes(),
@@ -138,7 +161,8 @@ public class ClientManagementService {
             rc.getAuthorizationGrantTypes().stream().map(AuthorizationGrantType::getValue).collect(Collectors.toUnmodifiableSet()),
             rc.getRedirectUris(),
             rc.getPostLogoutRedirectUris(),
-            rc.getScopes()
+            rc.getScopes(),
+            memberEmails
         );
     }
 
