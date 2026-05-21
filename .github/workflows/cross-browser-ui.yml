@@ -1,10 +1,17 @@
-# Matrix-runs the Playwright UI journey tests tagged @Tag("cross-browser")
-# under Chrome stable + WebKit + Firefox. Thin caller — the matrix
-# behaviour lives in stucray/workflows/.github/workflows/ui-cross-browser-matrix.yml.
+# Runs the Playwright UI journey tests tagged @Tag("cross-browser") under
+# real stable Google Chrome (Playwright's `chrome` channel, not the
+# bundled Chromium). Thin caller — the matrix behaviour lives in
+# stucray/workflows/.github/workflows/ui-cross-browser-matrix.yml.
 #
-# Default (Chromium) coverage of the same tests is in ci.yml; this workflow
-# only adds the three extra engines so engine-specific drift surfaces in CI
-# instead of only when someone notices it in a real browser.
+# Default (bundled-Chromium) coverage of the same tests is in ci.yml; this
+# workflow exists because the bundled build is stripped and several
+# real-Chrome-only behaviours never reproduce against it — most notably
+# the `/.well-known/appspecific/com.chrome.devtools.json` workspace-folders
+# probe that surfaced bug #285. WebKit + Firefox were originally part of
+# this matrix but were dropped 2026-05-21 after 4 days of running with
+# zero engine-divergent findings; add them back via the `browsers` input
+# if a future change introduces engine-sensitive code (WebAuthn, a JS
+# framework, fancy CSS).
 
 name: Cross-browser UI
 
@@ -30,5 +37,7 @@ on:
 jobs:
   cross-browser:
     uses: stucray/workflows/.github/workflows/ui-cross-browser-matrix.yml@v1
+    with:
+      browsers: '["chrome"]'
     secrets:
       test_env_json: '{"LIMEN_SECURITY_KEK":"${{ secrets.LIMEN_SECURITY_KEK_TEST }}"}'
