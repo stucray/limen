@@ -114,8 +114,13 @@ class ClientManagementController {
         @AuthenticationPrincipal TenantUserDetails principal,
         @ModelAttribute UpdateClientForm form
     ) {
+        Set<AuthorizationGrantType> grants = form.getGrantTypes().stream()
+            .map(AuthorizationGrantType::new)
+            .collect(Collectors.toSet());
+
         UpdateClientCommand command = new UpdateClientCommand(
             registeredClientId, principal.tenantId(),
+            grants,
             parseLines(form.getRedirectUris()),
             parseLines(form.getPostLogoutRedirectUris()),
             parseScopes(form.getScopes()),

@@ -19,6 +19,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ClientManagementService {
@@ -57,6 +58,7 @@ public class ClientManagementService {
         boolean reuseRefreshTokens,
         boolean requirePkce,
         boolean requireConsent,
+        Set<String> grantTypes,
         Set<String> redirectUris,
         Set<String> postLogoutRedirectUris,
         Set<String> scopes
@@ -133,6 +135,7 @@ public class ClientManagementService {
             ts.isReuseRefreshTokens(),
             rc.getClientSettings().isRequireProofKey(),
             rc.getClientSettings().isRequireAuthorizationConsent(),
+            rc.getAuthorizationGrantTypes().stream().map(AuthorizationGrantType::getValue).collect(Collectors.toUnmodifiableSet()),
             rc.getRedirectUris(),
             rc.getPostLogoutRedirectUris(),
             rc.getScopes()
@@ -144,11 +147,10 @@ public class ClientManagementService {
         RegisteredClient existing = registeredClientRepository.findById(cmd.registeredClientId());
         if (existing == null) throw new IllegalArgumentException("Client not found");
 
-        if (existing.getAuthorizationGrantTypes().contains(AuthorizationGrantType.AUTHORIZATION_CODE)
-            && cmd.scopes().isEmpty()) {
+        if (cmd.grantTypes().contains(AuthorizationGrantType.AUTHORIZATION_CODE) && cmd.scopes().isEmpty()) {
             throw new IllegalArgumentException("Scopes are required for authorization_code grant");
         }
-        validateAuthorizationCodeRedirectUris(existing.getAuthorizationGrantTypes(), cmd.redirectUris());
+        validateAuthorizationCodeRedirectUris(cmd.grantTypes(), cmd.redirectUris());
 
         RegisteredClient updated = RegisteredClient.from(existing)
             .tokenSettings(TokenSettings.builder()
@@ -160,6 +162,7 @@ public class ClientManagementService {
                 .requireProofKey(cmd.requirePkce() || !tc.confidential())
                 .requireAuthorizationConsent(cmd.requireConsent())
                 .build())
+            .authorizationGrantTypes(g -> { g.clear(); g.addAll(cmd.grantTypes()); })
             .redirectUris(uris -> { uris.clear(); cmd.redirectUris().stream().filter(u -> !u.isBlank()).forEach(uris::add); })
             .postLogoutRedirectUris(uris -> { uris.clear(); cmd.postLogoutRedirectUris().stream().filter(u -> !u.isBlank()).forEach(uris::add); })
             .scopes(s -> { s.clear(); cmd.scopes().stream().filter(x -> !x.isBlank()).forEach(s::add); })

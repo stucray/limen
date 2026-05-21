@@ -285,6 +285,7 @@ class ClientTokenSettingsIntegrationTest {
         // Update TTL from 60 minutes to 10 minutes
         clientManagementService.updateClientSettings(new UpdateClientCommand(
             registeredClientId, tenant.id(),
+            Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS),
             Set.of(), Set.of(), Set.of("read"),
             false, false, 10, 30, false
         ));

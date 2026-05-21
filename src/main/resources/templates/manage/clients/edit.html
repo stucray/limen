@@ -22,6 +22,13 @@
     <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/edit'}" class="stack">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
+        <fieldset>
+            <legend>Grant types</legend>
+            <label><input type="checkbox" name="grantTypes" value="authorization_code" th:checked="${clientSettings.grantTypes().contains('authorization_code')}"/> Authorization code</label>
+            <label><input type="checkbox" name="grantTypes" value="client_credentials" th:checked="${clientSettings.grantTypes().contains('client_credentials')}"/> Client credentials</label>
+            <label><input type="checkbox" name="grantTypes" value="refresh_token" th:checked="${clientSettings.grantTypes().contains('refresh_token')}"/> Refresh token</label>
+        </fieldset>
+
         <section class="section">
             <label>
                 Redirect URIs (one per line)

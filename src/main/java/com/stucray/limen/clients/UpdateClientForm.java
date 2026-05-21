@@ -2,6 +2,8 @@ package com.stucray.limen.clients;
 
 import org.jspecify.annotations.Nullable;
 
+import java.util.List;
+
 /**
  * Controller binding target for the edit-client form. Spring's data binder
  * populates this via setters; missing form fields keep the field-initialised
@@ -12,11 +14,13 @@ import org.jspecify.annotations.Nullable;
  * separator-delimited input here; parsing into typed collections happens at
  * the controller before building an {@link UpdateClientCommand}.
  *
- * <p>Grant types and confidentiality are intentionally absent — changing
- * either is a more disruptive operation that warrants its own flow.
+ * <p>Confidentiality is intentionally absent — flipping it requires
+ * generating/discarding a client secret and changing the authentication
+ * method, which warrants its own flow.
  */
 final class UpdateClientForm {
 
+    private List<String> grantTypes = List.of();
     private @Nullable String redirectUris;
     private @Nullable String postLogoutRedirectUris;
     private @Nullable String scopes;
@@ -25,6 +29,9 @@ final class UpdateClientForm {
     private long accessTokenTtlMinutes = 5;
     private long refreshTokenTtlDays = 30;
     private boolean reuseRefreshTokens;
+
+    public List<String> getGrantTypes() { return grantTypes; }
+    public void setGrantTypes(List<String> grantTypes) { this.grantTypes = grantTypes; }
 
     public @Nullable String getRedirectUris() { return redirectUris; }
     public void setRedirectUris(@Nullable String redirectUris) { this.redirectUris = redirectUris; }
