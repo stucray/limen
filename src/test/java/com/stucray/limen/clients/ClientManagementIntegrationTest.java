@@ -182,6 +182,7 @@ class ClientManagementIntegrationTest {
 
         mockMvc.perform(post(clientsUrl() + "/" + created.registeredClientId() + "/edit")
                 .session(sessionA).with(csrf())
+                .param("grantTypes", "client_credentials")
                 .param("accessTokenTtlMinutes", "5")
                 .param("refreshTokenTtlDays", "30")
                 .param("requireConsent", "true"))
@@ -192,6 +193,7 @@ class ClientManagementIntegrationTest {
 
         mockMvc.perform(post(clientsUrl() + "/" + created.registeredClientId() + "/edit")
                 .session(sessionA).with(csrf())
+                .param("grantTypes", "client_credentials")
                 .param("accessTokenTtlMinutes", "5")
                 .param("refreshTokenTtlDays", "30"))
             .andExpect(status().is3xxRedirection());
@@ -310,6 +312,7 @@ class ClientManagementIntegrationTest {
 
         mockMvc.perform(post(clientsUrl() + "/" + created.registeredClientId() + "/edit")
                 .session(sessionA).with(csrf())
+                .param("grantTypes", "authorization_code")
                 .param("accessTokenTtlMinutes", "5")
                 .param("refreshTokenTtlDays", "30")
                 .param("redirectUris", "http://localhost:8091/cb\nhttp://localhost:4200/cb")
@@ -323,6 +326,44 @@ class ClientManagementIntegrationTest {
     }
 
     @Test
+    @DisplayName("POST /{clientId}/edit adds refresh_token grant to an authorization_code client created without it (the canonical fix path from #308 — silent-broken BFF use case)")
+    void ownerCanAddRefreshTokenGrantOnExistingClient() throws Exception {
+        TenantClient created = createAuthorizationCodeClient(
+            "Refresh-less Client", Set.of("http://localhost/cb"), Set.of("openid"));
+        assertThat(registeredClientRepository.findById(created.registeredClientId()).getAuthorizationGrantTypes())
+            .containsExactly(AuthorizationGrantType.AUTHORIZATION_CODE);
+
+        mockMvc.perform(post(clientsUrl() + "/" + created.registeredClientId() + "/edit")
+                .session(sessionA).with(csrf())
+                .param("grantTypes", "authorization_code", "refresh_token")
+                .param("accessTokenTtlMinutes", "5")
+                .param("refreshTokenTtlDays", "30")
+                .param("redirectUris", "http://localhost/cb")
+                .param("scopes", "openid"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl(clientsUrl()));
+
+        RegisteredClient updated = registeredClientRepository.findById(created.registeredClientId());
+        assertThat(updated.getAuthorizationGrantTypes()).containsExactlyInAnyOrder(
+            AuthorizationGrantType.AUTHORIZATION_CODE, AuthorizationGrantType.REFRESH_TOKEN);
+    }
+
+    @Test
+    @DisplayName("GET edit form pre-checks the client's current authorization_grant_types (so an operator can audit at a glance — #308)")
+    void editFormPreChecksCurrentGrantTypes() throws Exception {
+        TenantClient created = createAuthorizationCodeClient(
+            "Grant-prefill Client", Set.of("http://localhost/cb"), Set.of("openid"));
+
+        MvcResult result = mockMvc.perform(get(clientsUrl() + "/" + created.registeredClientId() + "/edit").session(sessionA))
+            .andExpect(status().isOk())
+            .andReturn();
+        String body = result.getResponse().getContentAsString();
+        assertThat(body).containsPattern("value=\"authorization_code\"[^>]*checked");
+        assertThat(body).doesNotContainPattern("value=\"refresh_token\"[^>]*checked");
+        assertThat(body).doesNotContainPattern("value=\"client_credentials\"[^>]*checked");
+    }
+
+    @Test
     @DisplayName("POST edit persists changed scopes (round-trip on scopes)")
     void ownerCanUpdateScopesOnExistingClient() throws Exception {
         TenantClient created = createAuthorizationCodeClient(
@@ -333,6 +374,7 @@ class ClientManagementIntegrationTest {
 
         mockMvc.perform(post(clientsUrl() + "/" + created.registeredClientId() + "/edit")
                 .session(sessionA).with(csrf())
+                .param("grantTypes", "authorization_code")
                 .param("accessTokenTtlMinutes", "5")
                 .param("refreshTokenTtlDays", "30")
                 .param("redirectUris", "http://localhost/cb")
@@ -351,6 +393,7 @@ class ClientManagementIntegrationTest {
 
         assertThatThrownBy(() -> clientManagementService.updateClientSettings(new UpdateClientCommand(
             created.registeredClientId(), tenantA.id(),
+            Set.of(AuthorizationGrantType.AUTHORIZATION_CODE),
             Set.of(), Set.of(), Set.of("openid"),
             false, false, 5, 30, false
         )))
@@ -378,6 +421,7 @@ class ClientManagementIntegrationTest {
 
         mockMvc.perform(post(clientsUrl() + "/" + created.registeredClientId() + "/edit")
                 .session(sessionA).with(csrf())
+                .param("grantTypes", "client_credentials")
                 .param("accessTokenTtlMinutes", "15")
                 .param("refreshTokenTtlDays", "60")
                 .param("reuseRefreshTokens", "true")
