@@ -7,7 +7,11 @@ import com.stucray.limen.applications.Application;
 import com.stucray.limen.applications.ApplicationRepository;
 import com.stucray.limen.clients.TenantClient;
 import com.stucray.limen.clients.TenantClientRepository;
+import com.stucray.limen.memberships.ApplicationMembership;
+import com.stucray.limen.memberships.ApplicationMembershipRepository;
 import com.stucray.limen.memberships.ApplicationMembershipService;
+import com.stucray.limen.memberships.ClientMembership;
+import com.stucray.limen.memberships.ClientMembershipRepository;
 import com.stucray.limen.memberships.ClientMembershipService;
 import com.stucray.limen.memberships.ClientMembershipTestFixture;
 import com.stucray.limen.roles.Role;
@@ -73,7 +77,9 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
     @Autowired ApplicationRepository applicationRepository;
     @Autowired RoleRepository roleRepository;
     @Autowired ApplicationMembershipService applicationMembershipService;
+    @Autowired ApplicationMembershipRepository applicationMembershipRepository;
     @Autowired ClientMembershipService clientMembershipService;
+    @Autowired ClientMembershipRepository clientMembershipRepository;
     @Autowired RegisteredClientRepository registeredClientRepository;
     @Autowired TenantClientRepository tenantClientRepository;
     @Autowired UserRepository userRepository;
@@ -185,6 +191,227 @@ class OAuth2AuthorizeMembershipGateIntegrationTest {
         @SuppressWarnings("unchecked")
         List<String> roles = (List<String>) claims.get("roles");
         assertThat(roles).containsExactly("editor", "viewer");
+    }
+
+    @Test
+    @DisplayName("Issue #309: UI-driven flow — create client + grant CM via controllers, then /oauth2/authorize must issue a code")
+    void issue309_uiDrivenFullFlow_authorizeIssuesCode() throws Exception {
+        // Owner needs an AM for the parent app to appear in the CM picker.
+        // Issue's repro: "a member of the application so appeared in the pick list".
+        // (Fixture state via repository write — spring-boot-tests.md.)
+        applicationMembershipRepository.save(new ApplicationMembership(
+            null, aliceAlpha.id(), alphaApp.id(), java.time.LocalDateTime.now(), aliceAlpha.id(),
+            java.util.Set.of()
+        ));
+
+        // 1. Owner logs into management console.
+        MockHttpSession mgmtSession = new MockHttpSession();
+        mockMvc.perform(post("/manage/t/" + alphaTenant.slug() + "/login")
+                .param("email", "alice@example.test").param("password", "password")
+                .session(mgmtSession).with(csrf()))
+            .andExpect(status().is3xxRedirection());
+
+        // 2. Owner creates a new PUBLIC PKCE client through the controller.
+        mockMvc.perform(post("/manage/t/" + alphaTenant.slug() + "/applications/" + alphaApp.id() + "/clients")
+                .session(mgmtSession).with(csrf())
+                .param("displayName", "ui-flow-client")
+                .param("grantTypes", "authorization_code")
+                .param("redirectUris", "http://localhost/cb")
+                .param("postLogoutRedirectUris", "")
+                .param("scopes", "openid")
+                .param("requirePkce", "true")
+                .param("requireConsent", "false")
+                .param("confidential", "false")
+                .param("accessTokenTtlMinutes", "5")
+                .param("refreshTokenTtlDays", "30")
+                .param("reuseRefreshTokens", "false"))
+            .andExpect(status().is3xxRedirection());
+
+        String registeredClientId = jdbcTemplate.queryForObject(
+            "SELECT id FROM oauth2_registered_client WHERE client_name = ?",
+            String.class, "ui-flow-client");
+        assertThat(registeredClientId).isNotNull();
+        String oauthClientId = jdbcTemplate.queryForObject(
+            "SELECT client_id FROM oauth2_registered_client WHERE id = ?",
+            String.class, registeredClientId);
+
+        // 3. Owner grants CM to themselves via the controller.
+        mockMvc.perform(post("/manage/t/" + alphaTenant.slug() + "/applications/" + alphaApp.id()
+                + "/clients/" + registeredClientId + "/members")
+                .session(mgmtSession).with(csrf())
+                .param("userId", aliceAlpha.id().toString()))
+            .andExpect(status().is3xxRedirection());
+
+        // Sanity: gate's exact lookup shape must see the CM.
+        Integer cmCount = jdbcTemplate.queryForObject(
+            """
+            SELECT COUNT(*)
+              FROM client_membership cm
+              JOIN client_metadata m ON m.id = cm.client_metadata_id
+             WHERE cm.user_id = ?
+               AND m.registered_client_id = ?
+               AND m.tenant_id = ?
+            """,
+            Integer.class, aliceAlpha.id(), registeredClientId, alphaTenant.id());
+        assertThat(cmCount).as("CM row must be visible to the gate query").isEqualTo(1);
+
+        // 4. From a fresh session, drive /oauth2/authorize.
+        Pkce pkce = pkce();
+        MockHttpSession oauthSession = new MockHttpSession();
+        String authzUri = UriComponentsBuilder.fromPath("/t/" + alphaTenant.slug() + "/oauth2/authorize")
+            .queryParam("response_type", "code")
+            .queryParam("client_id", oauthClientId)
+            .queryParam("redirect_uri", "http://localhost/cb")
+            .queryParam("scope", OidcScopes.OPENID)
+            .queryParam("state", "s1")
+            .queryParam("code_challenge", pkce.challenge())
+            .queryParam("code_challenge_method", "S256")
+            .build().toUriString();
+
+        mockMvc.perform(get(authzUri).session(oauthSession))
+            .andExpect(status().is3xxRedirection());
+        mockMvc.perform(post("/t/" + alphaTenant.slug() + "/login")
+                .param("email", "alice@example.test").param("password", "password")
+                .session(oauthSession).with(csrf()))
+            .andExpect(status().is3xxRedirection());
+        MvcResult result = mockMvc.perform(get(authzUri).session(oauthSession))
+            .andExpect(status().is3xxRedirection())
+            .andReturn();
+
+        String location = result.getResponse().getHeader("Location");
+        Map<String, String> params = queryParams(location);
+        assertThat(params)
+            .as("Expected /oauth2/authorize to issue a code after a UI-driven CM grant; got: " + location)
+            .containsKey("code")
+            .doesNotContainKey("error");
+    }
+
+    @Test
+    @DisplayName("Issue #309 deny-then-grant-then-retry: after CM is added mid-session, the next /oauth2/authorize must issue a code (not stale access_denied)")
+    void issue309_denyThenGrantThenRetry_pickedUpOnRetry() throws Exception {
+        // Owner has AM (would be present already in the user's repro since
+        // they were able to use the picker).
+        applicationMembershipRepository.save(new ApplicationMembership(
+            null, aliceAlpha.id(), alphaApp.id(), java.time.LocalDateTime.now(), aliceAlpha.id(),
+            java.util.Set.of()
+        ));
+
+        // Client exists but has NO Client Membership for alice.
+        TenantClient client = createPkceClient(alphaApp, alphaTenant, "retry-client");
+
+        // Step 1: alice (in incognito) hits /oauth2/authorize, logs in, hits
+        // again -- the gate denies with access_denied.
+        Pkce pkce = pkce();
+        MockHttpSession session = new MockHttpSession();
+        String authzUri = authorizeUri(alphaTenant.slug(), client, pkce.challenge());
+
+        mockMvc.perform(get(authzUri).session(session)).andExpect(status().is3xxRedirection());
+        mockMvc.perform(post("/t/" + alphaTenant.slug() + "/login")
+                .param("email", "alice@example.test").param("password", "password")
+                .session(session).with(csrf()))
+            .andExpect(status().is3xxRedirection());
+        MvcResult firstDenial = mockMvc.perform(get(authzUri).session(session))
+            .andExpect(status().is3xxRedirection())
+            .andReturn();
+        String firstLocation = firstDenial.getResponse().getHeader("Location");
+        assertThat(queryParams(firstLocation))
+            .as("Step 1 must surface access_denied")
+            .containsEntry("error", "access_denied");
+
+        // Step 2: operator grants CM (AM was already present, mirroring the
+        // user's repro where alice was in the picker). Fixture-via-repo write
+        // so the call is fully outside the OAuth session that just denied.
+        ApplicationMembership aliceAm = applicationMembershipRepository
+            .findByUserIdAndApplicationId(aliceAlpha.id(), alphaApp.id()).orElseThrow();
+        clientMembershipRepository.save(new ClientMembership(
+            null, aliceAlpha.id(), client.id(), aliceAm.id(),
+            java.time.LocalDateTime.now(), adminAlpha.id(), java.util.Set.of()
+        ));
+
+        // Step 3: alice retries /oauth2/authorize in the SAME browser session.
+        // Use a fresh PKCE challenge to simulate a fresh OAuth request from
+        // the consumer (otherwise SAS rejects a reused challenge in some
+        // configurations).
+        Pkce pkce2 = pkce();
+        String authzUri2 = authorizeUri(alphaTenant.slug(), client, pkce2.challenge());
+        MvcResult retry = mockMvc.perform(get(authzUri2).session(session))
+            .andExpect(status().is3xxRedirection())
+            .andReturn();
+        String retryLocation = retry.getResponse().getHeader("Location");
+        Map<String, String> retryParams = queryParams(retryLocation);
+        assertThat(retryParams)
+            .as("After CM is granted, the very next /oauth2/authorize MUST issue a code; got: " + retryLocation)
+            .containsKey("code")
+            .doesNotContainKey("error");
+    }
+
+    @Test
+    @DisplayName("Issue #309 deny-then-grant-then-retry against a CONFIDENTIAL (BFF-shape) client: CM grant picked up on retry")
+    void issue309_denyThenGrantThenRetry_confidentialClient() throws Exception {
+        applicationMembershipRepository.save(new ApplicationMembership(
+            null, aliceAlpha.id(), alphaApp.id(), java.time.LocalDateTime.now(), aliceAlpha.id(),
+            java.util.Set.of()
+        ));
+
+        // BFF-shape client: confidential, no PKCE, single registered redirect.
+        String internalId = UUID.randomUUID().toString();
+        String oauthClientId = UUID.randomUUID().toString();
+        RegisteredClient rc = RegisteredClient.withId(internalId)
+            .clientId(oauthClientId)
+            .clientSecret(passwordEncoder.encode("bff-secret"))
+            .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+            .redirectUri("http://localhost/bff/callback")
+            .scope(OidcScopes.OPENID)
+            .clientSettings(ClientSettings.builder()
+                .requireProofKey(false)
+                .requireAuthorizationConsent(false)
+                .build())
+            .build();
+        registeredClientRepository.save(rc);
+        TenantClient client = tenantClientRepository.save(new TenantClient(
+            null, internalId, alphaApp.id(), alphaTenant.id(), "bff-shape-client", true
+        ));
+
+        MockHttpSession session = new MockHttpSession();
+        String authzUri = UriComponentsBuilder.fromPath("/t/" + alphaTenant.slug() + "/oauth2/authorize")
+            .queryParam("response_type", "code")
+            .queryParam("client_id", oauthClientId)
+            .queryParam("redirect_uri", "http://localhost/bff/callback")
+            .queryParam("scope", OidcScopes.OPENID)
+            .queryParam("state", "bff-s1")
+            .build().toUriString();
+
+        // Step 1: deny.
+        mockMvc.perform(get(authzUri).session(session)).andExpect(status().is3xxRedirection());
+        mockMvc.perform(post("/t/" + alphaTenant.slug() + "/login")
+                .param("email", "alice@example.test").param("password", "password")
+                .session(session).with(csrf()))
+            .andExpect(status().is3xxRedirection());
+        MvcResult firstDenial = mockMvc.perform(get(authzUri).session(session))
+            .andExpect(status().is3xxRedirection())
+            .andReturn();
+        assertThat(queryParams(firstDenial.getResponse().getHeader("Location")))
+            .containsEntry("error", "access_denied");
+
+        // Step 2: grant CM out-of-band.
+        ApplicationMembership aliceAm = applicationMembershipRepository
+            .findByUserIdAndApplicationId(aliceAlpha.id(), alphaApp.id()).orElseThrow();
+        clientMembershipRepository.save(new ClientMembership(
+            null, aliceAlpha.id(), client.id(), aliceAm.id(),
+            java.time.LocalDateTime.now(), adminAlpha.id(), java.util.Set.of()
+        ));
+
+        // Step 3: retry — same URL, same session, no PKCE involved.
+        MvcResult retry = mockMvc.perform(get(authzUri).session(session))
+            .andExpect(status().is3xxRedirection())
+            .andReturn();
+        String retryLocation = retry.getResponse().getHeader("Location");
+        Map<String, String> retryParams = queryParams(retryLocation);
+        assertThat(retryParams)
+            .as("Confidential-client retry after CM grant must issue a code; got: " + retryLocation)
+            .containsKey("code")
+            .doesNotContainKey("error");
     }
 
     @Test
