@@ -19,6 +19,17 @@
         <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/members'}" class="btn btn--secondary">Members</a>
     </div>
 
+    <aside th:if="${clientSettings.memberEmails().isEmpty()}" class="alert alert--warning" data-test-id="client-no-members-warning">
+        <strong>No client members granted.</strong>
+        <code>/oauth2/authorize</code> denies all sign-ins until at least one member is added.
+        <a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/members/new'}">Add member →</a>
+    </aside>
+    <p th:unless="${clientSettings.memberEmails().isEmpty()}" data-test-id="client-members-summary">
+        <strong>Members:</strong>
+        <span th:text="${#strings.listJoin(clientSettings.memberEmails(), ', ')}">a@b.com, c@d.com</span>
+        (<a th:href="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/members'}">manage</a>)
+    </p>
+
     <form method="post" th:action="@{'/manage/t/' + ${slug} + '/applications/' + ${app.id()} + '/clients/' + ${clientSettings.tenantClient().registeredClientId()} + '/edit'}" class="stack">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
