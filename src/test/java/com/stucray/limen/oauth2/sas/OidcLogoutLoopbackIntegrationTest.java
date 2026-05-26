@@ -127,13 +127,7 @@ class OidcLogoutLoopbackIntegrationTest {
             .queryParam("state", "logout-s1")
             .build().toUriString();
 
-        // Send without the test session so SAS's authenticated-principal branch
-        // (including the sid hash check) is skipped — that check is unrelated
-        // to redirect-URI validation and would 400 in MockMvc because the
-        // MockHttpSession's id never gets the sid claim baked into the id_token
-        // at issuance time. id_token_hint alone identifies the client + user;
-        // the validator runs on the post_logout_redirect_uri.
-        MvcResult result = mockMvc.perform(get(logoutUri))
+        MvcResult result = mockMvc.perform(get(logoutUri).session(fixture.session))
             .andExpect(status().is3xxRedirection())
             .andReturn();
 
@@ -164,9 +158,8 @@ class OidcLogoutLoopbackIntegrationTest {
         // SAS's failure handler renders the OAuth2 error on a non-redirect path
         // (default behaviour for /connect/logout). We assert non-2xx-non-3xx
         // matching `Location` of the requested URI — i.e. the requested URI is
-        // NOT honoured. Sent without the test session for the same reason as
-        // the positive test above (sid hash check bypass).
-        MvcResult result = mockMvc.perform(get(logoutUri))
+        // NOT honoured.
+        MvcResult result = mockMvc.perform(get(logoutUri).session(fixture.session))
             .andReturn();
         int status = result.getResponse().getStatus();
         String location = result.getResponse().getHeader("Location");
