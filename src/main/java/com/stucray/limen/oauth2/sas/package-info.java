@@ -21,6 +21,14 @@
  * so SAS's per-endpoint failure handlers still write the canonical
  * {@code invalid_grant} / {@code invalid_client} / etc. responses.
  *
+ * <p>{@code LoopbackAwareOidcLogoutValidator} wraps SAS's default
+ * post-logout-redirect-URI validator and adds a loopback fallback that mirrors
+ * SAS's own {@code /oauth2/authorize} branch (RFC 8252 §7.3) on
+ * {@code /connect/logout}. Restores {@code /authorize} ↔ {@code /logout}
+ * symmetry for clients that rotate between local-dev ports.
+ * {@code localhost} is intentionally not a loopback host (RFC 8252 §8.3 + SAS
+ * issue #651). Wired via the configurer DSL in {@code SasConfig}.
+ *
  * <p>{@code OidcScopeClaims} is the single source of truth for which OIDC
  * standard scopes Limen advertises in the discovery document and which claims
  * each one populates on the ID token. {@code SasConfig} reads it from two
