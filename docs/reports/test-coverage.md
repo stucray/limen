@@ -1,16 +1,16 @@
 # Test Coverage Snapshot
 
 <!-- coverage:auto:start -->
-**Generated:** 2026-05-21 from commit `3081820` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
+**Generated:** 2026-05-26 from commit `4210151` (current `main`). Δ columns compare against the PR #59 baseline (commit `e2fcdb0`) and the previous snapshot in `test-coverage-history.jsonl`.
 
-**Run:** `./mvnw verify` — 586 tests, all passing. JaCoCo analyzes 190 production classes.
+**Run:** `./mvnw verify` — 590 tests, all passing. JaCoCo analyzes 190 production classes.
 
 ## Headline numbers
 
 | Metric       | Coverage | Δ from baseline | Δ from prev | Covered / Total |
 |--------------|---------:|----------------:|------------:|----------------:|
 | Instructions | 94.0 % | +10.0 % 🟢 | +0.0 % ⚪ | 13,272 / 14,119 |
-| Branches     | 78.4 % | +8.4 % 🟢 | +0.2 % 🟢 | 641 / 818 |
+| Branches     | 78.4 % | +8.4 % 🟢 | +0.0 % ⚪ | 641 / 818 |
 | Lines        | 94.4 % | +8.3 % 🟢 | +0.0 % ⚪ | 2,680 / 2,839 |
 | Methods      | 95.0 % | +5.9 % 🟢 | +0.0 % ⚪ | 728 / 766 |
 
