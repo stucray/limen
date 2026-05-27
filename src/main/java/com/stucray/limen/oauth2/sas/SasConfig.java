@@ -29,6 +29,7 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.oidc.authentication.OidcLogoutAuthenticationProvider;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
@@ -69,6 +70,18 @@ class SasConfig {
                         })
                         .claim(OidcScopeClaims.CLAIMS_SUPPORTED, OidcScopeClaims.SUPPORTED_CLAIMS)
                     )
+                )
+                // Restore /authorize ↔ /connect/logout symmetry for loopback
+                // redirect URIs. SAS's default OidcLogoutAuthenticationValidator
+                // is strict exact-string match; the wrapper mirrors SAS's
+                // /authorize loopback port-wildcarding (RFC 8252 §7.3).
+                // PRD #316 / slice #318.
+                .logoutEndpoint(logout -> logout
+                    .authenticationProviders(providers -> providers.forEach(provider -> {
+                        if (provider instanceof OidcLogoutAuthenticationProvider logoutProvider) {
+                            logoutProvider.setAuthenticationValidator(new LoopbackAwareOidcLogoutValidator());
+                        }
+                    }))
                 )
             );
         });
