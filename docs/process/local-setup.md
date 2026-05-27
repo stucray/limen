@@ -130,6 +130,40 @@ from that address to your own logged-in Resend-account email, but it's
 enough to confirm the API key, profile activation, and the SMTP wiring
 are all correct.
 
+## Registering a loopback redirect URI
+
+When a client is registered with an HTTP loopback redirect URI
+(`http://127.0.0.1:<port>/<path>` or the IPv6 form
+`http://[::1]:<port>/<path>`), the port is wildcarded at sign-in and
+sign-out: register the URI once with any port, and the OAuth2 client may
+use any port it likes on `/authorize` and on RP-initiated
+`/connect/logout`. Same rule applies to the post-logout redirect URI
+registration. This mirrors RFC 8252 §7.3 and removes the registration
+ceremony when a consumer rotates between local stack shapes (dev server,
+direct AS-client port, prod-shape rehearsal, e2e harness — each on a
+different port).
+
+Canonical example: register once with
+
+```
+http://127.0.0.1:8080/callback
+```
+
+then any of `http://127.0.0.1:5173/callback`,
+`http://127.0.0.1:9001/callback`, … is accepted at request time.
+
+Caveats:
+
+- **`localhost` is NOT a loopback host for matching purposes** —
+  registering `http://localhost:8080/callback` requires the request to
+  hit `http://localhost:8080/callback` exactly (port included). RFC 8252
+  §8.3 + Spring Authorization Server policy.
+- **HTTPS loopback is exact-port-only** —
+  `https://127.0.0.1:<port>/<path>` requires the request port to match
+  the registered port. The relaxation is HTTP-only per RFC 8252 §7.3.
+- **Scheme, host, and path still match exactly** — only the port is
+  wildcarded.
+
 ## Troubleshooting
 
 - **`direnv: error .envrc is blocked`** — you skipped `direnv allow`.
