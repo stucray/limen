@@ -52,6 +52,18 @@ public class TestOAuth2RelyingParty {
 
         private final ConcurrentMap<String, String> codesByState = new ConcurrentHashMap<>();
 
+        /**
+         * Post-logout landing page. RP-initiated logout's
+         * {@code post_logout_redirect_uri} points here so the browser lands on
+         * an origin the test controls rather than an external one that would
+         * fail to connect. The body is irrelevant — tests assert on the URL the
+         * browser reaches.
+         */
+        @GetMapping("/logged-out")
+        public String loggedOut(@RequestParam(required = false) @Nullable String state) {
+            return "logged-out" + (state == null ? "" : ":" + state);
+        }
+
         @GetMapping("/callback")
         public String callback(
             @RequestParam(required = false) @Nullable String code,

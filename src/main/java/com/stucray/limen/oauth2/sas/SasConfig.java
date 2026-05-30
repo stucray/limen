@@ -82,6 +82,11 @@ class SasConfig {
                             logoutProvider.setAuthenticationValidator(new LoopbackAwareOidcLogoutValidator());
                         }
                     }))
+                    // SAS's default failure handler sendError(400)s, which the
+                    // container ERROR-dispatches to /error → caught by the
+                    // catch-all chain's denyAll → bodyless 403 the browser can't
+                    // render (#324). Write the error directly instead.
+                    .errorResponseHandler(new OidcLogoutErrorResponseHandler())
                 )
             );
         });
