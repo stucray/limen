@@ -29,6 +29,15 @@
  * {@code localhost} is intentionally not a loopback host (RFC 8252 §8.3 + SAS
  * issue #651). Wired via the configurer DSL in {@code SasConfig}.
  *
+ * <p>{@code OidcLogoutErrorResponseHandler} is the logout endpoint's
+ * {@code AuthenticationFailureHandler} (also wired via the configurer DSL in
+ * {@code SasConfig}). It writes the {@code OAuth2Error} directly as
+ * {@code 400 application/json} rather than letting SAS's default
+ * {@code sendError(400)} forward to {@code /error}, where the catch-all chain's
+ * {@code denyAll} would turn it into a bodyless {@code 403} the browser can't
+ * render (#324). The {@code sendError}-path complement to
+ * {@code SasServerErrorTranslationFilter}'s {@code RuntimeException} handling.
+ *
  * <p>{@code OidcScopeClaims} is the single source of truth for which OIDC
  * standard scopes Limen advertises in the discovery document and which claims
  * each one populates on the ID token. {@code SasConfig} reads it from two

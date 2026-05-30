@@ -136,6 +136,48 @@ public class TestTenantFactory {
     }
 
     /**
+     * Seeds a public PKCE OAuth2 client that also registers a
+     * {@code post_logout_redirect_uri}, for exercising OIDC RP-initiated
+     * logout. Same membership grant as {@link #seedOAuth2ClientForEndUser}.
+     */
+    @SuppressWarnings("NullAway") // Spring Data convention: null id on insert; populated on save
+    @Transactional
+    public SeededLogoutClient seedOAuth2ClientWithPostLogout(
+        SeededTenant tenant, SeededApplication app, String redirectUri, String postLogoutRedirectUri
+    ) {
+        User endUser = userRepository.findByEmailAndTenantId(tenant.endUserEmail(), tenant.tenantId())
+            .orElseThrow(() -> new IllegalStateException("seeded end user missing"));
+        User admin = userRepository.findByEmailAndTenantId(tenant.adminEmail(), tenant.tenantId())
+            .orElseThrow(() -> new IllegalStateException("seeded admin missing"));
+
+        String registeredClientId = UUID.randomUUID().toString();
+        String oauthClientId = UUID.randomUUID().toString();
+        RegisteredClient rc = RegisteredClient.withId(registeredClientId)
+            .clientId(oauthClientId)
+            .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+            .redirectUri(redirectUri)
+            .postLogoutRedirectUri(postLogoutRedirectUri)
+            .scope(OidcScopes.OPENID)
+            .clientSettings(ClientSettings.builder()
+                .requireProofKey(true)
+                .requireAuthorizationConsent(false)
+                .build())
+            .build();
+        registeredClientRepository.save(rc);
+        tenantClientRepository.save(new TenantClient(
+            null, registeredClientId, app.appId(), tenant.tenantId(), "UI Logout Test Client", false));
+
+        ClientMembershipTestFixture.grant(
+            applicationMembershipService, clientMembershipService,
+            app.appId(), tenant.tenantId(), endUser.id(), admin.id(),
+            registeredClientId, Set.of()
+        );
+
+        return new SeededLogoutClient(oauthClientId, redirectUri, postLogoutRedirectUri);
+    }
+
+    /**
      * Grants the seeded end-user the App Membership + Client Membership needed
      * to pass the {@code MembershipGateFilter} for a client that was created
      * outside this factory (typically through the manage UI as part of an
@@ -226,4 +268,6 @@ public class TestTenantFactory {
     public record SeededForcedChangeUser(String email, String temporaryPassword) {}
 
     public record SeededOAuth2Client(String clientId, String redirectUri) {}
+
+    public record SeededLogoutClient(String clientId, String redirectUri, String postLogoutRedirectUri) {}
 }
