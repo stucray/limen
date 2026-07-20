@@ -165,7 +165,7 @@ class OAuth2EndToEndJourneyUiIT extends BaseUiIT {
         //    Spring Security's `&continue` marker before SAS sees it; without
         //    that fix, this hop returns `?error=access_denied` to the redirect URI
         //    instead of `?code=…`.
-        page.waitForURL("**/t/" + tenant.slug() + "/login");
+        page.waitForURL("**/t/" + tenant.slug() + "/login*"); // login URL now carries ?ref= (issue #327)
         page.getByLabel("Email").fill(tenant.endUserEmail());
         page.getByLabel("Password").fill(tenant.endUserPassword());
         page.getByTestId("login-submit").click();

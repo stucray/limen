@@ -18,6 +18,9 @@
         </p>
         <form method="post" th:action="@{/t/{slug}/login(slug=${tenantSlug})}" class="stack">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <!-- Durable /oauth2/authorize resume reference (#327); present only when
+                 the login page was reached via an authorize bounce. -->
+            <input type="hidden" name="ref" th:if="${authorizeRef}" th:value="${authorizeRef}"/>
             <label>
                 Email
                 <input type="email" name="email" autofocus required/>

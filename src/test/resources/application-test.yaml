@@ -15,6 +15,12 @@ limen:
     # determinism on the rotation counters/audit rows opt into "test" so the
     # SigningKeyRotationSchedule bean is never created here.
     enabled: false
+  pending-authorize-sweep:
+    # Belt-and-braces off-switch for @ActiveProfiles("test") integration tests.
+    # Expiry is filtered on read regardless, so most tests don't need this — but
+    # keeping the scheduled bean out of the "test" profile avoids any ShedLock
+    # interaction during those runs.
+    enabled: false
 spring:
   mail:
     properties:

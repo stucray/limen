@@ -34,6 +34,12 @@ limen:
     cron: "0 0 3 * * *"
     key-age: 30d
     grace-period: 24h
+  pending-authorize-sweep:
+    # Hourly sweep of expired pending /authorize records (issue #327). The
+    # placeholder is resolved by @Scheduled at bean-init, so it must live in the
+    # Environment. Expiry is also filtered on read, so this is pure housekeeping.
+    enabled: true
+    cron: "0 0 * * * *"
   rate-limit:
     # Token-bucket throttling on pre-auth endpoints (RateLimitFilter). Disable
     # in test profiles that load the full context but want to exercise floods

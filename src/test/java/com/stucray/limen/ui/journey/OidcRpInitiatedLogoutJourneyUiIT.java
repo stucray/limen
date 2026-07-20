@@ -129,7 +129,7 @@ class OidcRpInitiatedLogoutJourneyUiIT extends BaseUiIT {
             baseUrl(), tenant.slug(), client.clientId(), client.redirectUri(), pkce.challenge(), state);
 
         page.navigate(authorizeUrl);
-        page.waitForURL("**/t/" + tenant.slug() + "/login");
+        page.waitForURL("**/t/" + tenant.slug() + "/login*"); // login URL now carries ?ref= (issue #327)
         page.getByLabel("Email").fill(tenant.endUserEmail());
         page.getByLabel("Password").fill(tenant.endUserPassword());
         page.getByTestId("login-submit").click();
