@@ -3,6 +3,7 @@ package com.stucray.limen.oauth2.sas;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.stucray.limen.auth.SasJsonMapperFactory;
+import com.stucray.limen.auth.login.PendingAuthorizeStore;
 import com.stucray.limen.auth.login.PostLoginIntents;
 import com.stucray.limen.user.TenantUserDetails;
 import com.stucray.limen.clients.TenantClientRepository;
@@ -54,7 +55,8 @@ class SasConfig {
     SecurityFilterChain authorizationServerSecurityFilterChain(
         HttpSecurity http,
         RegisteredClientRepository registeredClientRepository,
-        ClientMembershipQuery clientMembershipQuery
+        ClientMembershipQuery clientMembershipQuery,
+        PendingAuthorizeStore pendingAuthorizeStore
     ) throws Exception {
         RequestMatcher[] endpointsMatcherHolder = new RequestMatcher[1];
         http.oauth2AuthorizationServer(authorizationServer -> {
@@ -104,7 +106,7 @@ class SasConfig {
             .oauth2ResourceServer(rs -> rs.jwt(Customizer.withDefaults()))
             .requestCache(rc -> rc.requestCache(sasRequestCache))
             .exceptionHandling(ex -> ex.defaultAuthenticationEntryPointFor(
-                TenantLoginUrlAuthenticationEntryPoint.fromTenantScope(),
+                TenantLoginUrlAuthenticationEntryPoint.fromTenantScope(pendingAuthorizeStore),
                 new OrRequestMatcher(
                     htmlRequestMatcher(),
                     PathPatternRequestMatcher.withDefaults().matcher("/oauth2/authorize")

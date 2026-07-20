@@ -34,7 +34,7 @@ class OAuth2TenantLoginControllerUnitTest {
         OAuth2TenantLoginController controller = new OAuth2TenantLoginController(tenantRepository);
         Model model = new ConcurrentModel();
 
-        String view = controller.loginForm("does-not-exist", model);
+        String view = controller.loginForm("does-not-exist", null, model);
 
         assertThat(view).isEqualTo("redirect:/manage/t/system/login");
         assertThat(model.containsAttribute("tenantSlug")).isFalse();
@@ -49,10 +49,11 @@ class OAuth2TenantLoginControllerUnitTest {
         OAuth2TenantLoginController controller = new OAuth2TenantLoginController(tenantRepository);
         Model model = new ConcurrentModel();
 
-        String view = controller.loginForm("alpha", model);
+        String view = controller.loginForm("alpha", "some-ref", model);
 
         assertThat(view).isEqualTo("login");
         assertThat(model.getAttribute("tenantSlug")).isEqualTo("alpha");
         assertThat(model.getAttribute("tenantName")).isEqualTo("Alpha Corp");
+        assertThat(model.getAttribute("authorizeRef")).isEqualTo("some-ref");
     }
 }

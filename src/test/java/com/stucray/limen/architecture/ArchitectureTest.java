@@ -64,6 +64,7 @@ class ArchitectureTest {
         "com.stucray.limen.auth.ott.OttDispatcher",
         "com.stucray.limen.auth.ott.TenantAwareOneTimeTokenService",
         "com.stucray.limen.auth.ott.TenantOttAuthenticationProvider",
+        "com.stucray.limen.auth.login.PendingAuthorizeStore",
         "com.stucray.limen.clients.ClientManagementService",
         "com.stucray.limen.memberships.ApplicationMembershipService",
         "com.stucray.limen.memberships.ClientMembershipQuery",

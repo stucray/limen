@@ -2,6 +2,7 @@ package com.stucray.limen.auth.login;
 
 import com.stucray.limen.auth.ott.OttIntent;
 import com.stucray.limen.auth.ott.TenantOttAuthentication;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
@@ -27,7 +28,9 @@ import java.util.stream.Collectors;
  *       {@code intent=PASSWORD_RESET}. Ahead of OAuth2-resume so a reset
  *       interrupts any saved authorize.</li>
  *   <li>{@link #passwordChangeRequired()} — redirect when {@code mustChangePassword} is set.</li>
- *   <li>{@link #resumeOAuth2Authorize()} — consume a saved {@code /oauth2/authorize} request.</li>
+ *   <li>{@link #resumeOAuth2Authorize(PendingAuthorizeStore)} — resume a pending
+ *       {@code /oauth2/authorize} request: the in-session SavedRequest first, then
+ *       the durable {@link PendingAuthorizeStore} keyed by the login {@code ?ref=}.</li>
  *   <li>{@link #tenantHome()} — terminal default; always returns the tenant home URL.</li>
  * </ol>
  *
@@ -87,21 +90,39 @@ public final class PostLoginIntents {
         };
     }
 
-    static PostLoginIntent resumeOAuth2Authorize() {
+    static PostLoginIntent resumeOAuth2Authorize(PendingAuthorizeStore pendingAuthorizeStore) {
         HttpSessionRequestCache cache = new HttpSessionRequestCache();
         cache.setSessionAttrName(OAUTH2_AUTHORIZE_SAVED_REQUEST_ATTR);
-        return resumeOAuth2Authorize(cache);
+        return resumeOAuth2Authorize(cache, pendingAuthorizeStore);
     }
 
-    /** Test seam: inject a request cache. */
+    /** Test seam: inject a request cache (session-only, no durable fallback). */
     static PostLoginIntent resumeOAuth2Authorize(RequestCache requestCache) {
+        return resumeOAuth2Authorize(requestCache, null);
+    }
+
+    /** Test seam: inject a request cache and durable store. */
+    static PostLoginIntent resumeOAuth2Authorize(
+        RequestCache requestCache, @Nullable PendingAuthorizeStore pendingAuthorizeStore
+    ) {
         return (req, res, principal, scheme) -> {
             SavedRequest saved = requestCache.getRequest(req, res);
-            if (saved == null || !saved.getRedirectUrl().contains("/oauth2/authorize")) {
+            if (saved != null && saved.getRedirectUrl().contains("/oauth2/authorize")) {
+                requestCache.removeRequest(req, res);
+                return prependTenantPrefix(saved.getRedirectUrl(), principal.tenantSlug());
+            }
+            // Fallback (issue #327): the in-session SavedRequest is gone (the
+            // session was evicted while the user sat on the login page), but the
+            // login submit carried an opaque ?ref= to a durably-stashed authorize
+            // request. Consume it and replay under the authenticated principal's
+            // tenant — redirect_uri is re-validated by SAS at /oauth2/authorize.
+            if (pendingAuthorizeStore == null) {
                 return null;
             }
-            requestCache.removeRequest(req, res);
-            return prependTenantPrefix(saved.getRedirectUrl(), principal.tenantSlug());
+            String ref = req.getParameter("ref");
+            return pendingAuthorizeStore.consume(ref, principal.tenantSlug())
+                .map(authorizeUrl -> "/t/" + principal.tenantSlug() + authorizeUrl)
+                .orElse(null);
         };
     }
 

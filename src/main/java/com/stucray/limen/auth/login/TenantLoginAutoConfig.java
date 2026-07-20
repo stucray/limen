@@ -61,13 +61,14 @@ class TenantLoginAutoConfig {
         TenantPersistentTokenBasedRememberMeServices rememberMeServices,
         @Value("${limen.security.remember-me-key}") String rememberMeKey,
         ObjectProvider<PostLoginIntent> userIntents,
-        List<TenantUrlScheme> allSchemes
+        List<TenantUrlScheme> allSchemes,
+        PendingAuthorizeStore pendingAuthorizeStore
     ) {
         List<PostLoginIntent> intents = new ArrayList<>(userIntents.orderedStream().toList());
         intents.add(PostLoginIntents.emailVerificationRequired());
         intents.add(PostLoginIntents.passwordChangeAfterReset());
         intents.add(PostLoginIntents.passwordChangeRequired());
-        intents.add(PostLoginIntents.resumeOAuth2Authorize());
+        intents.add(PostLoginIntents.resumeOAuth2Authorize(pendingAuthorizeStore));
         intents.add(PostLoginIntents.tenantHome());
         return new TenantLogin(authenticationManager, rememberMeServices, rememberMeKey, intents, allSchemes);
     }
