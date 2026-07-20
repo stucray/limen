@@ -11,11 +11,11 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 @Tag("cross-browser")
-@DisplayName("A tenant owner with mustChangePassword set is forced through the change-password page before reaching the management home (issue #283)")
+@DisplayName("A user with mustChangePassword set is forced through the change-password page before reaching the neutral end-user home (issue #327)")
 class ForcedPasswordChangeJourneyUiIT extends BaseUiIT {
 
     @Test
-    @DisplayName("happy path: signs in with the temporary password, lands on /t/{slug}/change-password, sets a new password, and is redirected to /manage/t/{slug}/ with their identity visible")
+    @DisplayName("happy path: signs in with the temporary password, lands on /t/{slug}/change-password, sets a new password, and lands on the neutral /t/{slug}/ home")
     void happyPath(Page page) {
         SeededTenant tenant = tenants.createTenant();
         SeededForcedChangeUser user = tenants.seedEndUserForcedPasswordChange(tenant);
@@ -28,7 +28,6 @@ class ForcedPasswordChangeJourneyUiIT extends BaseUiIT {
             .fillNewPassword("new-password-123")
             .fillConfirmPassword("new-password-123")
             .submit()
-            .assertOnHomeForTenant(tenant.displayName())
-            .assertWelcomeForUser(user.email());
+            .assertOnNeutralHomeForTenant(tenant.displayName());
     }
 }

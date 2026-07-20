@@ -21,9 +21,12 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.LocalDateTime;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -83,8 +86,8 @@ class EndUserHomeIntegrationTest {
     }
 
     @Test
-    @DisplayName("Authenticated tenant owner GET /t/{slug}/ is redirected to the management home (issue #283)")
-    void authenticatedTenantOwnerIsRedirectedToManagementHome() throws Exception {
+    @DisplayName("Authenticated GET /t/{slug}/ renders a neutral end-user page (200), NOT a redirect into the /manage console (issue #327 authorization-scope leak)")
+    void authenticatedGetOnEndUserHomeRendersNeutralPageNotManageConsole() throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/t/alpha-corp/login")
                 .param("email", "alice@example.test")
                 .param("password", "password")
@@ -93,9 +96,14 @@ class EndUserHomeIntegrationTest {
 
         MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
 
+        // Reversal of the #283 redirect on this route: the end-user surface home
+        // must render its own neutral page rather than bouncing to /manage. This
+        // is the scope-leak regression pin — an OAuth end-user who lands here
+        // (authorize could not resume) must not be deposited on the admin surface.
         mockMvc.perform(get("/t/alpha-corp/").session(session))
-            .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/manage/t/alpha-corp/"));
+            .andExpect(status().isOk())
+            .andExpect(content().string(containsString("data-test-action=\"enduser-home\"")))
+            .andExpect(header().doesNotExist("Location"));
     }
 
     @Test

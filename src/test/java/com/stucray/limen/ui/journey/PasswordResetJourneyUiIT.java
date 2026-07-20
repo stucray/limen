@@ -84,12 +84,12 @@ class PasswordResetJourneyUiIT {
         page.getByTestId("ott-submit").click();
         page.waitForURL(baseUrl() + "/t/" + slug + "/change-password");
 
-        // Set the new password. Post-change terminal redirect /t/{slug}/ bounces
-        // to the management home for owners (issue #283).
+        // Set the new password. Post-change the terminal /t/{slug}/ renders the
+        // neutral end-user home (issue #327) — no longer a bounce to /manage.
         page.getByLabel("New password").fill(newPassword);
         page.getByLabel("Confirm password").fill(newPassword);
         page.getByTestId("change-password-submit").click();
-        page.waitForURL(baseUrl() + "/manage/t/" + slug + "/");
+        page.waitForURL(baseUrl() + "/t/" + slug + "/");
 
         // Sanity: the stored hash matches the new password, not the old one.
         String storedHash = jdbcTemplate.queryForObject(
@@ -99,14 +99,14 @@ class PasswordResetJourneyUiIT {
         assertThat(passwordEncoder.matches(oldPassword, storedHash)).isFalse();
 
         // Sign back in with the new password — log out first to clear the
-        // post-OTT session before exercising form login. Owner login bounces
-        // through /t/{slug}/ to /manage/t/{slug}/ (issue #283).
+        // post-OTT session before exercising form login. Login lands on the
+        // neutral end-user home /t/{slug}/ (issue #327).
         page.context().clearCookies();
         page.navigate(baseUrl() + "/t/" + slug + "/login");
         page.getByLabel("Email").fill(email);
         page.getByLabel("Password").fill(newPassword);
         page.getByTestId("login-submit").click();
-        page.waitForURL(baseUrl() + "/manage/t/" + slug + "/");
+        page.waitForURL(baseUrl() + "/t/" + slug + "/");
 
         // The completed reset emitted password_reset_completed; confirm the
         // audit row landed alongside the password_changed row. Async dispatch

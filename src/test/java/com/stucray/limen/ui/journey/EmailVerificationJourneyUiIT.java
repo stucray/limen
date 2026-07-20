@@ -80,10 +80,9 @@ class EmailVerificationJourneyUiIT {
         page.navigate(magicLink);
         page.getByTestId("ott-submit").click();
         // Post-OTT dispatch follows the intent chain to tenantHome() = /t/{slug}/,
-        // which EndUserHomeController then redirects to /manage/t/{slug}/ for
-        // any TENANT_OWNER/SYSTEM_ADMIN principal (issue #283: a newly-verified
-        // owner needs a signpost into the management UI, not the dead-end home).
-        page.waitForURL(baseUrl() + "/manage/t/" + slug + "/");
+        // which EndUserHomeController renders as the neutral end-user home
+        // (issue #327) — no longer a bounce to /manage/t/{slug}/.
+        page.waitForURL(baseUrl() + "/t/" + slug + "/");
 
         Boolean verified = jdbcTemplate.queryForObject(
             "SELECT email_verified FROM users WHERE email = ?",
