@@ -39,12 +39,11 @@ public final class LoginPageObject {
         page.getByLabel("Email").fill(tenant.endUserEmail());
         page.getByLabel("Password").fill(tenant.endUserPassword());
         page.getByTestId("login-submit").click();
-        // Today every authenticated principal is a TENANT_OWNER, so the
-        // terminal /t/{slug}/ landing redirects to /manage/t/{slug}/
-        // (issue #283). loginAsEndUserWithCredentials, used by the forced
-        // password-change journey, doesn't follow this path — the
-        // mustChangePassword intent intercepts before tenantHome().
-        page.waitForURL(baseUrl + "/manage/t/" + tenant.slug() + "/**");
+        // The end-user surface terminal /t/{slug}/ renders its own neutral
+        // page (issue #327); it no longer bounces to /manage/t/{slug}/. Tenant
+        // managers reach the console via loginAsTenantAdmin (the /manage login
+        // surface) instead.
+        page.waitForURL(baseUrl + "/t/" + tenant.slug() + "/");
     }
 
     public void loginAsEndUserWithCredentials(String slug, String email, String password) {

@@ -3,7 +3,6 @@ package com.stucray.limen.ui.pages.enduser;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
-import com.stucray.limen.ui.pages.manage.ManageHomePage;
 
 public final class EndUserChangePasswordPage {
 
@@ -34,11 +33,12 @@ public final class EndUserChangePasswordPage {
         return this;
     }
 
-    public ManageHomePage submit() {
+    public EndUserHomePage submit() {
         page.getByTestId("change-password-submit").click();
-        // Post-change terminal redirect /t/{slug}/ bounces to /manage/t/{slug}/
-        // for owners (issue #283).
-        page.waitForURL(baseUrl + "/manage/t/" + slug + "/");
-        return new ManageHomePage(page, baseUrl, slug);
+        // Post-change the intent chain falls through to the end-user terminal
+        // /t/{slug}/, which renders the neutral end-user home (issue #327) — it
+        // no longer bounces to /manage/t/{slug}/.
+        page.waitForURL(baseUrl + "/t/" + slug + "/");
+        return new EndUserHomePage(page, baseUrl, slug);
     }
 }

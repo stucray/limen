@@ -135,13 +135,12 @@ class TenantLogoutBoundaryIntegrationTest {
     void logoutClearsAuthentication() throws Exception {
         MockHttpSession session = loginThroughOAuth2();
 
-        // Sanity: the session is authenticated before logout. /t/{slug}/ bounces
-        // authed owners to the management home (issue #283), which is itself a
-        // protected URL — so this hop also implicitly confirms cross-surface
-        // auth carries the same session.
+        // Sanity: the session is authenticated before logout. /t/{slug}/ renders
+        // the neutral end-user home (200) for an authenticated principal (issue
+        // #327) — an unauthenticated hit would instead 302 to the login page, so
+        // a 200 here confirms the session carries authentication.
         mockMvc.perform(get("/t/alpha-lo/").session(session))
-            .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/manage/t/alpha-lo/"));
+            .andExpect(status().isOk());
 
         mockMvc.perform(post("/t/alpha-lo/logout").session(session).with(csrf()))
             .andExpect(status().is3xxRedirection());

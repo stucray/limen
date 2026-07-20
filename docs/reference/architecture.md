@@ -378,7 +378,7 @@ flowchart LR
       SUB --> CON[TenantAwareOneTimeTokenService.consume]
       CON --> ROW
       CON --> CHECK{intent?}
-      CHECK -->|verify-email| MV[OttCompletionService.markEmailVerified] --> HOME["/t/{slug}/ → /manage/t/{slug}/"]
+      CHECK -->|verify-email| MV[OttCompletionService.markEmailVerified] --> HOME["/t/{slug}/ (neutral end-user home)"]
       CHECK -->|password-reset| TPCF[TenantPasswordChangeFlow]
       TPCF --> RC[OttCompletionService.markPasswordResetCompleted]
     end
@@ -613,7 +613,7 @@ Each direct sub-package of `com.stucray.limen` is one application module. **The 
 | `auth` | Tenant-aware authentication: providers, tokens, remember-me, `TenantAccessFilter`. Sub-features `auth.login` and `auth.ott` are named interfaces |
 | `clients` | `TenantClient` (Limen's multi-tenant decoration of a SAS `RegisteredClient`) + management UI |
 | `email` | `EmailSender` abstraction with `logging` + `smtp` drivers |
-| `enduser` | Post-OAuth2 home routes under `/t/{slug}/`. Today every authed principal holds `ROLE_TENANT_OWNER` or `ROLE_SYSTEM_ADMIN`, so `/t/{slug}/` is an unconditional redirect to `/manage/t/{slug}/`; when an end-user-only role enters the model, restore a render branch here |
+| `enduser` | Post-OAuth2 home routes under `/t/{slug}/`. `/t/{slug}/` renders a neutral, self-contained end-user home and does **not** redirect into `/manage/...` — an OAuth end-user whose authorize could not resume falls through here, and must not be deposited on the admin surface (issue #327). Tenant managers reach the console via `/manage/t/{slug}/login` independently |
 | `identity` | Bootstrap-admin properties + `UserBootstrap` startup runner |
 | `management` | Admin-console infrastructure (`/manage/...` filter chain, nav, model advice). Per-domain `/manage/...` features live in their own modules |
 | `memberships` | `ApplicationMembership` + `ClientMembership` + Role-join entities, queries, services, members UI |

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout(~{::title}, ~{::main})}">
+<head><title>Signed in — Limen</title></head>
+<body>
+<main>
+    <article class="card card--auth">
+        <hgroup>
+            <h1>You're signed in</h1>
+            <p th:if="${tenantName}" th:text="${tenantName}">Tenant</p>
+        </hgroup>
+        <p data-test-action="enduser-home">
+            You're signed in to Limen. If you arrived here from an application,
+            return to it to continue. If it doesn't pick up automatically, start
+            sign-in again from the application — your previous sign-in link may
+            have expired.
+        </p>
+    </article>
+</main>
+</body>
+</html>
