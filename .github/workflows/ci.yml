@@ -41,3 +41,9 @@ jobs:
       - name: Shellcheck deploy script
         working-directory: infra/deploy
         run: shellcheck deploy.sh
+      - name: Ansible syntax check
+        working-directory: infra/ansible
+        run: |
+          pipx install --include-deps ansible
+          ansible-galaxy install -r requirements.yml
+          ansible-playbook bootstrap.yml --syntax-check

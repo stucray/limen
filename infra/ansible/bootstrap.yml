@@ -98,3 +98,137 @@
     docker_users: [deploy]
   roles:
     - geerlingguy.docker
+
+# Deploy toolchain (PRD #339, slice #343): sops+age, on-box age key, secrets
+# deploy key, repo clones, GHCR login. First run ends with two operator
+# steps (register the deploy key, add the box age key as a sops recipient);
+# re-run after both and the GHCR login task completes. See
+# infra/ansible/README.md.
+- name: Provision deploy toolchain
+  hosts: vps
+  become: true
+  vars:
+    deploy_user: deploy
+    deploy_home: /home/deploy
+    sops_version: v3.13.3
+    sops_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+    sops_checksums:
+      amd64: sha256:e5bec3346a873ae91d871550f3e698c1aad962aff462a080e40f25fde17fef6b
+      arm64: sha256:53b0abacd38ef1b12a66d6c100956691b9cefce018d91f81e73ddf7438b94d77
+    limen_repo: https://github.com/stucray/limen.git
+    secrets_repo: git@github.com-limen-secrets:stucray/limen-secrets.git
+
+  tasks:
+    - name: Install age
+      ansible.builtin.apt:
+        name: age
+        state: present
+
+    - name: Install sops binary (pinned, checksummed)
+      ansible.builtin.get_url:
+        url: "https://github.com/getsops/sops/releases/download/{{ sops_version }}/sops-{{ sops_version }}.linux.{{ sops_arch }}"
+        checksum: "{{ sops_checksums[sops_arch] }}"
+        dest: /usr/local/bin/sops
+        mode: "0755"
+        owner: root
+        group: root
+
+    - name: Create sops age key directory
+      ansible.builtin.file:
+        path: "{{ deploy_home }}/.config/sops/age"
+        state: directory
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+        mode: "0700"
+
+    - name: Generate box age key (only when absent; never leaves the box)
+      become_user: "{{ deploy_user }}"
+      ansible.builtin.command:
+        cmd: age-keygen -o {{ deploy_home }}/.config/sops/age/keys.txt
+        creates: "{{ deploy_home }}/.config/sops/age/keys.txt"
+
+    - name: Read box age public key
+      become_user: "{{ deploy_user }}"
+      ansible.builtin.command:
+        cmd: age-keygen -y {{ deploy_home }}/.config/sops/age/keys.txt
+      register: box_age_pubkey
+      changed_when: false
+
+    - name: Generate read-only deploy key for limen-secrets
+      become_user: "{{ deploy_user }}"
+      community.crypto.openssh_keypair:
+        path: "{{ deploy_home }}/.ssh/limen_secrets_deploy_key"
+        type: ed25519
+        comment: "limen-secrets deploy key ({{ inventory_hostname }})"
+      register: secrets_deploy_key
+
+    - name: Route limen-secrets clones through the deploy key
+      become_user: "{{ deploy_user }}"
+      ansible.builtin.blockinfile:
+        path: "{{ deploy_home }}/.ssh/config"
+        create: true
+        mode: "0600"
+        marker: "# {mark} ANSIBLE MANAGED - limen-secrets deploy key"
+        block: |
+          Host github.com-limen-secrets
+            HostName github.com
+            User git
+            IdentityFile {{ deploy_home }}/.ssh/limen_secrets_deploy_key
+            IdentitiesOnly yes
+
+    - name: Clone limen (deploy.sh manages checkouts after this)
+      become_user: "{{ deploy_user }}"
+      ansible.builtin.git:
+        repo: "{{ limen_repo }}"
+        dest: "{{ deploy_home }}/limen"
+        update: false
+
+    - name: Clone limen-secrets (requires the deploy key registered on GitHub)
+      become_user: "{{ deploy_user }}"
+      ansible.builtin.git:
+        repo: "{{ secrets_repo }}"
+        dest: "{{ deploy_home }}/limen-secrets"
+        update: false
+        accept_newhostkey: true
+      failed_when: false
+
+    - name: Check whether the secrets clone landed
+      ansible.builtin.stat:
+        path: "{{ deploy_home }}/limen-secrets/prod.env"
+      register: secrets_env
+
+    - name: Check secrets are decryptable with the box key
+      when: secrets_env.stat.exists
+      become_user: "{{ deploy_user }}"
+      ansible.builtin.command:
+        cmd: sops decrypt --extract '["GHCR_PULL_TOKEN"]' {{ deploy_home }}/limen-secrets/prod.env
+      register: ghcr_token
+      changed_when: false
+      failed_when: false
+      no_log: true
+
+    - name: Read GHCR username from secrets
+      when: ghcr_token.rc | default(1) == 0
+      become_user: "{{ deploy_user }}"
+      ansible.builtin.command:
+        cmd: sops decrypt --extract '["GHCR_USERNAME"]' {{ deploy_home }}/limen-secrets/prod.env
+      register: ghcr_username
+      changed_when: false
+      no_log: true
+
+    - name: Log docker into GHCR (pull-scoped token)
+      when: ghcr_token.rc | default(1) == 0
+      become_user: "{{ deploy_user }}"
+      ansible.builtin.command:
+        cmd: docker login ghcr.io -u {{ ghcr_username.stdout }} --password-stdin
+        stdin: "{{ ghcr_token.stdout }}"
+        creates: "{{ deploy_home }}/.docker/config.json"
+      no_log: true
+
+    - name: Operator follow-ups
+      ansible.builtin.debug:
+        msg:
+          - "Box age public key (add to limen-secrets .sops.yaml, then `sops updatekeys prod.env`): {{ box_age_pubkey.stdout }}"
+          - "Secrets deploy key (register read-only on stucray/limen-secrets): {{ secrets_deploy_key.public_key }} {{ deploy_user }}@{{ inventory_hostname }}"
+          - "limen-secrets clone {{ 'OK' if secrets_env.stat.exists else 'MISSING - register the deploy key and re-run' }}"
+          - "GHCR login {{ 'done' if ghcr_token.rc | default(1) == 0 else 'skipped - box cannot decrypt secrets yet (add recipient + updatekeys, then re-run)' }}"
