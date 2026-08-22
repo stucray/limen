@@ -1,0 +1,10 @@
+# Edge config for the Limen VPS. LIMEN_DOMAIN is injected by compose from the
+# deploy environment. Caddy handles ACME issuance/renewal and the HTTP->HTTPS
+# redirect for named sites automatically, and sets X-Forwarded-For/-Proto/-Host
+# on reverse_proxy. The external port is the https default (443), so Spring's
+# framework forward-headers strategy derives the right port without an explicit
+# X-Forwarded-Port.
+{$LIMEN_DOMAIN} {
+	encode gzip
+	reverse_proxy limen:8090
+}
