@@ -38,3 +38,6 @@ jobs:
       - name: Validate production compose file
         working-directory: infra/deploy
         run: docker compose -f compose.prod.yaml --env-file example.env config -q
+      - name: Shellcheck deploy script
+        working-directory: infra/deploy
+        run: shellcheck deploy.sh
