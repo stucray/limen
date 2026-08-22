@@ -88,3 +88,13 @@
       ansible.builtin.service:
         name: fail2ban
         state: restarted
+
+# Separate play so the role runs after the deploy user exists
+# (roles listed on a play always run before its tasks).
+- name: Install Docker
+  hosts: vps
+  become: true
+  vars:
+    docker_users: [deploy]
+  roles:
+    - geerlingguy.docker
