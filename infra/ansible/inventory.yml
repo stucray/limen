@@ -1,0 +1,6 @@
+vps:
+  hosts:
+    limen-vps:
+      # TODO: replace with the real VPS IP (or DNS name) once provisioned
+      ansible_host: 203.0.113.10
+      ansible_user: deploy
