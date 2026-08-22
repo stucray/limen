@@ -1,0 +1,102 @@
+# Production stack for the Limen VPS (PRD #339, slice #340).
+#
+# Standalone by design — NOT an override of the dev docker-compose.yml:
+# compose list-merge semantics can't cleanly remove a published port, and the
+# prod file should state prod intent on its own.
+#
+# Interpolation contract: every ${VAR:?} below is supplied by the decrypted
+# environment file from the limen-secrets repo, passed via
+# `docker compose --env-file` by deploy.sh (slice #342). example.env documents
+# the full set. Only Caddy publishes host ports; limen and postgres are
+# reachable solely on the internal network.
+
+services:
+  caddy:
+    # Auto-ACME TLS edge; the only internet-facing service.
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      LIMEN_DOMAIN: ${LIMEN_DOMAIN:?public hostname, e.g. auth.example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      default:
+        # Internal callers (including limen itself) resolve the public
+        # hostname to Caddy and hairpin through the proxy, getting valid TLS
+        # and correct forwarded headers — required for OIDC issuer/JWKS
+        # consistency.
+        aliases:
+          - ${LIMEN_DOMAIN:?}
+
+  limen:
+    # Paketo image published by .github/workflows/publish-image.yml; version
+    # pinned by deploy.sh from the release tag — never a moving tag.
+    image: ghcr.io/stucray/limen:${LIMEN_VERSION:?release version, e.g. 0.4.0}
+    restart: unless-stopped
+    # Above spring.lifecycle.timeout-per-shutdown-phase (default 30s) so a
+    # graceful stop finishes as SIGTERM/143, not SIGKILL/137.
+    stop_grace_period: 40s
+    # The Paketo memory calculator sizes heap from the cgroup limit minus
+    # non-heap; the 250-thread default stack reservation must come down with
+    # the cap or the app OOMs on startup. 50 threads is the validated pairing.
+    mem_limit: 768m
+    environment:
+      BPL_JVM_THREAD_COUNT: "50"
+      # Behind the TLS-terminating proxy: trust X-Forwarded-* so issuer,
+      # redirect URIs, and emailed links carry the public HTTPS origin.
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth
+      SPRING_DATASOURCE_USERNAME: auth
+      SPRING_DATASOURCE_PASSWORD: ${LIMEN_DB_PASSWORD:?}
+      SPRING_PROFILES_ACTIVE: resend
+      SPRING_MAIL_PASSWORD: ${RESEND_API_KEY:?}
+      LIMEN_EMAIL_FROM: ${LIMEN_EMAIL_FROM:?verified From-address, e.g. no-reply@auth.example.com}
+      LIMEN_SECURITY_KEK: ${LIMEN_SECURITY_KEK:?}
+      LIMEN_SECURITY_KEK_PREVIOUS: ${LIMEN_SECURITY_KEK_PREVIOUS:-}
+      LIMEN_SECURITY_REMEMBERMEKEY: ${LIMEN_SECURITY_REMEMBERMEKEY:?}
+      LIMEN_BOOTSTRAP_ADMIN_EMAIL: ${LIMEN_BOOTSTRAP_ADMIN_EMAIL:?}
+      LIMEN_BOOTSTRAP_ADMIN_PASSWORD: ${LIMEN_BOOTSTRAP_ADMIN_PASSWORD:?}
+      # Observability deferred (PRD: out of scope at launch).
+      OTEL_SDK_DISABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # The Paketo run image has bash but no curl/wget; a TCP connect to the
+      # server port proves the context started (Tomcat binds after context
+      # refresh). deploy.sh does the real HTTP health check through the edge.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8090"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # Flyway-on-boot runs inside this window on first deploy.
+      start_period: 90s
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    # No ports: — internal network only. POSTGRES_* seed credentials only on
+    # first initialisation of an empty volume; the password must be correct
+    # before the first `up`. Rotate later via ALTER USER, not env.
+    environment:
+      POSTGRES_DB: auth
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: ${LIMEN_DB_PASSWORD:?}
+    volumes:
+      - limen_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth -d auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  limen_postgres_data:
+  caddy_data:
+  caddy_config:

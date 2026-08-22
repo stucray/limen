@@ -27,3 +27,14 @@ jobs:
     uses: stucray/workflows/.github/workflows/ci-spring-boot-maven.yml@v1
     secrets:
       test_env_json: '{"LIMEN_SECURITY_KEK":"${{ secrets.LIMEN_SECURITY_KEK_TEST }}"}'
+
+  # Deploy-layer lint gate (PRD #339): the prod compose file must parse with
+  # the documented env contract. example.env carries placeholder values for
+  # every required interpolation.
+  deploy-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate production compose file
+        working-directory: infra/deploy
+        run: docker compose -f compose.prod.yaml --env-file example.env config -q
