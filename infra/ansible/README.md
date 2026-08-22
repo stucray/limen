@@ -5,6 +5,9 @@ provisioning, first contact, verification) lives in
 [`docs/process/vps-bootstrap.md`](../../docs/process/vps-bootstrap.md).
 
 ```sh
+# once, to fetch external roles (Docker install)
+ansible-galaxy install -r requirements.yml
+
 # first run (deploy user doesn't exist yet)
 ansible-playbook bootstrap.yml -e ansible_user=root
 
